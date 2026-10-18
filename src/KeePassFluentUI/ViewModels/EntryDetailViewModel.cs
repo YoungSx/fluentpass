@@ -1,0 +1,380 @@
+using System;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Windows;
+using System.Windows.Forms;
+using System.Windows.Media;
+using System.Windows.Threading;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using KeePass.Forms;
+using KeePass.Plugins;
+using KeePass.Util;
+using KeePassFluentUI.Common;
+using KeePassLib;
+using KeePassLib.Cryptography.PasswordGenerator;
+using KeePassLib.Security;
+
+namespace KeePassFluentUI.ViewModels
+{
+    public partial class EntryDetailViewModel : ObservableObject
+    {
+        private readonly IPluginHost _host;
+        private readonly Window? _ownerWindow;
+        private readonly Action _onEntryModified;
+        private readonly DispatcherTimer _passwordHideTimer;
+
+        public PwEntry Model { get; }
+
+        [ObservableProperty]
+        private string _title = string.Empty;
+
+        [ObservableProperty]
+        private string _userName = string.Empty;
+
+        [ObservableProperty]
+        private string _url = string.Empty;
+
+        [ObservableProperty]
+        private string _notes = string.Empty;
+
+        [ObservableProperty]
+        private string _passwordMasked = "••••••••••••";
+
+        [ObservableProperty]
+        private string? _revealedPassword = null;
+
+        [ObservableProperty]
+        private bool _isPasswordRevealed = false;
+
+        [ObservableProperty]
+        private int _passwordRevealSecondsRemaining = 0;
+
+        [ObservableProperty]
+        private string _createdTimeDisplay = string.Empty;
+
+        [ObservableProperty]
+        private string _lastModifiedDisplay = string.Empty;
+
+        [ObservableProperty]
+        private ImageSource? _iconSource;
+
+        // 编辑模式状态
+        [ObservableProperty]
+        private bool _isEditing = false;
+
+        [ObservableProperty]
+        private string _editTitle = string.Empty;
+
+        [ObservableProperty]
+        private string _editUserName = string.Empty;
+
+        [ObservableProperty]
+        private string _editPassword = string.Empty;
+
+        [ObservableProperty]
+        private string _editUrl = string.Empty;
+
+        [ObservableProperty]
+        private string _editNotes = string.Empty;
+
+        public ObservableCollection<CustomFieldItemViewModel> CustomFields { get; } = new ObservableCollection<CustomFieldItemViewModel>();
+        public ObservableCollection<AttachmentItemViewModel> Attachments { get; } = new ObservableCollection<AttachmentItemViewModel>();
+
+        public EntryDetailViewModel(PwEntry entry, IPluginHost host, Window? ownerWindow, Action onEntryModified)
+        {
+            Model = entry ?? throw new ArgumentNullException(nameof(entry));
+            _host = host ?? throw new ArgumentNullException(nameof(host));
+            _ownerWindow = ownerWindow;
+            _onEntryModified = onEntryModified;
+
+            _passwordHideTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(1)
+            };
+            _passwordHideTimer.Tick += OnPasswordTimerTick;
+
+            RefreshData();
+        }
+
+        public void RefreshData()
+        {
+            HidePassword();
+
+            Title = Model.Strings.ReadSafe(PwDefs.TitleField);
+            if (string.IsNullOrWhiteSpace(Title))
+            {
+                Title = "(无标题条目)";
+            }
+
+            UserName = Model.Strings.ReadSafe(PwDefs.UserNameField);
+            Url = Model.Strings.ReadSafe(PwDefs.UrlField);
+            Notes = Model.Strings.ReadSafe(PwDefs.NotesField);
+
+            CreatedTimeDisplay = Model.CreationTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm:ss");
+            LastModifiedDisplay = Model.LastModificationTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm:ss");
+
+            IconSource = IconConverterHelper.GetIconSource(_host.MainWindow, _host.Database, Model.IconId, Model.CustomIconUuid);
+
+            // 加载自定义字段 (排除官方标准字段)
+            CustomFields.Clear();
+            foreach (var kvp in Model.Strings)
+            {
+                if (PwDefs.IsStandardField(kvp.Key)) continue;
+                CustomFields.Add(new CustomFieldItemViewModel(kvp.Key, kvp.Value));
+            }
+
+            // 加载附件
+            Attachments.Clear();
+            foreach (var att in Model.Binaries)
+            {
+                Attachments.Add(new AttachmentItemViewModel(att.Key, att.Value.Length));
+            }
+        }
+
+        [RelayCommand]
+        public void TogglePasswordVisibility()
+        {
+            if (IsPasswordRevealed)
+            {
+                HidePassword();
+            }
+            else
+            {
+                RevealedPassword = Model.Strings.ReadSafe(PwDefs.PasswordField);
+                IsPasswordRevealed = true;
+                PasswordRevealSecondsRemaining = 10;
+                _passwordHideTimer.Start();
+            }
+        }
+
+        private void OnPasswordTimerTick(object sender, EventArgs e)
+        {
+            PasswordRevealSecondsRemaining--;
+            if (PasswordRevealSecondsRemaining <= 0)
+            {
+                HidePassword();
+            }
+        }
+
+        public void HidePassword()
+        {
+            _passwordHideTimer.Stop();
+            RevealedPassword = null;
+            IsPasswordRevealed = false;
+            PasswordRevealSecondsRemaining = 0;
+
+            foreach (var cf in CustomFields)
+            {
+                cf.HideValue();
+            }
+        }
+
+        [RelayCommand]
+        public void CopyUsername()
+        {
+            try
+            {
+                ClipboardUtil.CopyAndMinimize(
+                    Model.Strings.GetSafe(PwDefs.UserNameField),
+                    false,
+                    _host.MainWindow,
+                    Model,
+                    _host.Database);
+                _host.MainWindow?.StartClipboardCountdown();
+            }
+            catch (Exception ex)
+            {
+                MessageService.Show($"复制失败: {ex.Message}");
+            }
+        }
+
+        [RelayCommand]
+        public void CopyPassword()
+        {
+            try
+            {
+                ClipboardUtil.CopyAndMinimize(
+                    Model.Strings.GetSafe(PwDefs.PasswordField),
+                    false,
+                    _host.MainWindow,
+                    Model,
+                    _host.Database);
+                _host.MainWindow?.StartClipboardCountdown();
+            }
+            catch (Exception ex)
+            {
+                MessageService.Show($"复制密码失败: {ex.Message}");
+            }
+        }
+
+        [RelayCommand]
+        public void CopyUrl()
+        {
+            try
+            {
+                ClipboardUtil.CopyAndMinimize(
+                    Model.Strings.GetSafe(PwDefs.UrlField),
+                    false,
+                    _host.MainWindow,
+                    Model,
+                    _host.Database);
+                _host.MainWindow?.StartClipboardCountdown();
+            }
+            catch (Exception ex)
+            {
+                MessageService.Show($"复制链接失败: {ex.Message}");
+            }
+        }
+
+        [RelayCommand]
+        public void OpenUrl()
+        {
+            string url = Model.Strings.ReadSafe(PwDefs.UrlField);
+            if (string.IsNullOrWhiteSpace(url)) return;
+
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = url,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageService.Show($"打开链接失败: {ex.Message}");
+            }
+        }
+
+        [RelayCommand]
+        public void PerformAutoType()
+        {
+            try
+            {
+                AutoType.PerformIntoPreviousWindow(_host.MainWindow, Model, _host.Database);
+            }
+            catch (Exception ex)
+            {
+                MessageService.Show($"执行自动输入失败: {ex.Message}");
+            }
+        }
+
+        [RelayCommand]
+        public void BeginEdit()
+        {
+            EditTitle = Model.Strings.ReadSafe(PwDefs.TitleField);
+            EditUserName = Model.Strings.ReadSafe(PwDefs.UserNameField);
+            EditPassword = Model.Strings.ReadSafe(PwDefs.PasswordField);
+            EditUrl = Model.Strings.ReadSafe(PwDefs.UrlField);
+            EditNotes = Model.Strings.ReadSafe(PwDefs.NotesField);
+
+            IsEditing = true;
+        }
+
+        [RelayCommand]
+        public void CancelEdit()
+        {
+            EditPassword = string.Empty;
+            IsEditing = false;
+        }
+
+        [RelayCommand]
+        public void SaveEdit()
+        {
+            try
+            {
+                // 规范 4: 先行创建历史备份
+                Model.CreateBackup(_host.Database);
+
+                // 写入数据
+                Model.Strings.Set(PwDefs.TitleField, new ProtectedString(false, EditTitle));
+                Model.Strings.Set(PwDefs.UserNameField, new ProtectedString(false, EditUserName));
+                Model.Strings.Set(PwDefs.PasswordField, new ProtectedString(true, EditPassword));
+                Model.Strings.Set(PwDefs.UrlField, new ProtectedString(false, EditUrl));
+                Model.Strings.Set(PwDefs.NotesField, new ProtectedString(false, EditNotes));
+
+                // 更新时间戳并标记数据库已修改
+                Model.Touch(true, false);
+                _host.Database.Modified = true;
+
+                // 清除临时密码
+                EditPassword = string.Empty;
+                IsEditing = false;
+
+                // 通知宿主和外部刷新
+                _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true);
+                RefreshData();
+                _onEntryModified?.Invoke();
+            }
+            catch (Exception ex)
+            {
+                MessageService.Show($"保存修改失败: {ex.Message}");
+            }
+        }
+
+        [RelayCommand]
+        public void InvokePwGenerator()
+        {
+            try
+            {
+                var form = new PwGeneratorForm();
+                form.InitEx(null, true, false);
+
+                IWin32Window? owner = _ownerWindow != null ? new Wpf32Window(_ownerWindow) : null;
+                if (form.ShowDialog(owner) == DialogResult.OK)
+                {
+                    var profile = form.SelectedProfile;
+                    if (profile != null)
+                    {
+                        var err = PwGenerator.Generate(out var psOut, profile, null, null);
+                        if (err == PwgError.Success && psOut != null)
+                        {
+                            if (IsEditing)
+                            {
+                                EditPassword = psOut.ReadString();
+                            }
+                            else
+                            {
+                                // 直接更新并备份
+                                Model.CreateBackup(_host.Database);
+                                Model.Strings.Set(PwDefs.PasswordField, psOut);
+                                Model.Touch(true, false);
+                                _host.Database.Modified = true;
+                                _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true);
+                                RefreshData();
+                                _onEntryModified?.Invoke();
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageService.Show($"调起密码生成器失败: {ex.Message}");
+            }
+        }
+
+        [RelayCommand]
+        public void InvokeOriginalEntryDialog()
+        {
+            try
+            {
+                var form = new PwEntryForm();
+                form.InitEx(Model, PwEditMode.EditExistingEntry, _host.Database, _host.MainWindow?.ClientIcons, false, false);
+
+                IWin32Window? owner = _ownerWindow != null ? new Wpf32Window(_ownerWindow) : null;
+                if (form.ShowDialog(owner) == DialogResult.OK)
+                {
+                    _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true);
+                    RefreshData();
+                    _onEntryModified?.Invoke();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageService.Show($"调起原版编辑窗口失败: {ex.Message}");
+            }
+        }
+    }
+}

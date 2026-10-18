@@ -38,6 +38,14 @@ namespace KeePassFluentUI.Views
             _idleThrottle.RecordActivity();
         }
 
+        private void OnTreeViewSelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+        {
+            if (e.NewValue is GroupItemViewModel groupVm)
+            {
+                _viewModel.SelectedGroup = groupVm;
+            }
+        }
+
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
@@ -53,6 +61,17 @@ namespace KeePassFluentUI.Views
                 else if (e.Key == Key.L)
                 {
                     _viewModel.LockDatabaseCommand.Execute(null);
+                    e.Handled = true;
+                }
+                else if (e.Key == Key.F)
+                {
+                    SearchBox?.Focus();
+                    SearchBox?.SelectAll();
+                    e.Handled = true;
+                }
+                else if (e.Key == Key.N)
+                {
+                    _viewModel.NewEntryCommand.Execute(null);
                     e.Handled = true;
                 }
             }

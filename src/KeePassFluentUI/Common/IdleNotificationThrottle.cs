@@ -10,13 +10,18 @@ namespace KeePassFluentUI.Common
     /// </summary>
     public sealed class IdleNotificationThrottle
     {
-        private readonly MainForm _mainForm;
+        private readonly Action? _notifyAction;
         private readonly long _throttleTicks;
         private long _lastNotifiedTicks;
 
-        public IdleNotificationThrottle(MainForm mainForm, double throttleSeconds = 1.5)
+        public IdleNotificationThrottle(MainForm? mainForm, double throttleSeconds = 1.5)
+            : this(mainForm != null ? mainForm.NotifyUserActivity : (Action?)null, throttleSeconds)
         {
-            _mainForm = mainForm ?? throw new ArgumentNullException(nameof(mainForm));
+        }
+
+        public IdleNotificationThrottle(Action? notifyAction, double throttleSeconds = 1.5)
+        {
+            _notifyAction = notifyAction;
             _throttleTicks = (long)(throttleSeconds * Stopwatch.Frequency);
             _lastNotifiedTicks = 0;
         }
@@ -29,7 +34,7 @@ namespace KeePassFluentUI.Common
                 _lastNotifiedTicks = currentTicks;
                 try
                 {
-                    _mainForm.NotifyUserActivity();
+                    _notifyAction?.Invoke();
                 }
                 catch
                 {

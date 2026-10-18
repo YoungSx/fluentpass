@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+
+    <!-- 自动探测本机 KeePass 2.x 安装路径 -->
+    <KeePassDir Condition="'$(KeePassDir)' == '' and Exists('C:\Program Files\KeePass Password Safe 2\KeePass.exe')">C:\Program Files\KeePass Password Safe 2</KeePassDir>
+    <KeePassDir Condition="'$(KeePassDir)' == '' and Exists('C:\Program Files (x86)\KeePass Password Safe 2\KeePass.exe')">C:\Program Files (x86)\KeePass Password Safe 2</KeePassDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\KeePassFluentUI\KeePassFluentUI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="KeePass" Condition="Exists('$(KeePassDir)\KeePass.exe')">
+      <HintPath>$(KeePassDir)\KeePass.exe</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

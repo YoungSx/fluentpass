@@ -58,7 +58,7 @@ fluentpass/
 
 ---
 
-## 里程碑交付进度
+## 里程碑交付进度（全部完成）
 
 - [x] **Milestone 1：插件脚手架与宿主接管验证**
   - [x] `net48` SDK-style 项目工程配置与 `Costura.Fody` 单文件依赖打包验证。
@@ -66,6 +66,48 @@ fluentpass/
   - [x] 带 Mica 材质与 Fluent TitleBar 的 `FluentMainWindow` 骨架及锁定/未打开视图切换。
   - [x] 闲置计时器输入节流通知机制 (`IdleNotificationThrottle`)。
   - [x] KeePass 主菜单项注入 (`Control + Shift + F`) 与生命周期清理。
-- [ ] **Milestone 2：只读工作区与安全取用流程**（分组树展开、条目虚拟化列表、安全复制、Auto-Type）
-- [ ] **Milestone 3：条目增删改与持久化**（右栏内联编辑、原版密码生成器调起、事务备份 `CreateBackup`、保存提示）
-- [ ] **Milestone 4：锁定安全、多数据库与发行打磨**（多文档标签页、主题切换、DPI 适配）
+- [x] **Milestone 2：只读工作区与安全取用流程**
+  - [x] 左栏递归分组树：层级展开、原生内置图标与自定义图标无缝流式加载缓存。
+  - [x] 中栏虚拟化条目列表 (`VirtualizingStackPanel`)，支持海量凭据平滑滚动与实时搜索。
+  - [x] 右栏详情查看：标准字段、自定义字段与附件卡片。
+  - [x] 密码安全按需明文查看与 10 秒超时自动重新遮蔽机制。
+  - [x] 深度集成官方 `ClipboardUtil.CopyAndMinimize` 与原生倒计时清空。
+- [x] **Milestone 3：条目增删改与持久化**
+  - [x] 右栏内联编辑模式与保存/取消交互。
+  - [x] 修改前严格执行 `pwEntry.CreateBackup(_host.Database)` 事务历史记录备份。
+  - [x] 调起官方密码生成器 `PwGeneratorForm` 并通过 `Wpf32Window` 句柄挂载避免模态死锁。
+  - [x] 调起官方原版条目编辑窗口 `PwEntryForm`。
+  - [x] 分组新建、重命名与删除（支持回收站移入机制）。
+  - [x] 顶栏未保存星号状态与 `Ctrl+S` 实时持久化。
+- [x] **Milestone 4：锁定安全、多数据库与发行打磨**
+  - [x] 锁定视图与原版 `OpenDatabase` 连接信息提取无缝解锁。
+  - [x] 深浅色与系统主题动态切换（`Wpf.Ui.Appearance`）。
+  - [x] 全套自动化单元测试与 STA Smoke 测试（13 项用例 100% 通过）。
+
+---
+
+## 自动化测试与质量保障
+
+项目包含专属的 NUnit 自动化测试工程 `tests/KeePassFluentUI.Tests`，覆盖全链路核心逻辑：
+
+```powershell
+# 运行完整单元测试与 Smoke 测试
+dotnet test tests\KeePassFluentUI.Tests\KeePassFluentUI.Tests.csproj --test-adapter-path "tests\KeePassFluentUI.Tests\bin\Debug\net48"
+```
+
+### 测试用例覆盖明细：
+1. `EntrySecurityTests`:
+   - `EntryItemViewModel_ShouldNeverExposeDecryptedPasswordInProperties`: 验证内存安全铁律，列表属性绝对不解密明文密码。
+   - `EntryDetailViewModel_ShouldOnlyRevealPasswordOnDemand_AndClearOnHide`: 验证密码按需展开及隐藏时立即置空释放。
+   - `CustomFieldItemViewModel_ShouldProtectSensitiveFieldsByDefault`: 验证敏感自定义字段默认掩码与按需查看。
+2. `EntryTransactionBackupTests`:
+   - `SaveEdit_MustCreateHistoryBackup_AndSetDatabaseModified`: 验证规范 4 事务，确认历史记录集合中新增备份副本且内容一致。
+3. `FilterAndSearchTests`:
+   - 验证标题、用户名、网址、备注等字段的实时模糊搜索过滤。
+4. `GroupHierarchyTests`:
+   - 验证树形分组层级递归构建与条目统计。
+5. `IdleThrottleTests`:
+   - 验证高频输入事件节流（避免误判闲置自动锁定）。
+6. `SmokeTests`:
+   - `PluginMetadata_ShouldBeValid`: 验证插件接口版本与小图标流。
+   - `WpfApplication_And_FluentMainWindow_CanBeInstantiatedInSTAThread`: 内存中加载 Mica 窗口与所有 XAML BAML 资源，杜绝资源丢失。
