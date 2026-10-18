@@ -8,6 +8,8 @@
     <Nullable>enable</Nullable>
     <AssemblyName>KeePassFluentUI</AssemblyName>
     <RootNamespace>KeePassFluentUI</RootNamespace>
+    <Product>KeePass Plugin</Product>
+    <Description>Fluent UI for KeePass 2.x</Description>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 
     <!-- 自动探测本机 KeePass 2.x 安装路径 -->
