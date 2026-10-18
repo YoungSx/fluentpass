@@ -11,7 +11,12 @@ using Wpf.Ui.Markup;
 
 namespace KeePassFluentUI
 {
-    public sealed class KeePassFluentPlugin : Plugin
+    /// <summary>
+    /// KeePass 官方插件加载机制核心规范：
+    /// 类名必须严格为 [AssemblyName]Ext（即 KeePassFluentUIExt），
+    /// 否则 PluginManager.CreatePluginInstance 会因 Activator.CreateInstanceFrom 找不到目标类而静默跳过插件。
+    /// </summary>
+    public class KeePassFluentUIExt : Plugin
     {
         private IPluginHost? _host;
         private FluentMainWindow? _fluentWindow;
@@ -25,8 +30,7 @@ namespace KeePassFluentUI
             {
                 try
                 {
-                    // 获取程序集内嵌图标作为 16x16 列表小图标
-                    var icoStream = typeof(KeePassFluentPlugin).Assembly.GetManifestResourceStream("KeePassFluentUI.Resources.AppIcon.ico");
+                    var icoStream = typeof(KeePassFluentUIExt).Assembly.GetManifestResourceStream("KeePassFluentUI.Resources.AppIcon.ico");
                     if (icoStream != null)
                     {
                         using (var ico = new Icon(icoStream, 16, 16))
@@ -105,7 +109,7 @@ namespace KeePassFluentUI
             if (t == PluginMenuType.Main)
             {
                 var menuItem = new ToolStripMenuItem("KeePass Fluent UI");
-                menuItem.ShortcutKeys = Keys.Control | Keys.Shift | Keys.F;
+                // 依用户指令：不设默认快捷键，避免与内置快捷键冲突
                 menuItem.Click += (s, e) => ShowFluentWindow();
                 return menuItem;
             }
@@ -157,5 +161,12 @@ namespace KeePassFluentUI
 
             base.Terminate();
         }
+    }
+
+    /// <summary>
+    /// 保留向后兼容别名
+    /// </summary>
+    public sealed class KeePassFluentPlugin : KeePassFluentUIExt
+    {
     }
 }
