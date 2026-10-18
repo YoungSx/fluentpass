@@ -13,25 +13,41 @@
 
 ---
 
+## 架构与工程规范白皮书
+
+> ⚠️ **重要规范必读**：本项目是一套直接嵌入官方 KeePass 进程的轻量级现代化外壳，**严禁重写底层引擎、严禁跨进程 IPC、严禁明文密码驻留托管堆**。
+> 详细设计原则、功能范围边界（要做与绝对不做项）、以及 PR 审查铁律请务必阅读：
+> 👉 **[架构设计与工程约束白皮书 (ARCHITECTURE.md)](ARCHITECTURE.md)**
+
+---
+
 ## 目录结构
 
 ```
 fluentpass/
+├── ARCHITECTURE.md                           # 架构设计、铁律与功能边界白皮书 (必读)
 ├── src/
 │   └── KeePassFluentUI/
 │       ├── Common/
 │       │   ├── IdleNotificationThrottle.cs   # 原生闲置计时器节流同步机制
+│       │   ├── IconConverterHelper.cs        # 官方图标与 WPF ImageSource 转换器
+│       │   ├── MessageService.cs             # 统一消息提示封装
 │       │   └── Wpf32Window.cs                # WinForms/WPF 交叉模态 Owner 互操作适配器
 │       ├── ViewModels/
-│       │   └── MainViewModel.cs              # 驱动状态与数据生命周期同步
+│       │   ├── MainViewModel.cs              # 驱动状态与数据生命周期同步
+│       │   ├── GroupItemViewModel.cs         # 树形分组视图模型
+│       │   ├── EntryItemViewModel.cs         # 凭据列表虚拟化项 (零明文拷贝)
+│       │   └── EntryDetailViewModel.cs       # 详情卡片与内联编辑视图模型
 │       ├── Views/
 │       │   ├── FluentMainWindow.xaml         # Mica 材质与三栏布局主窗口
 │       │   └── FluentMainWindow.xaml.cs      # 输入监听、键盘导航与互操作
 │       ├── Resources/
 │       │   └── AppIcon.ico                   # 从 KeePass 提取的高清矢量图标
 │       ├── FodyWeavers.xml                   # Costura 依赖嵌入配置 (排除宿主 KeePass)
-│       ├── KeePassFluentUI.csproj            # SDK-Style net48 项目文件
-│       └── PluginEntry.cs                    # KeePass 插件主入口 (继承 Plugin)
+│       ├── KeePassFluentUI.csproj            # SDK-Style net48 项目文件 (ProductName: KeePass Plugin)
+│       └── PluginEntry.cs                    # KeePass 插件主入口 (KeePassFluentUIExt)
+├── tests/
+│   └── KeePassFluentUI.Tests/                # 自动化测试与 STA 宿主测试工程 (14 个用例全部通过)
 ├── build.ps1                                 # 一键本地构建、部署与调试脚本
 └── README.md
 ```
@@ -65,7 +81,7 @@ fluentpass/
   - [x] WPF `Application` 静态资源注入与 `ElementHost.EnableModelessKeyboardInterop` 挂载。
   - [x] 带 Mica 材质与 Fluent TitleBar 的 `FluentMainWindow` 骨架及锁定/未打开视图切换。
   - [x] 闲置计时器输入节流通知机制 (`IdleNotificationThrottle`)。
-  - [x] KeePass 主菜单项注入 (`Control + Shift + F`) 与生命周期清理。
+  - [x] KeePass 主菜单项注入（纯菜单点击唤出，不设默认冲突快捷键）与生命周期清理。
 - [x] **Milestone 2：只读工作区与安全取用流程**
   - [x] 左栏递归分组树：层级展开、原生内置图标与自定义图标无缝流式加载缓存。
   - [x] 中栏虚拟化条目列表 (`VirtualizingStackPanel`)，支持海量凭据平滑滚动与实时搜索。
