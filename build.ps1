@@ -23,21 +23,28 @@ $fileSizeMb = [math]::Round((Get-Item $outputDll).Length / 1MB, 2)
 Write-Host "Build Succeeded! Output: $outputDll ($fileSizeMb MB)" -ForegroundColor Green
 
 if ($Install -or $Run) {
-    $targetDir = "C:\Program Files\KeePass Password Safe 2\Plugins"
-    if (-not (Test-Path $targetDir)) {
-        $targetDir = "C:\Program Files (x86)\KeePass Password Safe 2\Plugins"
+    # 优先部署到当前用户免提权 Plugins 目录 (官方原生支持)，若无则尝试全局
+    $userPluginsDir = "$env:APPDATA\KeePass\Plugins"
+    if (-not (Test-Path $userPluginsDir)) {
+        New-Item -ItemType Directory -Path $userPluginsDir -Force | Out-Null
     }
 
-    if (Test-Path $targetDir) {
-        Write-Host "Deploying plugin to: $targetDir" -ForegroundColor Yellow
+    try {
+        Copy-Item -Path $outputDll -Destination "$userPluginsDir\KeePassFluentUI.dll" -Force
+        Write-Host "Successfully installed to User Plugins directory: $userPluginsDir\KeePassFluentUI.dll" -ForegroundColor Green
+    } catch {
+        Write-Warning "Failed to copy to User Plugins directory: $_"
+    }
+
+    # 尝试部署到全局 Program Files (如果已有写权限)
+    $globalDir = "C:\Program Files\KeePass Password Safe 2\Plugins"
+    if (Test-Path $globalDir) {
         try {
-            Copy-Item -Path $outputDll -Destination "$targetDir\KeePassFluentUI.dll" -Force
-            Write-Host "Successfully installed to KeePass Plugins directory!" -ForegroundColor Green
+            Copy-Item -Path $outputDll -Destination "$globalDir\KeePassFluentUI.dll" -Force -ErrorAction Stop
+            Write-Host "Also deployed to Global Plugins directory: $globalDir\KeePassFluentUI.dll" -ForegroundColor Green
         } catch {
-            Write-Warning "Failed to copy to $targetDir. Administrator privileges may be required: $_"
+            # 静默忽略全局写入权限限制
         }
-    } else {
-        Write-Warning "KeePass installation directory not found. Please copy $outputDll manually."
     }
 }
 
