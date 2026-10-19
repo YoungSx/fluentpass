@@ -36,9 +36,36 @@ namespace FluentPass.Common
 
             string targetCode;
             if (string.Equals(_languagePreference, "zh-CN", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(_languagePreference, "zh-Hans", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(_languagePreference, "zh", StringComparison.OrdinalIgnoreCase))
             {
                 targetCode = "zh-CN";
+            }
+            else if (string.Equals(_languagePreference, "zh-TW", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(_languagePreference, "zh-Hant", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(_languagePreference, "zh-HK", StringComparison.OrdinalIgnoreCase))
+            {
+                targetCode = "zh-TW";
+            }
+            else if (string.Equals(_languagePreference, "ja-JP", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(_languagePreference, "ja", StringComparison.OrdinalIgnoreCase))
+            {
+                targetCode = "ja-JP";
+            }
+            else if (string.Equals(_languagePreference, "ko-KR", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(_languagePreference, "ko", StringComparison.OrdinalIgnoreCase))
+            {
+                targetCode = "ko-KR";
+            }
+            else if (string.Equals(_languagePreference, "ru-RU", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(_languagePreference, "ru", StringComparison.OrdinalIgnoreCase))
+            {
+                targetCode = "ru-RU";
+            }
+            else if (string.Equals(_languagePreference, "es-ES", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(_languagePreference, "es", StringComparison.OrdinalIgnoreCase))
+            {
+                targetCode = "es-ES";
             }
             else if (string.Equals(_languagePreference, "en-US", StringComparison.OrdinalIgnoreCase) ||
                      string.Equals(_languagePreference, "en", StringComparison.OrdinalIgnoreCase))
@@ -164,8 +191,13 @@ namespace FluentPass.Common
                 if (trans?.Properties != null && !string.IsNullOrWhiteSpace(trans.Properties.Iso6391Code))
                 {
                     var code = trans.Properties.Iso6391Code.Trim().ToLowerInvariant();
+                    if (code.StartsWith("zh-tw") || code.StartsWith("zh-hk") || code.StartsWith("zh-mo") || code.Contains("hant")) return "zh-TW";
                     if (code.StartsWith("zh")) return "zh-CN";
-                    return "en-US";
+                    if (code.StartsWith("ja")) return "ja-JP";
+                    if (code.StartsWith("ko")) return "ko-KR";
+                    if (code.StartsWith("ru")) return "ru-RU";
+                    if (code.StartsWith("es")) return "es-ES";
+                    if (code.StartsWith("en")) return "en-US";
                 }
             }
             catch { }
@@ -177,9 +209,29 @@ namespace FluentPass.Common
                 if (!string.IsNullOrWhiteSpace(langFile))
                 {
                     var lower = langFile!.ToLowerInvariant();
-                    if (lower.Contains("chinese") || lower.Contains("zh") || lower.Contains("simp"))
+                    if (lower.Contains("trad") || lower.Contains("zh-tw") || lower.Contains("zh-hk") || lower.Contains("cht"))
+                    {
+                        return "zh-TW";
+                    }
+                    if (lower.Contains("chinese") || lower.Contains("zh") || lower.Contains("simp") || lower.Contains("chs"))
                     {
                         return "zh-CN";
+                    }
+                    if (lower.Contains("japan") || lower.Contains("ja"))
+                    {
+                        return "ja-JP";
+                    }
+                    if (lower.Contains("korean") || lower.Contains("ko"))
+                    {
+                        return "ko-KR";
+                    }
+                    if (lower.Contains("russ") || lower.Contains("ru"))
+                    {
+                        return "ru-RU";
+                    }
+                    if (lower.Contains("span") || lower.Contains("es"))
+                    {
+                        return "es-ES";
                     }
                 }
             }
@@ -189,10 +241,36 @@ namespace FluentPass.Common
             try
             {
                 var uiCulture = CultureInfo.CurrentUICulture;
-                if (uiCulture.Name.StartsWith("zh", StringComparison.OrdinalIgnoreCase) ||
-                    uiCulture.TwoLetterISOLanguageName.Equals("zh", StringComparison.OrdinalIgnoreCase))
+                var name = uiCulture.Name.ToLowerInvariant();
+                var twoLetter = uiCulture.TwoLetterISOLanguageName.ToLowerInvariant();
+
+                if (name.StartsWith("zh-tw") || name.StartsWith("zh-hk") || name.StartsWith("zh-mo") || name.Contains("hant"))
+                {
+                    return "zh-TW";
+                }
+                if (twoLetter == "zh")
                 {
                     return "zh-CN";
+                }
+                if (twoLetter == "ja")
+                {
+                    return "ja-JP";
+                }
+                if (twoLetter == "ko")
+                {
+                    return "ko-KR";
+                }
+                if (twoLetter == "ru")
+                {
+                    return "ru-RU";
+                }
+                if (twoLetter == "es")
+                {
+                    return "es-ES";
+                }
+                if (twoLetter == "en")
+                {
+                    return "en-US";
                 }
             }
             catch { }

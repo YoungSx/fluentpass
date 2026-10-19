@@ -84,10 +84,15 @@
                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                         </StackPanel>
                     </ui:CardControl.Header>
-                    <ComboBox SelectedValue="{Binding SelectedLanguage, Mode=TwoWay}" SelectedValuePath="Tag" Width="220">
+                    <ComboBox SelectedValue="{Binding SelectedLanguage, Mode=TwoWay}" SelectedValuePath="Tag" Width="260">
                         <ComboBoxItem Content="{common:Loc Settings_Language_Auto}" Tag="Auto" />
                         <ComboBoxItem Content="{common:Loc Settings_Language_ZhCN}" Tag="zh-CN" />
+                        <ComboBoxItem Content="{common:Loc Settings_Language_ZhTW}" Tag="zh-TW" />
                         <ComboBoxItem Content="{common:Loc Settings_Language_EnUS}" Tag="en-US" />
+                        <ComboBoxItem Content="{common:Loc Settings_Language_JaJP}" Tag="ja-JP" />
+                        <ComboBoxItem Content="{common:Loc Settings_Language_KoKR}" Tag="ko-KR" />
+                        <ComboBoxItem Content="{common:Loc Settings_Language_RuRU}" Tag="ru-RU" />
+                        <ComboBoxItem Content="{common:Loc Settings_Language_EsES}" Tag="es-ES" />
                     </ComboBox>
                 </ui:CardControl>
             </StackPanel>
