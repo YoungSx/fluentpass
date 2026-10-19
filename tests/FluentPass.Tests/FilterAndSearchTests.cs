@@ -77,7 +77,7 @@ namespace FluentPass.Tests
         }
 
         [Test]
-        public void ShowSubgroupEntries_ShouldIncludeNestedEntries_ExcludingRecycleBin()
+        public void ShowSubgroupEntries_DefaultsToTrue_ShouldIncludeNestedEntries_ExcludingRecycleBin()
         {
             var subGroup = new PwGroup(true, true, "Work Subgroup", PwIcon.Folder);
             var subEntry = TestPluginHost.CreateTestEntry("Nested Entry", "worker", "pass");
@@ -94,14 +94,38 @@ namespace FluentPass.Tests
 
             _mainVm.LoadGroups();
 
-            // Default: ShowSubgroupEntries = false, root group only has 4 direct entries
-            Assert.That(_mainVm.Entries.Count, Is.EqualTo(4));
-
-            // Enable ShowSubgroupEntries: should include subEntry (4 + 1 = 5), but exclude trashEntry
-            _mainVm.ShowSubgroupEntries = true;
+            // Default: ShowSubgroupEntries is true, so nested entry is included (4 + 1 = 5), excluding trashEntry
+            Assert.That(_mainVm.ShowSubgroupEntries, Is.True);
             Assert.That(_mainVm.Entries.Count, Is.EqualTo(5));
             Assert.That(_mainVm.Entries.Any(e => e.Title == "Nested Entry"), Is.True);
             Assert.That(_mainVm.Entries.Any(e => e.Title == "Trashed Entry"), Is.False);
+
+            // When disabled, only direct entries are returned (4)
+            _mainVm.ShowSubgroupEntries = false;
+            Assert.That(_mainVm.Entries.Count, Is.EqualTo(4));
+            Assert.That(_mainVm.Entries.Any(e => e.Title == "Nested Entry"), Is.False);
+        }
+
+        [Test]
+        public void Search_DefaultsToDatabaseWide_WhenChildGroupSelected()
+        {
+            var childGroup = new PwGroup(true, true, "Child Group", PwIcon.Folder);
+            var childEntry = TestPluginHost.CreateTestEntry("Child Special Token", "user", "pass");
+            childGroup.AddEntry(childEntry, true);
+            _host.Database.RootGroup.AddGroup(childGroup, true);
+
+            _mainVm.LoadGroups();
+            var childVm = _mainVm.RootGroups[0].Children.First(g => g.Model.Uuid.Equals(childGroup.Uuid));
+            _mainVm.SelectedGroup = childVm;
+
+            // Direct + subgroup entries in Child Group is 1
+            Assert.That(_mainVm.Entries.Count, Is.EqualTo(1));
+
+            // Searching for an entry outside Child Group (e.g., "GitHub") should still match via database-wide search
+            _mainVm.SearchText = "GitHub";
+            _mainVm.ApplyFilter();
+            Assert.That(_mainVm.FilteredEntries.Count, Is.EqualTo(1));
+            Assert.That(_mainVm.FilteredEntries[0].Title, Is.EqualTo("GitHub Account"));
         }
 
         [Test]

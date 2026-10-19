@@ -322,13 +322,9 @@
                                        Command="{Binding NewEntryCommand}" />
                         </Grid>
 
-                        <!-- 列表统计信息与 Win11 官方 ToggleSwitch 开关 -->
+                        <!-- 列表统计信息 -->
                         <Grid Grid.Row="1" Margin="6,2,6,8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <ui:TextBlock Grid.Column="0" VerticalAlignment="Center" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                            <ui:TextBlock VerticalAlignment="Center" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}">
                                 <ui:TextBlock.Text>
                                     <MultiBinding StringFormat="共 {0} 个条目 (显示 {1} 项)">
                                         <Binding Path="TotalEntriesCount" />
@@ -336,16 +332,6 @@
                                     </MultiBinding>
                                 </ui:TextBlock.Text>
                             </ui:TextBlock>
-
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                <ui:ToggleSwitch IsChecked="{Binding ShowSubgroupEntries}"
-                                                 Content="子组"
-                                                 ToolTip="包含所有子目录中的条目"
-                                                 Margin="0,0,12,0" />
-                                <ui:ToggleSwitch IsChecked="{Binding IsDatabaseWideSearch}"
-                                                 Content="全库"
-                                                 ToolTip="在整个密码库范围内搜索" />
-                            </StackPanel>
                         </Grid>
 
                         <!-- 虚拟化原生 ui:ListView 条目列表与空数据友好提示 -->
@@ -446,7 +432,7 @@
                                         Visibility="{Binding FilteredEntries.Count, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
                                 <ui:SymbolIcon Symbol="FolderOpen24" FontSize="44" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,0,10" />
                                 <ui:TextBlock Text="无密码条目" FontTypography="BodyStrong" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center" />
-                                <ui:TextBlock Text="当前分组下暂无条目，可点击上方「+ 新建」或开启「子组」展示"
+                                <ui:TextBlock Text="当前分组下暂无条目，可点击上方「+ 新建」"
                                               FontTypography="Caption"
                                               Foreground="{DynamicResource TextFillColorTertiaryBrush}"
                                               HorizontalAlignment="Center"
