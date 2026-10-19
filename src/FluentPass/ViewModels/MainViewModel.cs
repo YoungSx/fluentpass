@@ -76,6 +76,11 @@ namespace FluentPass.ViewModels
         private bool _isRecycleBinSelected = false;
 
         [ObservableProperty]
+        private bool _isSettingsOpen = false;
+
+        public SettingsViewModel Settings { get; }
+
+        [ObservableProperty]
         private GroupItemViewModel? _selectedGroup;
 
         [ObservableProperty]
@@ -98,6 +103,8 @@ namespace FluentPass.ViewModels
         {
             _host = host ?? throw new ArgumentNullException(nameof(host));
 
+            Settings = new SettingsViewModel(_host, () => IsSettingsOpen = false, theme => SwitchTheme(theme));
+
             _searchDebounceTimer = new DispatcherTimer
             {
                 Interval = TimeSpan.FromMilliseconds(200)
@@ -114,6 +121,12 @@ namespace FluentPass.ViewModels
         public void AttachWindow(Window window)
         {
             _window = window;
+            try
+            {
+                string savedTheme = SettingsService.GetAppTheme(_host);
+                SwitchTheme(savedTheme);
+            }
+            catch { }
         }
 
         partial void OnSearchTextChanged(string value)
@@ -872,6 +885,18 @@ namespace FluentPass.ViewModels
         }
 
         [RelayCommand]
+        public void OpenSettings()
+        {
+            IsSettingsOpen = true;
+        }
+
+        [RelayCommand]
+        public void CloseSettings()
+        {
+            IsSettingsOpen = false;
+        }
+
+        [RelayCommand]
         public void SwitchTheme(string themeName)
         {
             try
@@ -887,6 +912,12 @@ namespace FluentPass.ViewModels
                 else
                 {
                     ApplicationThemeManager.ApplySystemTheme();
+                }
+
+                SettingsService.SetAppTheme(_host, themeName);
+                if (Settings != null && !string.Equals(Settings.SelectedTheme, themeName, StringComparison.OrdinalIgnoreCase))
+                {
+                    Settings.SelectedTheme = themeName;
                 }
 
                 if (_window != null)
