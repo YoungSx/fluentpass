@@ -16,6 +16,9 @@ namespace FluentPass.ViewModels
         private readonly Action<string>? _onThemeChanged;
 
         [ObservableProperty]
+        private bool _isSettingsOpen = false;
+
+        [ObservableProperty]
         private bool _autoTakeoverUI;
 
         [ObservableProperty]
@@ -97,6 +100,7 @@ namespace FluentPass.ViewModels
         [RelayCommand]
         public void CloseSettings()
         {
+            IsSettingsOpen = false;
             _onCloseSettings?.Invoke();
         }
 
