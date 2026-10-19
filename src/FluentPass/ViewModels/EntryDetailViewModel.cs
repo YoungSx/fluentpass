@@ -290,7 +290,7 @@ namespace FluentPass.ViewModels
             {
                 RevealedPassword = Model.Strings.ReadSafe(PwDefs.PasswordField);
                 IsPasswordRevealed = true;
-                PasswordRevealSecondsRemaining = 10;
+                PasswordRevealSecondsRemaining = SettingsService.GetAutoMaskSeconds(_host);
                 _passwordHideTimer.Start();
             }
         }
