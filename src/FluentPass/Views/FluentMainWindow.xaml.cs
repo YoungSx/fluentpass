@@ -12,6 +12,7 @@ using Wpf.Ui.Controls;
 using MessageBoxButton = System.Windows.MessageBoxButton;
 using MessageBoxResult = System.Windows.MessageBoxResult;
 using MessageBoxImage = System.Windows.MessageBoxImage;
+using FormWindowState = System.Windows.Forms.FormWindowState;
 
 namespace FluentPass.Views
 {
@@ -21,6 +22,22 @@ namespace FluentPass.Views
         private readonly MainViewModel _viewModel;
         private readonly IdleNotificationThrottle _idleThrottle;
         private readonly object _themeWatcherLock = new object();
+
+        private void SafeInvokeOnHost(Action action)
+        {
+            if (_host.MainWindow == null) return;
+            var mw = _host.MainWindow;
+            if (mw.IsDisposed || !mw.IsHandleCreated) return;
+
+            if (mw.InvokeRequired)
+            {
+                mw.Invoke(action);
+            }
+            else
+            {
+                action();
+            }
+        }
         private bool _isThemeWatcherAttached = false;
         private bool _isExplicitExit = false;
 
@@ -212,10 +229,23 @@ namespace FluentPass.Views
                     _viewModel.AutoTypeSelectedCommand.Execute(_viewModel.SelectedEntry);
                     e.Handled = true;
                 }
+                else if (e.Key == Key.OemComma)
+                {
+                    _viewModel.IsSettingsOpen = !_viewModel.IsSettingsOpen;
+                    e.Handled = true;
+                }
             }
             else if (Keyboard.Modifiers == ModifierKeys.None)
             {
-                if (e.Key == Key.Delete)
+                if (e.Key == Key.Escape)
+                {
+                    if (_viewModel.IsSettingsOpen)
+                    {
+                        _viewModel.IsSettingsOpen = false;
+                        e.Handled = true;
+                    }
+                }
+                else if (e.Key == Key.Delete)
                 {
                     if (_viewModel.SelectedEntry != null)
                     {
@@ -255,6 +285,19 @@ namespace FluentPass.Views
                 return;
             }
 
+            var closeAction = SettingsService.GetCloseAction(_host);
+
+            if (closeAction == WindowCloseAction.ExitKeePass)
+            {
+                // 将退出决策交还给宿主管线统一执行全局保存检查、插件反初始化与安全退出
+                e.Cancel = true;
+                SafeInvokeOnHost(() =>
+                {
+                    _host.MainWindow?.Close();
+                });
+                return;
+            }
+
             // 避免误触关闭直接杀死或丢失未保存数据库
             if (_host.Database != null && _host.Database.IsOpen && _host.Database.Modified)
             {
@@ -275,13 +318,42 @@ namespace FluentPass.Views
                 }
             }
 
-            // 默认隐藏 Fluent 窗口并确保原版窗口可见，不粗暴退出宿主进程
             e.Cancel = true;
             Hide();
 
-            if (_host.MainWindow != null && !_host.MainWindow.Visible)
+            if (closeAction == WindowCloseAction.MinimizeToTray)
             {
-                _host.MainWindow.Show();
+                SafeInvokeOnHost(() =>
+                {
+                    var mw = _host.MainWindow;
+                    if (mw == null) return;
+                    bool hasTray = mw.MainNotifyIcon != null && mw.MainNotifyIcon.Visible;
+                    if (!hasTray)
+                    {
+                        // 托盘不可用时自动安全降级为恢复原版窗口，避免沦为无UI孤儿进程
+                        mw.Show();
+                        mw.WindowState = FormWindowState.Normal;
+                        mw.Activate();
+                    }
+                    else
+                    {
+                        if (mw.Visible) mw.Hide();
+                    }
+                });
+            }
+            else
+            {
+                // 默认策略：恢复原版窗口
+                SafeInvokeOnHost(() =>
+                {
+                    var mw = _host.MainWindow;
+                    if (mw != null && !mw.Visible)
+                    {
+                        mw.Show();
+                        mw.WindowState = FormWindowState.Normal;
+                        mw.Activate();
+                    }
+                });
             }
         }
     }

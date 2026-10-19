@@ -6,6 +6,7 @@
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:vm="clr-namespace:FluentPass.ViewModels"
         xmlns:common="clr-namespace:FluentPass.Common"
+        xmlns:views="clr-namespace:FluentPass.Views"
         mc:Ignorable="d"
         Title="{Binding WindowTitle}"
         Height="780" Width="1240"
@@ -87,12 +88,14 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- 现代化 Fluent TitleBar -->
+        <!-- 现代化 Fluent TitleBar (原生三段式规范布局) -->
         <ui:TitleBar Grid.Row="0"
                      Title="{Binding WindowTitle}">
             <ui:TitleBar.Icon>
                 <ui:ImageIcon Source="/FluentPass;component/Resources/AppIcon.ico" />
             </ui:TitleBar.Icon>
+
+            <!-- 左侧 Header: 标题与数据库核心高频操作 (保存、锁定) -->
             <ui:TitleBar.Header>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <ui:TextBlock Text="{Binding WindowTitle}" FontTypography="Caption" VerticalAlignment="Center" Margin="6,0,12,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
@@ -109,7 +112,26 @@
                                Command="{Binding LockDatabaseCommand}">
                         <ui:SymbolIcon Symbol="LockClosed20" />
                     </ui:Button>
+                </StackPanel>
+            </ui:TitleBar.Header>
 
+            <!-- 中间 CenterContent: 实时搜索框 -->
+            <ui:TitleBar.CenterContent>
+                <ui:TextBox x:Name="SearchBox"
+                            Width="360"
+                            Height="32"
+                            VerticalAlignment="Center"
+                            WindowChrome.IsHitTestVisibleInChrome="True"
+                            Visibility="{Binding IsDatabaseOpen, Converter={StaticResource BooleanToVisibilityConverter}}"
+                            Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                            PlaceholderText="实时搜索条目 (Ctrl+F)..."
+                            Icon="{ui:SymbolIcon Search20}"
+                            ClearButtonEnabled="True" />
+            </ui:TitleBar.CenterContent>
+
+            <!-- 右侧 TrailingContent: 原版协同、外观主题与设置中心 -->
+            <ui:TitleBar.TrailingContent>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,6,0">
                     <ui:Button Style="{StaticResource ActionIconButtonStyle}"
                                WindowChrome.IsHitTestVisibleInChrome="True"
                                ToolTip="切换原版 KeePass 主窗口显示/隐藏"
@@ -117,7 +139,7 @@
                         <ui:SymbolIcon Symbol="WindowDevTools20" />
                     </ui:Button>
 
-                    <!-- 主题切换下拉按钮 (TitleBar 交互与 DataContext 穿透) -->
+                    <!-- 主题切换下拉按钮 -->
                     <ui:DropDownButton Style="{StaticResource ActionIconButtonStyle}"
                                        WindowChrome.IsHitTestVisibleInChrome="True"
                                        ToolTip="切换外观主题">
@@ -141,26 +163,22 @@
                             </ContextMenu>
                         </ui:DropDownButton.Flyout>
                     </ui:DropDownButton>
-                </StackPanel>
-            </ui:TitleBar.Header>
 
-            <!-- 原生 TitleBar 搜索框 (CenterContent 居中槽位) -->
-            <ui:TitleBar.CenterContent>
-                <ui:TextBox x:Name="SearchBox"
-                            Width="360"
-                            Height="32"
-                            VerticalAlignment="Center"
-                            WindowChrome.IsHitTestVisibleInChrome="True"
-                            Visibility="{Binding IsDatabaseOpen, Converter={StaticResource BooleanToVisibilityConverter}}"
-                            Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                            PlaceholderText="实时搜索条目 (Ctrl+F)..."
-                            Icon="{ui:SymbolIcon Search20}"
-                            ClearButtonEnabled="True" />
-            </ui:TitleBar.CenterContent>
+                    <!-- 设置中心入口按钮 -->
+                    <ui:Button Style="{StaticResource ActionIconButtonStyle}"
+                               WindowChrome.IsHitTestVisibleInChrome="True"
+                               ToolTip="设置中心 (Ctrl+,)"
+                               Command="{Binding OpenSettingsCommand}">
+                        <ui:SymbolIcon Symbol="Settings20" />
+                    </ui:Button>
+                </StackPanel>
+            </ui:TitleBar.TrailingContent>
         </ui:TitleBar>
 
         <!-- 主内容区域 -->
         <Grid Grid.Row="1">
+            <!-- 密码库工作区视图 (设置中心关闭时展示) -->
+            <Grid Visibility="{Binding IsSettingsOpen, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
             <!-- 视图 1: 数据库已锁定 -->
             <Grid Visibility="{Binding IsLocked, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -856,6 +874,12 @@
                     </Grid>
                 </ui:Card>
             </Grid>
+
+            </Grid>
+
+            <!-- 现代化设置中心视图 (设置中心开启时展示) -->
+            <views:SettingsView DataContext="{Binding Settings}"
+                                Visibility="{Binding IsSettingsOpen, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
             <!-- 全局 Toast 提示承载容器 -->
             <ui:SnackbarPresenter x:Name="RootSnackbarPresenter"

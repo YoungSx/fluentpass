@@ -21,7 +21,7 @@ namespace FluentPass.Tests.Mocks
         public PwDatabase Database { get; set; }
 
         public CommandLineArgs CommandLineArgs => null!;
-        public AceCustomConfig CustomConfig => null!;
+        public AceCustomConfig CustomConfig { get; } = new AceCustomConfig();
         public CipherPool CipherPool => null!;
         public KeyProviderPool KeyProviderPool => null!;
         public KeyValidatorPool KeyValidatorPool => null!;

@@ -9,6 +9,7 @@ using FluentPass.Views;
 using Wpf.Ui;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Markup;
+using FluentPass.Common;
 
 namespace FluentPass
 {
@@ -17,6 +18,8 @@ namespace FluentPass
         private static IPluginHost? _host;
         private static FluentMainWindow? _fluentWindow;
         private static MainViewModel? _viewModel;
+        private static bool _hasAutoTakenOver = false;
+        private static EventHandler? _shownHandler = null;
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void Initialize(IPluginHost host)
@@ -31,7 +34,72 @@ namespace FluentPass
                 _host.MainWindow.FileOpened += OnHostFileOpened;
                 _host.MainWindow.FileClosed += OnHostFileClosed;
                 _host.MainWindow.UIStateUpdated += OnHostUIStateUpdated;
+
+                if (SettingsService.GetAutoTakeoverUI(_host))
+                {
+                    HookAutoTakeover(_host.MainWindow);
+                }
             }
+        }
+
+        private static void HookAutoTakeover(MainForm mw)
+        {
+            if (_hasAutoTakenOver) return;
+
+            _shownHandler = (s, e) =>
+            {
+                if (_shownHandler != null)
+                {
+                    mw.Shown -= _shownHandler;
+                    _shownHandler = null;
+                }
+                mw.BeginInvoke(new Action(TryPerformAutoTakeover));
+            };
+
+            mw.Shown += _shownHandler;
+        }
+
+        private static void TryPerformAutoTakeover()
+        {
+            if (_hasAutoTakenOver || _host == null || _host.MainWindow == null) return;
+            var mw = _host.MainWindow;
+            if (mw.IsDisposed) return;
+
+            if (!SettingsService.GetAutoTakeoverUI(_host)) return;
+
+            // 1. 模态窗口守卫：检测是否有模态窗体或密码输入框开启
+            bool hasModal = false;
+            try
+            {
+                foreach (System.Windows.Forms.Form form in System.Windows.Forms.Application.OpenForms)
+                {
+                    if (form.Modal || form.GetType().Name.IndexOf("Key", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        hasModal = true;
+                        break;
+                    }
+                }
+            }
+            catch { }
+
+            if (hasModal)
+            {
+                // 等待数据库打开或模态对话框结束后，在 OnHostFileOpened 中再次接管
+                return;
+            }
+
+            _hasAutoTakenOver = true;
+
+            bool isMinimized = mw.WindowState == System.Windows.Forms.FormWindowState.Minimized;
+
+            ShowFluentWindow();
+
+            if (isMinimized && _fluentWindow != null)
+            {
+                _fluentWindow.WindowState = WindowState.Minimized;
+            }
+
+            mw.Hide();
         }
 
         public static void EnsureWpfApplication()
@@ -123,6 +191,11 @@ namespace FluentPass
             {
                 _viewModel?.RefreshDatabaseState();
             });
+
+            if (!_hasAutoTakenOver && _host != null && SettingsService.GetAutoTakeoverUI(_host))
+            {
+                _host.MainWindow?.BeginInvoke(new Action(TryPerformAutoTakeover));
+            }
         }
 
         private static void OnHostFileClosed(object sender, FileClosedEventArgs e)
@@ -146,10 +219,17 @@ namespace FluentPass
         {
             if (_host?.MainWindow != null)
             {
+                if (_shownHandler != null)
+                {
+                    _host.MainWindow.Shown -= _shownHandler;
+                    _shownHandler = null;
+                }
                 _host.MainWindow.FileOpened -= OnHostFileOpened;
                 _host.MainWindow.FileClosed -= OnHostFileClosed;
                 _host.MainWindow.UIStateUpdated -= OnHostUIStateUpdated;
             }
+
+            _hasAutoTakenOver = false;
 
             if (_fluentWindow != null)
             {

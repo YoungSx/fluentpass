@@ -1,0 +1,122 @@
+<UserControl x:Class="FluentPass.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:vm="clr-namespace:FluentPass.ViewModels"
+             mc:Ignorable="d" 
+             d:DataContext="{d:DesignInstance vm:SettingsViewModel}"
+             d:DesignHeight="700" d:DesignWidth="900">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="32,24">
+        <StackPanel MaxWidth="820" HorizontalAlignment="Stretch">
+            <!-- 顶部导航标题与返回按钮 -->
+            <Grid Margin="0,0,0,24">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <ui:Button Icon="{ui:SymbolIcon ArrowLeft20}"
+                               Appearance="Transparent"
+                               ToolTip="返回密码工作区 (Esc)"
+                               Command="{Binding CloseSettingsCommand}"
+                               Margin="0,0,12,0" />
+                    <ui:TextBlock Text="设置中心" FontTypography="Title" VerticalAlignment="Center" />
+                </StackPanel>
+            </Grid>
+
+            <!-- 分组 1: 行为与接管 -->
+            <ui:TextBlock Text="行为与接管" FontTypography="Subtitle" Margin="0,0,0,8" />
+            <StackPanel Margin="0,0,0,24">
+                <ui:CardControl Margin="0,0,0,6" Icon="{ui:SymbolIcon WindowDevTools24}">
+                    <ui:CardControl.Header>
+                        <StackPanel>
+                            <ui:TextBlock Text="启动时自动接管 KeePass" FontTypography="BodyStrong" />
+                            <ui:TextBlock Text="在 KeePass 启动后自动弹出 Fluent 现代界面，并隐藏 KeePass 原版主窗口。"
+                                          FontTypography="Caption"
+                                          Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                    </ui:CardControl.Header>
+                    <ui:ToggleSwitch IsChecked="{Binding AutoTakeoverUI, Mode=TwoWay}" />
+                </ui:CardControl>
+
+                <ui:CardControl Margin="0,0,0,6" Icon="{ui:SymbolIcon DismissCircle24}">
+                    <ui:CardControl.Header>
+                        <StackPanel>
+                            <ui:TextBlock Text="关闭窗口时的行为" FontTypography="BodyStrong" />
+                            <ui:TextBlock Text="选择点击 Fluent 窗口右上角关闭按钮时，如何处理原版 KeePass。"
+                                          FontTypography="Caption"
+                                          Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                    </ui:CardControl.Header>
+                    <ComboBox SelectedIndex="{Binding CloseActionIndex, Mode=TwoWay}" Width="200">
+                        <ComboBoxItem Content="恢复原版 KeePass 窗口" />
+                        <ComboBoxItem Content="最小化到系统托盘" />
+                        <ComboBoxItem Content="退出 KeePass 进程" />
+                    </ComboBox>
+                </ui:CardControl>
+            </StackPanel>
+
+            <!-- 分组 2: 外观与个性化 -->
+            <ui:TextBlock Text="外观与个性化" FontTypography="Subtitle" Margin="0,0,0,8" />
+            <StackPanel Margin="0,0,0,24">
+                <ui:CardControl Margin="0,0,0,6" Icon="{ui:SymbolIcon WeatherMoon24}">
+                    <ui:CardControl.Header>
+                        <StackPanel>
+                            <ui:TextBlock Text="界面外观主题" FontTypography="BodyStrong" />
+                            <ui:TextBlock Text="切换深色、浅色或自动跟随 Windows 11 系统主题。"
+                                          FontTypography="Caption"
+                                          Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                    </ui:CardControl.Header>
+                    <ComboBox SelectedValue="{Binding SelectedTheme, Mode=TwoWay}" SelectedValuePath="Tag" Width="160">
+                        <ComboBoxItem Content="跟随系统" Tag="System" />
+                        <ComboBoxItem Content="浅色主题" Tag="Light" />
+                        <ComboBoxItem Content="深色主题" Tag="Dark" />
+                    </ComboBox>
+                </ui:CardControl>
+            </StackPanel>
+
+            <!-- 分组 3: 安全与防护 -->
+            <ui:TextBlock Text="安全与防护" FontTypography="Subtitle" Margin="0,0,0,8" />
+            <StackPanel Margin="0,0,0,24">
+                <ui:CardControl Margin="0,0,0,6" Icon="{ui:SymbolIcon ShieldCheckmark24}">
+                    <ui:CardControl.Header>
+                        <StackPanel>
+                            <ui:TextBlock Text="明文密码自动遮蔽时间" FontTypography="BodyStrong" />
+                            <ui:TextBlock Text="查看密码明文后，经过设定时间自动恢复掩码状态以防窥探。"
+                                          FontTypography="Caption"
+                                          Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                    </ui:CardControl.Header>
+                    <ComboBox SelectedIndex="{Binding AutoMaskSecondsIndex, Mode=TwoWay}" Width="160">
+                        <ComboBoxItem Content="5 秒" />
+                        <ComboBoxItem Content="10 秒 (推荐)" />
+                        <ComboBoxItem Content="15 秒" />
+                        <ComboBoxItem Content="30 秒" />
+                    </ComboBox>
+                </ui:CardControl>
+            </StackPanel>
+
+            <!-- 分组 4: 关于与重置 -->
+            <ui:TextBlock Text="关于" FontTypography="Subtitle" Margin="0,0,0,8" />
+            <StackPanel Margin="0,0,0,24">
+                <ui:CardAction Margin="0,0,0,6"
+                               Icon="{ui:SymbolIcon Info24}"
+                               Command="{Binding OpenGitHubCommand}">
+                    <StackPanel>
+                        <ui:TextBlock Text="FluentPass for KeePass" FontTypography="BodyStrong" />
+                        <ui:TextBlock Text="{Binding VersionDisplay, StringFormat='版本 {0} · 基于微软 WPF-UI 现代设计'}"
+                                      FontTypography="Caption"
+                                      Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </ui:CardAction>
+
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <ui:Button Content="恢复默认设置"
+                               Icon="{ui:SymbolIcon ArrowReset20}"
+                               Appearance="Secondary"
+                               Command="{Binding ResetSettingsCommand}" />
+                </StackPanel>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
