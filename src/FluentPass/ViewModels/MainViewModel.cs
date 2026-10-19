@@ -245,6 +245,7 @@ namespace FluentPass.ViewModels
 
             TotalEntriesCount = 0;
             FilteredEntriesCount = 0;
+            SearchText = string.Empty;
 
             IconConverterHelper.ClearCustomCache();
         }
