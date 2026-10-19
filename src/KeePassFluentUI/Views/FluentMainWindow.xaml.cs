@@ -9,6 +9,9 @@ using KeePassFluentUI.Common;
 using KeePassFluentUI.ViewModels;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
+using MessageBoxButton = System.Windows.MessageBoxButton;
+using MessageBoxResult = System.Windows.MessageBoxResult;
+using MessageBoxImage = System.Windows.MessageBoxImage;
 
 namespace KeePassFluentUI.Views
 {
@@ -226,17 +229,17 @@ namespace KeePassFluentUI.Views
             // 避免误触关闭直接杀死或丢失未保存数据库
             if (_host.Database != null && _host.Database.IsOpen && _host.Database.Modified)
             {
-                var result = System.Windows.MessageBox.Show(
+                var result = MessageService.Show(
                     "当前数据库有未保存的更改。是否立即保存？",
                     "KeePass Fluent UI",
-                    System.Windows.MessageBoxButton.YesNoCancel,
-                    System.Windows.MessageBoxImage.Question);
+                    MessageBoxButton.YesNoCancel,
+                    MessageBoxImage.Question);
 
-                if (result == System.Windows.MessageBoxResult.Yes)
+                if (result == MessageBoxResult.Yes)
                 {
                     _viewModel.SaveDatabaseCommand.Execute(null);
                 }
-                else if (result == System.Windows.MessageBoxResult.Cancel)
+                else if (result == MessageBoxResult.Cancel)
                 {
                     e.Cancel = true;
                     return;
