@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using FluentPass.Common;
 using FluentPass.Tests.Mocks;
 using FluentPass.ViewModels;
 using KeePassLib;
@@ -18,8 +19,15 @@ namespace FluentPass.Tests
         public void Setup()
         {
             Common.MessageService.EnableDialogs = false;
+            Loc.Instance.SetLanguagePreference("zh-CN");
             _host = new TestPluginHost();
             _mainVm = new MainViewModel(_host);
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            Loc.Instance.SetLanguagePreference(SettingsService.DefaultLanguage);
         }
 
         [Test, Category("Integration")]
@@ -30,19 +38,19 @@ namespace FluentPass.Tests
             _mainVm.RefreshDatabaseState();
 
             // Status message must NOT be "未打开数据库"
-            Assert.That(_mainVm.StatusMessage, Is.Not.EqualTo("未打开数据库"));
-            Assert.That(_mainVm.StatusMessage, Does.StartWith("就绪"));
+            Assert.That(_mainVm.StatusMessage, Is.Not.EqualTo(Loc.Get("Status_NotOpen")));
+            Assert.That(_mainVm.StatusMessage, Does.StartWith(Loc.Get("Status_Ready")));
         }
 
         [Test, Category("Integration")]
         public void StatusMessage_WhenDatabaseModified_ShouldReflectUnsavedChanges()
         {
             _host.Database.Modified = true;
-            _mainVm.StatusMessage = "未打开数据库"; // Simulate stale status before refresh
+            _mainVm.StatusMessage = Loc.Get("Status_NotOpen"); // Simulate stale status before refresh
             _mainVm.RefreshDatabaseState();
 
             Assert.That(_mainVm.IsModified, Is.True);
-            Assert.That(_mainVm.StatusMessage, Is.EqualTo("就绪 (存在未保存的修改)"));
+            Assert.That(_mainVm.StatusMessage, Is.EqualTo(Loc.Get("Status_ReadyUnsaved")));
             Assert.That(_mainVm.WindowTitle, Does.EndWith("*"));
         }
 
@@ -71,7 +79,7 @@ namespace FluentPass.Tests
             Assert.That(entry.Strings.ReadSafe(PwDefs.UserNameField), Is.EqualTo("newuser"));
 
             // 2. Status message should report saved
-            Assert.That(_mainVm.StatusMessage, Is.EqualTo("数据库已保存"));
+            Assert.That(_mainVm.StatusMessage, Is.EqualTo(Loc.Get("Status_Saved")));
         }
 
         [Test, Category("Integration")]
@@ -82,7 +90,7 @@ namespace FluentPass.Tests
             _mainVm.RefreshDatabaseState();
 
             Assert.That(_mainVm.IsDatabaseOpen, Is.False);
-            Assert.That(_mainVm.StatusMessage, Is.EqualTo("未打开数据库"));
+            Assert.That(_mainVm.StatusMessage, Is.EqualTo(Loc.Get("Status_NotOpen")));
 
             // Re-open database
             var newHost = new TestPluginHost();
@@ -90,7 +98,7 @@ namespace FluentPass.Tests
             _mainVm.RefreshDatabaseState();
 
             Assert.That(_mainVm.IsDatabaseOpen, Is.True);
-            Assert.That(_mainVm.StatusMessage, Is.EqualTo("就绪"));
+            Assert.That(_mainVm.StatusMessage, Is.EqualTo(Loc.Get("Status_Ready")));
         }
     }
 }
