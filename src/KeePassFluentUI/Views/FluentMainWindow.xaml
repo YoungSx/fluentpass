@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:vm="clr-namespace:KeePassFluentUI.ViewModels"
+        xmlns:common="clr-namespace:KeePassFluentUI.Common"
         mc:Ignorable="d"
         Title="{Binding WindowTitle}"
         Height="760" Width="1200"
@@ -14,14 +15,7 @@
         ExtendsContentIntoTitleBar="True">
 
     <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
-
-        <Style x:Key="FluentCardBorderStyle" TargetType="Border">
-            <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="8" />
-        </Style>
+        <common:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
 
         <Style x:Key="ActionIconButtonStyle" TargetType="ui:Button">
             <Setter Property="Appearance" Value="Transparent" />
@@ -45,34 +39,50 @@
             <ui:TitleBar.Header>
                 <StackPanel Orientation="Horizontal" Margin="8,0,0,0" VerticalAlignment="Center">
                     <ui:Button Style="{StaticResource ActionIconButtonStyle}"
+                               WindowChrome.IsHitTestVisibleInChrome="True"
                                ToolTip="保存数据库 (Ctrl+S)"
                                Command="{Binding SaveDatabaseCommand}">
                         <ui:SymbolIcon Symbol="Save24" />
                     </ui:Button>
 
                     <ui:Button Style="{StaticResource ActionIconButtonStyle}"
+                               WindowChrome.IsHitTestVisibleInChrome="True"
                                ToolTip="锁定数据库 (Ctrl+L)"
                                Command="{Binding LockDatabaseCommand}">
                         <ui:SymbolIcon Symbol="LockClosed24" />
                     </ui:Button>
 
                     <ui:Button Style="{StaticResource ActionIconButtonStyle}"
+                               WindowChrome.IsHitTestVisibleInChrome="True"
                                ToolTip="切换原版 KeePass 主窗口显示/隐藏"
                                Command="{Binding ToggleOriginalWindowCommand}">
                         <ui:SymbolIcon Symbol="WindowDevTools24" />
                     </ui:Button>
 
-                    <!-- 主题切换菜单 -->
-                    <Menu Background="Transparent" Margin="4,0,0,0">
-                        <MenuItem Padding="6,4">
-                            <MenuItem.Header>
-                                <ui:SymbolIcon Symbol="WeatherMoon24" />
-                            </MenuItem.Header>
-                            <MenuItem Header="深色主题 (Dark)" Command="{Binding SwitchThemeCommand}" CommandParameter="Dark" />
-                            <MenuItem Header="浅色主题 (Light)" Command="{Binding SwitchThemeCommand}" CommandParameter="Light" />
-                            <MenuItem Header="跟随系统 (System)" Command="{Binding SwitchThemeCommand}" CommandParameter="System" />
-                        </MenuItem>
-                    </Menu>
+                    <!-- 主题切换下拉按钮 (TitleBar 交互与 DataContext 穿透) -->
+                    <ui:DropDownButton Style="{StaticResource ActionIconButtonStyle}"
+                                       WindowChrome.IsHitTestVisibleInChrome="True"
+                                       ToolTip="切换外观主题">
+                        <ui:DropDownButton.Icon>
+                            <ui:SymbolIcon Symbol="WeatherMoon24" />
+                        </ui:DropDownButton.Icon>
+                        <ui:DropDownButton.Flyout>
+                            <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                <ui:MenuItem Header="深色主题 (Dark)"
+                                             Icon="WeatherMoon24"
+                                             Command="{Binding SwitchThemeCommand}"
+                                             CommandParameter="Dark" />
+                                <ui:MenuItem Header="浅色主题 (Light)"
+                                             Icon="WeatherSunny24"
+                                             Command="{Binding SwitchThemeCommand}"
+                                             CommandParameter="Light" />
+                                <ui:MenuItem Header="跟随系统 (System)"
+                                             Icon="Desktop24"
+                                             Command="{Binding SwitchThemeCommand}"
+                                             CommandParameter="System" />
+                            </ContextMenu>
+                        </ui:DropDownButton.Flyout>
+                    </ui:DropDownButton>
                 </StackPanel>
             </ui:TitleBar.Header>
         </ui:TitleBar>
@@ -135,7 +145,7 @@
                 </StackPanel>
             </Grid>
 
-            <!-- 视图 3: 三栏现代 Fluent 工作区 -->
+            <!-- 视图 3: 三栏现代 Fluent 工作区容器 -->
             <Grid Visibility="{Binding IsDatabaseOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <Grid.ColumnDefinitions>
                     <!-- 左栏: 分组树 -->
@@ -148,11 +158,10 @@
                     <ColumnDefinition Width="*" MinWidth="340" />
                 </Grid.ColumnDefinitions>
 
-                <!-- ================= 左栏: 分组树 ================= -->
-                <Border Grid.Column="0"
-                        Style="{StaticResource FluentCardBorderStyle}"
-                        Margin="8,4,4,8"
-                        Padding="8">
+                <!-- ================= 左栏: 分组树原生 Card ================= -->
+                <ui:Card Grid.Column="0"
+                         Margin="8,4,4,8"
+                         Padding="8">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -163,6 +172,12 @@
                         <Grid Grid.Row="0" Margin="4,2,4,8">
                             <ui:TextBlock Text="分组目录" FontTypography="BodyStrong" VerticalAlignment="Center" />
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <ui:Button Style="{StaticResource ActionIconButtonStyle}"
+                                           ToolTip="清空回收站"
+                                           Visibility="{Binding IsRecycleBinSelected, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                           Command="{Binding EmptyRecycleBinCommand}">
+                                    <ui:SymbolIcon Symbol="Dismiss20" Foreground="#D32F2F" />
+                                </ui:Button>
                                 <ui:Button Style="{StaticResource ActionIconButtonStyle}"
                                            ToolTip="在选中分组下新建子分组"
                                            Command="{Binding NewGroupCommand}">
@@ -203,15 +218,14 @@
                             </TreeView.ItemContainerStyle>
                         </TreeView>
                     </Grid>
-                </Border>
+                </ui:Card>
 
                 <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Transparent" />
 
-                <!-- ================= 中栏: 条目列表与搜索 ================= -->
-                <Border Grid.Column="2"
-                        Style="{StaticResource FluentCardBorderStyle}"
-                        Margin="4,4,4,8"
-                        Padding="8">
+                <!-- ================= 中栏: 条目列表与搜索原生 Card ================= -->
+                <ui:Card Grid.Column="2"
+                         Margin="4,4,4,8"
+                         Padding="8">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -238,29 +252,97 @@
                                        Command="{Binding NewEntryCommand}" />
                         </Grid>
 
-                        <!-- 列表统计信息 -->
-                        <Grid Grid.Row="1" Margin="6,2,6,4">
-                            <TextBlock Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12">
+                        <!-- 列表统计信息与 Win11 官方 ToggleSwitch 开关 -->
+                        <Grid Grid.Row="1" Margin="6,2,6,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12">
                                 <TextBlock.Text>
-                                    <MultiBinding StringFormat="共 {0} 个条目 (当前显示 {1} 项)">
+                                    <MultiBinding StringFormat="共 {0} 个条目 (显示 {1} 项)">
                                         <Binding Path="TotalEntriesCount" />
                                         <Binding Path="FilteredEntriesCount" />
                                     </MultiBinding>
                                 </TextBlock.Text>
                             </TextBlock>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <ui:ToggleSwitch OnContent="子组"
+                                                 OffContent="子组"
+                                                 ToolTip="包含所有子分组条目"
+                                                 IsChecked="{Binding ShowSubgroupEntries}"
+                                                 Margin="0,0,8,0" />
+                                <ui:ToggleSwitch OnContent="全库"
+                                                 OffContent="全库"
+                                                 ToolTip="全数据库范围搜索"
+                                                 IsChecked="{Binding IsDatabaseWideSearch}" />
+                            </StackPanel>
                         </Grid>
 
-                        <!-- 虚拟化条目列表 -->
-                        <ListView Grid.Row="2"
-                                  ItemsSource="{Binding FilteredEntries}"
-                                  SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
-                                  BorderThickness="0"
-                                  Background="Transparent"
-                                  VirtualizingStackPanel.IsVirtualizing="True"
-                                  VirtualizingStackPanel.VirtualizationMode="Recycling"
-                                  ScrollViewer.IsDeferredScrollingEnabled="False"
-                                  HorizontalContentAlignment="Stretch">
-                            <ListView.ItemTemplate>
+                        <!-- 虚拟化原生 ui:ListView 条目列表 -->
+                        <ui:ListView Grid.Row="2"
+                                     x:Name="EntriesListView"
+                                     ItemsSource="{Binding FilteredEntries}"
+                                     SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
+                                     BorderThickness="0"
+                                     Background="Transparent"
+                                     VirtualizingStackPanel.IsVirtualizing="True"
+                                     VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                     ScrollViewer.IsDeferredScrollingEnabled="False"
+                                     HorizontalContentAlignment="Stretch">
+                            <ui:ListView.Resources>
+                                <common:BindingProxy x:Key="MainVmProxy" Data="{Binding}" />
+                            </ui:ListView.Resources>
+                            <ui:ListView.ItemContainerStyle>
+                                <Style TargetType="ui:ListViewItem" BasedOn="{StaticResource {x:Type ui:ListViewItem}}">
+                                    <EventSetter Event="PreviewMouseRightButtonDown" Handler="OnListViewItemPreviewMouseRightButtonDown" />
+                                </Style>
+                            </ui:ListView.ItemContainerStyle>
+                            <ui:ListView.ContextMenu>
+                                <ContextMenu>
+                                    <ui:MenuItem Header="复制密码"
+                                                 InputGestureText="Ctrl+C"
+                                                 Icon="Copy20"
+                                                 Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.CopySelectedPasswordCommand}"
+                                                 CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
+                                    <ui:MenuItem Header="复制用户名"
+                                                 InputGestureText="Ctrl+B"
+                                                 Icon="Person20"
+                                                 Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.CopySelectedUsernameCommand}"
+                                                 CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
+                                    <ui:MenuItem Header="复制网址"
+                                                 Icon="Link20"
+                                                 Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.CopySelectedUrlCommand}"
+                                                 CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
+                                    <ui:MenuItem Header="在浏览器中打开"
+                                                 InputGestureText="Ctrl+U"
+                                                 Icon="Open20"
+                                                 Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.OpenSelectedUrlCommand}"
+                                                 CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
+                                    <ui:MenuItem Header="执行自动输入 (Auto-Type)"
+                                                 InputGestureText="Ctrl+V"
+                                                 Icon="Keyboard20"
+                                                 Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.AutoTypeSelectedCommand}"
+                                                 CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
+                                    <Separator />
+                                    <ui:MenuItem Header="编辑条目"
+                                                 InputGestureText="Enter"
+                                                 Icon="Edit20"
+                                                 Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.EditSelectedEntryCommand}"
+                                                 CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
+                                    <ui:MenuItem Header="删除条目"
+                                                 InputGestureText="Del"
+                                                 Icon="Delete20"
+                                                 Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.DeleteEntryCommand}"
+                                                 CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
+                                    <Separator />
+                                    <ui:MenuItem Header="调起原版 KeePass 编辑窗口"
+                                                 Icon="WindowDevTools24"
+                                                 Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.OpenOriginalSelectedEntryCommand}"
+                                                 CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
+                                </ContextMenu>
+                            </ui:ListView.ContextMenu>
+                            <ui:ListView.ItemTemplate>
                                 <DataTemplate>
                                     <Border BorderThickness="0,0,0,1"
                                             BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
@@ -290,18 +372,17 @@
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
+                            </ui:ListView.ItemTemplate>
+                        </ui:ListView>
                     </Grid>
-                </Border>
+                </ui:Card>
 
                 <GridSplitter Grid.Column="3" Width="4" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Transparent" />
 
-                <!-- ================= 右栏: 条目详情与内联编辑 ================= -->
-                <Border Grid.Column="4"
-                        Style="{StaticResource FluentCardBorderStyle}"
-                        Margin="4,4,8,8"
-                        Padding="16">
+                <!-- ================= 右栏: 条目详情与内联编辑原生 Card ================= -->
+                <ui:Card Grid.Column="4"
+                         Margin="4,4,8,8"
+                         Padding="16">
                     <Grid>
                         <!-- 未选择条目时的空状态 -->
                         <Grid>
@@ -400,7 +481,7 @@
                                 </Grid>
 
                                 <!-- 查看模式下的密码 -->
-                                <Grid Margin="0,0,0,12" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
+                                <Grid Margin="0,0,0,6" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
@@ -423,22 +504,54 @@
 
                                     <!-- 复制密码按钮 -->
                                     <ui:Button Grid.Column="2" Style="{StaticResource ActionIconButtonStyle}" Margin="2,0,0,0"
-                                               ToolTip="安全复制密码 (原生剪贴板倒计时自动清空)" Command="{Binding CopyPasswordCommand}">
+                                               ToolTip="安全复制密码 (原版剪贴板倒计时自动清空)" Command="{Binding CopyPasswordCommand}">
                                         <ui:SymbolIcon Symbol="Copy20" />
                                     </ui:Button>
                                 </Grid>
 
-                                <!-- 编辑模式下的密码 -->
-                                <Grid Margin="0,0,0,12" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <!-- 编辑模式下的密码 (防窥保护) -->
+                                <Grid Margin="0,0,0,6" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- 掩码状态 (默认脱敏防窥) -->
+                                    <ui:TextBox Grid.Column="0"
+                                                Text="{Binding EditPassword, UpdateSourceTrigger=PropertyChanged}"
+                                                FontFamily="Consolas"
+                                                Visibility="{Binding IsEditPasswordRevealed, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                                    <ui:PasswordBox Grid.Column="0"
+                                                    Password="{Binding EditPassword, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                                    FontFamily="Consolas"
+                                                    Visibility="{Binding IsEditPasswordRevealed, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}" />
+
+                                    <!-- 切换防窥显隐 -->
+                                    <ui:Button Grid.Column="1" Style="{StaticResource ActionIconButtonStyle}" Margin="6,0,0,0"
+                                               ToolTip="显示/隐藏明文 (防窥保护)" Command="{Binding ToggleEditPasswordVisibilityCommand}">
+                                        <ui:SymbolIcon Symbol="Eye20" />
+                                    </ui:Button>
+
+                                    <!-- 调起原版密码生成器 -->
+                                    <ui:Button Grid.Column="2" Style="{StaticResource ActionIconButtonStyle}" Margin="2,0,0,0"
+                                               ToolTip="调起原版密码生成器" Command="{Binding InvokePwGeneratorCommand}">
+                                        <ui:SymbolIcon Symbol="Wand20" />
+                                    </ui:Button>
+                                </Grid>
+
+                                <!-- 密码质量与熵值估算指示条 -->
+                                <Grid Margin="0,0,0,12">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <ui:TextBox Grid.Column="0" Text="{Binding EditPassword, UpdateSourceTrigger=PropertyChanged}" FontFamily="Consolas" />
-                                    <ui:Button Grid.Column="1" Style="{StaticResource ActionIconButtonStyle}" Margin="6,0,0,0"
-                                               ToolTip="调起原版密码生成器" Command="{Binding InvokePwGeneratorCommand}">
-                                        <ui:SymbolIcon Symbol="Wand20" />
-                                    </ui:Button>
+                                    <ProgressBar Grid.Column="0" Height="4" VerticalAlignment="Center"
+                                                 Value="{Binding PasswordQualityPercent}" Maximum="100"
+                                                 Foreground="{Binding PasswordQualityColor}" Margin="0,0,8,0" />
+                                    <TextBlock Grid.Column="1" Text="{Binding PasswordQualityText}" FontSize="11"
+                                               Foreground="{Binding PasswordQualityColor}" VerticalAlignment="Center" />
                                 </Grid>
 
                                 <!-- ================= 字段 3: 网址 (URL) ================= -->
@@ -470,9 +583,12 @@
                                                 Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                 </Grid>
 
-                                <!-- ================= 字段 5: 自定义字段 (Custom Fields) ================= -->
-                                <Expander Header="自定义附加字段" IsExpanded="True" Margin="0,0,0,12"
-                                          Visibility="{Binding CustomFields.Count, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <!-- ================= 字段 5: 自定义字段 (Custom Fields) 原生 CardExpander ================= -->
+                                <ui:CardExpander Header="自定义附加字段"
+                                                 Icon="Tag24"
+                                                 IsExpanded="True"
+                                                 Margin="0,0,0,12"
+                                                 Visibility="{Binding CustomFields.Count, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <ItemsControl ItemsSource="{Binding CustomFields}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
@@ -493,11 +609,14 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
-                                </Expander>
+                                </ui:CardExpander>
 
-                                <!-- ================= 字段 6: 附件 (Attachments) ================= -->
-                                <Expander Header="二进制附件" IsExpanded="True" Margin="0,0,0,12"
-                                          Visibility="{Binding Attachments.Count, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <!-- ================= 字段 6: 附件 (Attachments) 原生 CardExpander ================= -->
+                                <ui:CardExpander Header="二进制附件"
+                                                 Icon="Attach24"
+                                                 IsExpanded="True"
+                                                 Margin="0,0,0,12"
+                                                 Visibility="{Binding Attachments.Count, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <ItemsControl ItemsSource="{Binding Attachments}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
@@ -516,7 +635,39 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
-                                </Expander>
+                                </ui:CardExpander>
+
+                                <!-- ================= 字段 7: 历史修改版本 (History Revisions) 原生 CardExpander ================= -->
+                                <ui:CardExpander Header="{Binding HistoryRevisions.Count, StringFormat='{}历史版本快照 ({0})'}"
+                                                 Icon="History24"
+                                                 IsExpanded="False"
+                                                 Margin="0,0,0,12"
+                                                 Visibility="{Binding HistoryRevisions.Count, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <ItemsControl ItemsSource="{Binding HistoryRevisions}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" Padding="4,6">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <ui:SymbolIcon Grid.Column="0" Symbol="History20" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding LastModifiedDisplay, StringFormat='{}快照时间: {0}'}" FontSize="12" FontWeight="SemiBold" />
+                                                            <TextBlock Text="{Binding Title, StringFormat='{}标题: {0}'}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="11" />
+                                                        </StackPanel>
+                                                        <ui:Button Grid.Column="2" Appearance="Secondary" Padding="8,4" FontSize="11"
+                                                                   Command="{Binding RestoreCommand}" ToolTip="将条目还原至此历史版本 (当前状态将自动创建新快照)">
+                                                            还原
+                                                        </ui:Button>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ui:CardExpander>
 
                                 <!-- 底部创建与修改时间 -->
                                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
@@ -526,8 +677,15 @@
                             </StackPanel>
                         </ScrollViewer>
                     </Grid>
-                </Border>
+                </ui:Card>
             </Grid>
+
+            <!-- 全局 Toast 提示承载容器 -->
+            <ui:SnackbarPresenter x:Name="RootSnackbarPresenter"
+                                  VerticalAlignment="Bottom"
+                                  HorizontalAlignment="Center"
+                                  Margin="0,0,0,24"
+                                  Panel.ZIndex="1000" />
         </Grid>
 
         <!-- 底部状态栏 -->

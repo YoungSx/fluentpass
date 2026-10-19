@@ -8,9 +8,11 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
 
-    <!-- 自动探测本机 KeePass 2.x 安装路径 -->
+    <!-- 自动探测本机 KeePass 2.x 安装路径 (Windows / Linux / macOS) -->
     <KeePassDir Condition="'$(KeePassDir)' == '' and Exists('C:\Program Files\KeePass Password Safe 2\KeePass.exe')">C:\Program Files\KeePass Password Safe 2</KeePassDir>
     <KeePassDir Condition="'$(KeePassDir)' == '' and Exists('C:\Program Files (x86)\KeePass Password Safe 2\KeePass.exe')">C:\Program Files (x86)\KeePass Password Safe 2</KeePassDir>
+    <KeePassDir Condition="'$(KeePassDir)' == '' and Exists('/usr/lib/keepass2/KeePass.exe')">/usr/lib/keepass2</KeePassDir>
+    <KeePassDir Condition="'$(KeePassDir)' == '' and Exists('/Applications/KeePass2.app/Contents/MacOS')">/Applications/KeePass2.app/Contents/MacOS</KeePassDir>
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,8 +27,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="KeePass" Condition="Exists('$(KeePassDir)\KeePass.exe')">
-      <HintPath>$(KeePassDir)\KeePass.exe</HintPath>
+    <Reference Include="KeePass" Condition="Exists('$(KeePassDir)/KeePass.exe') or Exists('$(KeePassDir)\KeePass.exe')">
+      <HintPath Condition="Exists('$(KeePassDir)/KeePass.exe')">$(KeePassDir)/KeePass.exe</HintPath>
+      <HintPath Condition="Exists('$(KeePassDir)\KeePass.exe')">$(KeePassDir)\KeePass.exe</HintPath>
       <Private>true</Private>
     </Reference>
   </ItemGroup>

@@ -65,6 +65,14 @@ namespace KeePassFluentUI.ViewModels
             }
         }
 
+        public void RefreshSelfAndAncestors()
+        {
+            Name = Model.Name;
+            EntryCount = (int)Model.Entries.UCount;
+            RefreshIcon();
+            Parent?.RefreshSelfAndAncestors();
+        }
+
         private void LoadChildren()
         {
             Children.Clear();
@@ -79,11 +87,13 @@ namespace KeePassFluentUI.ViewModels
             var vm = new GroupItemViewModel(newGroup, this, _mainForm, _database);
             Children.Add(vm);
             IsExpanded = true;
+            RefreshSelfAndAncestors();
         }
 
         public void RemoveChildGroup(GroupItemViewModel child)
         {
             Children.Remove(child);
+            RefreshSelfAndAncestors();
         }
     }
 }

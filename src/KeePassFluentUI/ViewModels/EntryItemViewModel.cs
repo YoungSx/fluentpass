@@ -11,7 +11,7 @@ namespace KeePassFluentUI.ViewModels
     /// 承载条目列表项的只读模型。
     /// 铁律：在列表项模型中，密码绝不解密为普通字符串驻留托管堆。
     /// </summary>
-    public partial class EntryItemViewModel : ObservableObject
+    public partial class EntryItemViewModel : ObservableObject, IEquatable<EntryItemViewModel>
     {
         private readonly MainForm? _mainForm;
         private readonly PwDatabase? _database;
@@ -67,5 +67,16 @@ namespace KeePassFluentUI.ViewModels
 
             IconSource = IconConverterHelper.GetIconSource(_mainForm, _database, Model.IconId, Model.CustomIconUuid);
         }
+
+        public bool Equals(EntryItemViewModel? other)
+        {
+            if (other is null) return false;
+            if (ReferenceEquals(this, other)) return true;
+            return Model.Uuid.Equals(other.Model.Uuid);
+        }
+
+        public override bool Equals(object? obj) => Equals(obj as EntryItemViewModel);
+
+        public override int GetHashCode() => Model.Uuid.GetHashCode();
     }
 }

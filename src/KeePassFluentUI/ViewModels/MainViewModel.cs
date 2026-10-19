@@ -1,12 +1,16 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Windows;
+using System.Windows.Forms;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using KeePass.Forms;
 using KeePass.Plugins;
+using KeePass.Util;
 using KeePassFluentUI.Common;
 using KeePassLib;
 using KeePassLib.Security;
@@ -18,6 +22,9 @@ namespace KeePassFluentUI.ViewModels
     {
         private readonly IPluginHost _host;
         private Window? _window;
+        private PwDatabase? _currentLoadedDb;
+        private string? _currentLoadedPath;
+        private readonly DispatcherTimer _searchDebounceTimer;
 
         [ObservableProperty]
         private string _windowTitle = "KeePass Fluent UI";
@@ -44,6 +51,15 @@ namespace KeePassFluentUI.ViewModels
         private string _searchText = string.Empty;
 
         [ObservableProperty]
+        private bool _showSubgroupEntries = false;
+
+        [ObservableProperty]
+        private bool _isDatabaseWideSearch = false;
+
+        [ObservableProperty]
+        private bool _isRecycleBinSelected = false;
+
+        [ObservableProperty]
         private GroupItemViewModel? _selectedGroup;
 
         [ObservableProperty]
@@ -65,6 +81,17 @@ namespace KeePassFluentUI.ViewModels
         public MainViewModel(IPluginHost host)
         {
             _host = host ?? throw new ArgumentNullException(nameof(host));
+
+            _searchDebounceTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(200)
+            };
+            _searchDebounceTimer.Tick += (s, e) =>
+            {
+                _searchDebounceTimer.Stop();
+                ApplyFilter();
+            };
+
             RefreshDatabaseState();
         }
 
@@ -75,11 +102,26 @@ namespace KeePassFluentUI.ViewModels
 
         partial void OnSearchTextChanged(string value)
         {
+            _searchDebounceTimer.Stop();
+            _searchDebounceTimer.Start();
+        }
+
+        partial void OnShowSubgroupEntriesChanged(bool value)
+        {
+            LoadGroupEntries(SelectedGroup);
+        }
+
+        partial void OnIsDatabaseWideSearchChanged(bool value)
+        {
             ApplyFilter();
         }
 
         partial void OnSelectedGroupChanged(GroupItemViewModel? value)
         {
+            var db = _host.Database;
+            IsRecycleBinSelected = db != null && db.RecycleBinEnabled && value != null &&
+                !db.RecycleBinUuid.Equals(PwUuid.Zero) && value.Model.Uuid.Equals(db.RecycleBinUuid);
+
             LoadGroupEntries(value);
         }
 
@@ -100,7 +142,7 @@ namespace KeePassFluentUI.ViewModels
         private void OnEntryModifiedCallback()
         {
             SelectedEntry?.RefreshState();
-            SelectedGroup?.RefreshState();
+            SelectedGroup?.RefreshSelfAndAncestors();
             RefreshDatabaseState();
         }
 
@@ -134,9 +176,17 @@ namespace KeePassFluentUI.ViewModels
             DatabasePath = db.IOConnectionInfo.Path ?? string.Empty;
             WindowTitle = $"KeePass Fluent UI - {DatabaseName}{(IsModified ? " *" : "")}";
 
-            // 仅在分组树为空时初始加载
-            if (RootGroups.Count == 0 && db.RootGroup != null)
+            // 多数据库切换或首次加载检测
+            bool isDbSwitched = (db != _currentLoadedDb) ||
+                                (db.IOConnectionInfo.Path != _currentLoadedPath) ||
+                                (RootGroups.Count == 0 && db.RootGroup != null) ||
+                                (RootGroups.Count > 0 && RootGroups[0].Model != db.RootGroup);
+
+            if (isDbSwitched && db.RootGroup != null)
             {
+                ClearData();
+                _currentLoadedDb = db;
+                _currentLoadedPath = db.IOConnectionInfo.Path;
                 LoadGroups();
             }
             else
@@ -151,6 +201,8 @@ namespace KeePassFluentUI.ViewModels
 
         public void ClearData()
         {
+            _currentLoadedDb = null;
+            _currentLoadedPath = null;
             CurrentDetail?.HidePassword();
             CurrentDetail = null;
             SelectedEntry = null;
@@ -181,11 +233,28 @@ namespace KeePassFluentUI.ViewModels
         public void LoadGroupEntries(GroupItemViewModel? group)
         {
             Entries.Clear();
-            if (group != null)
+            var db = _host.Database;
+            if (group != null && db != null)
             {
-                foreach (var entry in group.Model.Entries)
+                PwGroup? recycleBin = (db.RecycleBinEnabled && !db.RecycleBinUuid.Equals(PwUuid.Zero))
+                    ? db.RootGroup.FindGroup(db.RecycleBinUuid, true) : null;
+
+                bool isViewingRecycleBin = recycleBin != null && (group.Model.Equals(recycleBin) || group.Model.IsContainedIn(recycleBin));
+
+                IEnumerable<PwEntry> sourceEntries;
+                if (ShowSubgroupEntries)
                 {
-                    Entries.Add(new EntryItemViewModel(entry, _host.MainWindow, _host.Database));
+                    sourceEntries = group.Model.GetEntries(true)
+                        .Where(entry => isViewingRecycleBin || recycleBin == null || (!entry.ParentGroup.Equals(recycleBin) && !entry.ParentGroup.IsContainedIn(recycleBin)));
+                }
+                else
+                {
+                    sourceEntries = group.Model.Entries;
+                }
+
+                foreach (var entry in sourceEntries)
+                {
+                    Entries.Add(new EntryItemViewModel(entry, _host.MainWindow, db));
                 }
             }
 
@@ -195,42 +264,223 @@ namespace KeePassFluentUI.ViewModels
 
         public void ApplyFilter()
         {
+            PwUuid? preservedUuid = SelectedEntry?.Model.Uuid;
             FilteredEntries.Clear();
             string query = (SearchText ?? string.Empty).Trim().ToLowerInvariant();
+            var db = _host.Database;
 
-            if (string.IsNullOrEmpty(query))
+            IEnumerable<EntryItemViewModel> candidateEntries;
+
+            if (IsDatabaseWideSearch && !string.IsNullOrEmpty(query) && db?.RootGroup != null)
             {
-                foreach (var entry in Entries)
-                {
-                    FilteredEntries.Add(entry);
-                }
+                PwGroup? recycleBin = (db.RecycleBinEnabled && !db.RecycleBinUuid.Equals(PwUuid.Zero))
+                    ? db.RootGroup.FindGroup(db.RecycleBinUuid, true) : null;
+
+                candidateEntries = db.RootGroup.GetEntries(true)
+                    .Where(entry => recycleBin == null || (!entry.ParentGroup.Equals(recycleBin) && !entry.ParentGroup.IsContainedIn(recycleBin)))
+                    .Select(entry => new EntryItemViewModel(entry, _host.MainWindow, db));
             }
             else
             {
-                foreach (var entry in Entries)
+                candidateEntries = Entries;
+            }
+
+            foreach (var item in candidateEntries)
+            {
+                if (string.IsNullOrEmpty(query))
                 {
-                    bool match = (entry.Title?.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0) ||
-                                 (entry.UserName?.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0) ||
-                                 (entry.Url?.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0) ||
-                                 (entry.NotesSnippet?.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0);
+                    FilteredEntries.Add(item);
+                }
+                else
+                {
+                    bool match = item.Title.ToLowerInvariant().Contains(query)
+                                 || item.UserName.ToLowerInvariant().Contains(query)
+                                 || item.Url.ToLowerInvariant().Contains(query)
+                                 || item.NotesSnippet.ToLowerInvariant().Contains(query);
 
                     if (match)
                     {
-                        FilteredEntries.Add(entry);
+                        FilteredEntries.Add(item);
                     }
                 }
             }
 
             FilteredEntriesCount = FilteredEntries.Count;
 
-            // 若原本选中的条目仍在过滤结果中则保留，否则选中第一项
-            if (SelectedEntry != null && !FilteredEntries.Contains(SelectedEntry))
+            if (preservedUuid != null)
             {
-                SelectedEntry = FilteredEntries.FirstOrDefault();
+                SelectedEntry = FilteredEntries.FirstOrDefault(e => e.Model.Uuid.Equals(preservedUuid));
             }
-            else if (SelectedEntry == null && FilteredEntries.Count > 0)
+
+            if (SelectedEntry == null && FilteredEntries.Count > 0)
             {
-                SelectedEntry = FilteredEntries.FirstOrDefault();
+                SelectedEntry = FilteredEntries[0];
+            }
+        }
+
+        private void CheckMinimizeAfterCopy()
+        {
+            try
+            {
+                if (KeePass.Program.Config?.MainWindow?.MinimizeAfterClipboardCopy == true && _window != null)
+                {
+                    _window.WindowState = WindowState.Minimized;
+                }
+            }
+            catch { }
+        }
+
+        [RelayCommand]
+        public void CopySelectedPassword(EntryItemViewModel? entryVm)
+        {
+            var target = entryVm ?? SelectedEntry;
+            if (target == null || _host.Database == null) return;
+
+            try
+            {
+                ClipboardUtil.CopyAndMinimize(
+                    target.Model.Strings.GetSafe(PwDefs.PasswordField),
+                    true,
+                    _host.MainWindow,
+                    target.Model,
+                    _host.Database);
+                _host.MainWindow?.StartClipboardCountdown();
+                CheckMinimizeAfterCopy();
+                StatusMessage = $"已复制密码: {target.Title}";
+                NotificationService.ShowSuccess("已复制密码", $"条目「{target.Title}」的密码已复制到剪贴板，原版倒计时保护已生效。");
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"复制密码失败: {ex.Message}";
+            }
+        }
+
+        [RelayCommand]
+        public void CopySelectedUsername(EntryItemViewModel? entryVm)
+        {
+            var target = entryVm ?? SelectedEntry;
+            if (target == null || _host.Database == null) return;
+
+            try
+            {
+                ClipboardUtil.CopyAndMinimize(
+                    target.Model.Strings.GetSafe(PwDefs.UserNameField),
+                    false,
+                    _host.MainWindow,
+                    target.Model,
+                    _host.Database);
+                _host.MainWindow?.StartClipboardCountdown();
+                CheckMinimizeAfterCopy();
+                StatusMessage = $"已复制用户名: {target.Title}";
+                NotificationService.ShowSuccess("已复制用户名", $"条目「{target.Title}」的用户名已复制到剪贴板。");
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"复制用户名失败: {ex.Message}";
+            }
+        }
+
+        [RelayCommand]
+        public void CopySelectedUrl(EntryItemViewModel? entryVm)
+        {
+            var target = entryVm ?? SelectedEntry;
+            if (target == null || _host.Database == null) return;
+
+            try
+            {
+                ClipboardUtil.CopyAndMinimize(
+                    target.Model.Strings.GetSafe(PwDefs.UrlField),
+                    false,
+                    _host.MainWindow,
+                    target.Model,
+                    _host.Database);
+                _host.MainWindow?.StartClipboardCountdown();
+                CheckMinimizeAfterCopy();
+                StatusMessage = $"已复制网址: {target.Title}";
+                NotificationService.ShowSuccess("已复制网址", $"条目「{target.Title}」的网址已复制到剪贴板。");
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"复制网址失败: {ex.Message}";
+            }
+        }
+
+        [RelayCommand]
+        public void OpenSelectedUrl(EntryItemViewModel? entryVm)
+        {
+            var target = entryVm ?? SelectedEntry;
+            if (target == null) return;
+            string url = target.Model.Strings.ReadSafe(PwDefs.UrlField);
+            if (string.IsNullOrWhiteSpace(url)) return;
+
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = url,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"打开链接失败: {ex.Message}";
+            }
+        }
+
+        [RelayCommand]
+        public void AutoTypeSelected(EntryItemViewModel? entryVm)
+        {
+            var target = entryVm ?? SelectedEntry;
+            if (target == null || _host.Database == null) return;
+
+            try
+            {
+                if (_window != null)
+                {
+                    _window.WindowState = WindowState.Minimized;
+                }
+                AutoType.PerformIntoPreviousWindow(_host.MainWindow, target.Model, _host.Database);
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"执行自动输入失败: {ex.Message}";
+            }
+        }
+
+        [RelayCommand]
+        public void EditSelectedEntry(EntryItemViewModel? entryVm)
+        {
+            var target = entryVm ?? SelectedEntry;
+            if (target != null)
+            {
+                SelectedEntry = target;
+                CurrentDetail?.BeginEdit();
+            }
+        }
+
+        [RelayCommand]
+        public void OpenOriginalSelectedEntry(EntryItemViewModel? entryVm)
+        {
+            var target = entryVm ?? SelectedEntry;
+            if (target == null || _host.Database == null) return;
+
+            try
+            {
+                var form = new PwEntryForm();
+                form.InitEx(target.Model, PwEditMode.EditExistingEntry, _host.Database, _host.MainWindow?.ClientIcons, false, false);
+                IWin32Window? owner = _window != null ? new Wpf32Window(_window) : null;
+                if (form.ShowDialog(owner) == DialogResult.OK)
+                {
+                    _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true);
+                    target.RefreshState();
+                    CurrentDetail?.RefreshData();
+                    SelectedGroup?.RefreshSelfAndAncestors();
+                    RefreshDatabaseState();
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"调起原版编辑窗口失败: {ex.Message}";
             }
         }
 
@@ -250,6 +500,7 @@ namespace KeePassFluentUI.ViewModels
 
                 entry.Touch(true, false);
                 SelectedGroup.Model.AddEntry(entry, true);
+                SelectedGroup.RefreshSelfAndAncestors();
 
                 _host.Database.Modified = true;
                 _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true);
@@ -309,14 +560,71 @@ namespace KeePassFluentUI.ViewModels
                 db.Modified = true;
                 _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true);
 
+                SelectedGroup?.RefreshSelfAndAncestors();
                 Entries.Remove(target);
                 ApplyFilter();
                 StatusMessage = $"已删除条目: {target.Title}";
                 RefreshDatabaseState();
+                NotificationService.ShowSuccess("已删除条目", $"条目「{target.Title}」已移至回收站。");
             }
             catch (Exception ex)
             {
                 StatusMessage = $"删除条目失败: {ex.Message}";
+            }
+        }
+
+        [RelayCommand]
+        public void EmptyRecycleBin()
+        {
+            var db = _host.Database;
+            if (db == null || !db.RecycleBinEnabled || db.RecycleBinUuid.Equals(PwUuid.Zero)) return;
+
+            var recycleBin = db.RootGroup.FindGroup(db.RecycleBinUuid, true);
+            if (recycleBin == null) return;
+
+            recycleBin.GetCounts(true, out uint uGroups, out uint uEntries);
+            uint totalItems = uGroups + uEntries;
+            if (totalItems == 0)
+            {
+                MessageService.Show("回收站当前已为空。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var result = MessageService.Show(
+                $"确定要彻底清空回收站中的所有 {totalItems} 个项目吗？\n此操作将永久删除这些凭据且不可撤销！",
+                "清空回收站",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                DateTime now = DateTime.UtcNow;
+                foreach (var entry in recycleBin.GetEntries(true))
+                {
+                    db.DeletedObjects.Add(new PwDeletedObject(entry.Uuid, now));
+                }
+                foreach (var grp in recycleBin.GetGroups(true))
+                {
+                    db.DeletedObjects.Add(new PwDeletedObject(grp.Uuid, now));
+                }
+
+                recycleBin.Entries.Clear();
+                recycleBin.Groups.Clear();
+
+                db.Modified = true;
+                _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true);
+
+                SelectedGroup?.RefreshSelfAndAncestors();
+                LoadGroupEntries(SelectedGroup);
+                StatusMessage = "已清空回收站";
+                RefreshDatabaseState();
+                NotificationService.ShowSuccess("清空回收站", "回收站已成功清空。");
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"清空回收站失败: {ex.Message}";
             }
         }
 
@@ -407,6 +715,7 @@ namespace KeePassFluentUI.ViewModels
                 _host.MainWindow?.SaveDatabase(_host.Database, null);
                 RefreshDatabaseState();
                 StatusMessage = "数据库已保存";
+                NotificationService.ShowSuccess("保存成功", "数据库已成功保存。");
             }
             catch (Exception ex)
             {
@@ -422,6 +731,7 @@ namespace KeePassFluentUI.ViewModels
                 _host.MainWindow?.LockAllDocuments();
                 RefreshDatabaseState();
                 StatusMessage = "数据库已锁定";
+                NotificationService.ShowInformation("数据库已锁定", "数据库已安全锁定。");
             }
             catch (Exception ex)
             {

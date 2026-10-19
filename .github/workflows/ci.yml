@@ -1,0 +1,121 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-test-windows:
+    name: Build & Test (Windows)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Download and Setup KeePass 2.x
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://downloads.sourceforge.net/project/keepass/KeePass%202.x/2.57.1/KeePass-2.57.1.zip" -OutFile "keepass.zip"
+          Expand-Archive -Path "keepass.zip" -DestinationPath "C:\Program Files\KeePass Password Safe 2" -Force
+
+      - name: Restore NuGet Packages
+        run: dotnet restore KeePassFluentUI.sln
+
+      - name: Build KeePassFluentUI (Release)
+        run: msbuild KeePassFluentUI.sln /p:Configuration=Release /p:Platform="Any CPU"
+
+      - name: Run Unit Tests
+        run: dotnet test tests/KeePassFluentUI.Tests/KeePassFluentUI.Tests.csproj --configuration Release --no-build --verbosity normal
+
+      - name: Archive Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KeePassFluentUI-Binary
+          path: src/KeePassFluentUI/bin/Release/net48/KeePassFluentUI.dll
+          if-no-files-found: error
+
+  linux-smoke-test:
+    name: Linux Compatibility & Smoke Test (Ubuntu)
+    needs: build-and-test-windows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: KeePassFluentUI-Binary
+          path: artifacts/
+
+      - name: Install Mono, KeePass2, Xvfb and Scrot
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mono-complete keepass2 xvfb scrot xdotool
+
+      - name: Deploy Plugin to KeePass Directories
+        run: |
+          sudo mkdir -p /usr/lib/keepass2/Plugins
+          sudo cp artifacts/KeePassFluentUI.dll /usr/lib/keepass2/Plugins/
+          sudo chmod 644 /usr/lib/keepass2/Plugins/KeePassFluentUI.dll
+          mkdir -p ~/.config/KeePass/Plugins
+          cp artifacts/KeePassFluentUI.dll ~/.config/KeePass/Plugins/
+
+      - name: Configure KeePass to Bypass Setup Wizard
+        run: |
+          mkdir -p ~/.config/KeePass
+          cat << 'EOF' > ~/.config/KeePass/KeePass.config.xml
+          <Configuration xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <Application>
+              <Start>
+                <CheckForUpdate>false</CheckForUpdate>
+                <CheckForUpdateConfigured>true</CheckForUpdateConfigured>
+              </Start>
+            </Application>
+          </Configuration>
+          EOF
+
+      - name: Execute Headless Virtual Desktop Smoke Test
+        run: |
+          Xvfb :99 -screen 0 1280x800x24 &
+          XVFB_PID=$!
+          export DISPLAY=:99
+          sleep 2
+
+          keepass2 --debug > /tmp/keepass.log 2>&1 &
+          KP_PID=$!
+          sleep 5
+
+          # Capture desktop screenshot
+          mkdir -p screenshots
+          scrot screenshots/keepass_linux_desktop.png
+
+          # Verify no crash or unhandled exception occurred
+          if ! kill -0 $KP_PID 2>/dev/null; then
+            echo "ERROR: KeePass2 exited prematurely on Linux!"
+            cat /tmp/keepass.log
+            exit 1
+          fi
+
+          echo "KeePass2 is running cleanly with KeePassFluentUI installed!"
+          cat /tmp/keepass.log
+
+          kill $KP_PID || true
+          kill $XVFB_PID || true
+
+      - name: Upload Smoke Test Screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: Linux-Smoke-Screenshot
+          path: screenshots/keepass_linux_desktop.png

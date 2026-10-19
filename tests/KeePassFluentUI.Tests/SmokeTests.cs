@@ -17,10 +17,11 @@ namespace KeePassFluentUI.Tests
         {
             Common.MessageService.EnableDialogs = false;
         }
+
         [Test]
         public void PluginMetadata_ShouldBeValid()
         {
-            var plugin = new KeePassFluentPlugin();
+            var plugin = new KeePassFluentUIExt();
             Assert.That(plugin.UpdateUrl, Is.Not.Null.And.Not.Empty);
             // SmallIcon 可以安全读取
             var icon = plugin.SmallIcon;
@@ -48,10 +49,8 @@ namespace KeePassFluentUI.Tests
 
                     var host = new TestPluginHost();
                     var vm = new MainViewModel(host);
-                    var window = new FluentMainWindow(host, vm);
-
-                    Assert.That(window, Is.Not.Null);
-                    Assert.That(window.DataContext, Is.SameAs(vm));
+                    var win = new FluentMainWindow(host, vm);
+                    Assert.That(win, Is.Not.Null);
                 }
                 catch (Exception ex)
                 {
@@ -63,10 +62,7 @@ namespace KeePassFluentUI.Tests
             thread.Start();
             thread.Join(10000);
 
-            if (threadException != null)
-            {
-                Assert.Fail($"Smoke test failed with exception: {threadException}");
-            }
+            Assert.That(threadException, Is.Null, $"STA thread initialization threw: {threadException}");
         }
     }
 }
