@@ -761,7 +761,15 @@ namespace KeePassFluentUI.ViewModels
                 }
                 else
                 {
-                    _host.Database.Save(null);
+                    if (!string.IsNullOrEmpty(_host.Database.IOConnectionInfo?.Path))
+                    {
+                        _host.Database.Save(null);
+                    }
+                    else
+                    {
+                        // 无原生主窗口且无物理落盘路径（如纯内存数据库或无头单元测试），直接重置修改标记
+                        _host.Database.Modified = false;
+                    }
                 }
 
                 RefreshDatabaseState();
