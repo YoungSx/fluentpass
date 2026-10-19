@@ -120,8 +120,19 @@ namespace FluentPass.Common
 
             if (string.Equals(val, "zh-CN", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(val, "zh", StringComparison.OrdinalIgnoreCase)) return "zh-CN";
+            if (string.Equals(val, "zh-TW", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(val, "zh-Hant", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(val, "zh-HK", StringComparison.OrdinalIgnoreCase)) return "zh-TW";
             if (string.Equals(val, "en-US", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(val, "en", StringComparison.OrdinalIgnoreCase)) return "en-US";
+            if (string.Equals(val, "ja-JP", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(val, "ja", StringComparison.OrdinalIgnoreCase)) return "ja-JP";
+            if (string.Equals(val, "ko-KR", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(val, "ko", StringComparison.OrdinalIgnoreCase)) return "ko-KR";
+            if (string.Equals(val, "ru-RU", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(val, "ru", StringComparison.OrdinalIgnoreCase)) return "ru-RU";
+            if (string.Equals(val, "es-ES", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(val, "es", StringComparison.OrdinalIgnoreCase)) return "es-ES";
             if (string.Equals(val, "Auto", StringComparison.OrdinalIgnoreCase)) return "Auto";
 
             return DefaultLanguage;
@@ -131,12 +142,22 @@ namespace FluentPass.Common
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(language) ||
-                    (!string.Equals(language, "zh-CN", StringComparison.OrdinalIgnoreCase) &&
-                     !string.Equals(language, "en-US", StringComparison.OrdinalIgnoreCase) &&
-                     !string.Equals(language, "Auto", StringComparison.OrdinalIgnoreCase)))
+                if (string.IsNullOrWhiteSpace(language))
                 {
                     language = DefaultLanguage;
+                }
+                else
+                {
+                    string upper = language.Trim().ToUpperInvariant();
+                    if (upper == "ZH-CN" || upper == "ZH") language = "zh-CN";
+                    else if (upper == "ZH-TW" || upper == "ZH-HK" || upper == "ZH-HANT") language = "zh-TW";
+                    else if (upper == "EN-US" || upper == "EN") language = "en-US";
+                    else if (upper == "JA-JP" || upper == "JA") language = "ja-JP";
+                    else if (upper == "KO-KR" || upper == "KO") language = "ko-KR";
+                    else if (upper == "RU-RU" || upper == "RU") language = "ru-RU";
+                    else if (upper == "ES-ES" || upper == "ES") language = "es-ES";
+                    else if (upper == "AUTO") language = "Auto";
+                    else language = DefaultLanguage;
                 }
                 host?.CustomConfig?.SetString(LanguageKey, language);
             }

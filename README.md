@@ -1,6 +1,10 @@
 # Fluent Pass
 
 <p align="center">
+  <a href="README.md">简体中文</a> | <a href="README.zh-TW.md">繁體中文</a> | <a href="README.en.md">English</a> | <a href="README.ja.md">日本語</a>
+</p>
+
+<p align="center">
   <img src="assets/icon.png" alt="Fluent Pass Logo" width="128" height="128" />
 </p>
 
