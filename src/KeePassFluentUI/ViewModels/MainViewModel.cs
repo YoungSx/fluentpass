@@ -800,17 +800,22 @@ namespace KeePassFluentUI.ViewModels
         {
             try
             {
-                if (themeName == "Dark")
+                if (string.Equals(themeName, "Dark", StringComparison.OrdinalIgnoreCase))
                 {
                     ApplicationThemeManager.Apply(ApplicationTheme.Dark);
                 }
-                else if (themeName == "Light")
+                else if (string.Equals(themeName, "Light", StringComparison.OrdinalIgnoreCase))
                 {
                     ApplicationThemeManager.Apply(ApplicationTheme.Light);
                 }
                 else
                 {
                     ApplicationThemeManager.ApplySystemTheme();
+                }
+
+                if (_window != null)
+                {
+                    WindowBackgroundManager.UpdateBackground(_window, ApplicationThemeManager.GetAppTheme(), Wpf.Ui.Controls.WindowBackdropType.Mica);
                 }
             }
             catch { }

@@ -6,6 +6,8 @@ using KeePass.Forms;
 using KeePass.Plugins;
 using KeePassFluentUI.ViewModels;
 using KeePassFluentUI.Views;
+using Wpf.Ui;
+using Wpf.Ui.Appearance;
 using Wpf.Ui.Markup;
 
 namespace KeePassFluentUI
@@ -21,7 +23,7 @@ namespace KeePassFluentUI
         {
             _host = host;
 
-            InitializeWpfApplication();
+            EnsureWpfApplication();
             _viewModel = new MainViewModel(_host);
 
             _host.MainWindow.FileOpened += OnHostFileOpened;
@@ -29,17 +31,40 @@ namespace KeePassFluentUI
             _host.MainWindow.UIStateUpdated += OnHostUIStateUpdated;
         }
 
-        private static void InitializeWpfApplication()
+        public static void EnsureWpfApplication()
         {
-            if (System.Windows.Application.Current == null)
+            var app = System.Windows.Application.Current;
+            if (app == null)
             {
-                var app = new System.Windows.Application
+                app = new System.Windows.Application
                 {
                     ShutdownMode = ShutdownMode.OnExplicitShutdown
                 };
+            }
 
-                app.Resources.MergedDictionaries.Add(new ThemesDictionary());
-                app.Resources.MergedDictionaries.Add(new ControlsDictionary());
+            EnsureWpfUiDictionaries(app.Resources);
+        }
+
+        private static void EnsureWpfUiDictionaries(ResourceDictionary resources)
+        {
+            bool hasThemes = false;
+            bool hasControls = false;
+
+            foreach (var dict in resources.MergedDictionaries)
+            {
+                if (dict is ThemesDictionary || (dict.Source != null && dict.Source.ToString().IndexOf("/Theme/", StringComparison.OrdinalIgnoreCase) >= 0))
+                    hasThemes = true;
+                if (dict is ControlsDictionary || (dict.Source != null && dict.Source.ToString().IndexOf("controls.xaml", StringComparison.OrdinalIgnoreCase) >= 0))
+                    hasControls = true;
+            }
+
+            if (!hasThemes)
+            {
+                resources.MergedDictionaries.Add(new ThemesDictionary());
+            }
+            if (!hasControls)
+            {
+                resources.MergedDictionaries.Add(new ControlsDictionary());
             }
         }
 
@@ -48,9 +73,16 @@ namespace KeePassFluentUI
         {
             if (_host == null || _viewModel == null) return;
 
+            EnsureWpfApplication();
+
             if (_fluentWindow == null || !_fluentWindow.IsLoaded)
             {
                 _fluentWindow = new FluentMainWindow(_host, _viewModel);
+                if (System.Windows.Application.Current != null)
+                {
+                    System.Windows.Application.Current.MainWindow = _fluentWindow;
+                }
+                UiApplication.Current.MainWindow = _fluentWindow;
                 ElementHost.EnableModelessKeyboardInterop(_fluentWindow);
             }
 
