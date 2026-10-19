@@ -36,30 +36,13 @@ namespace FluentPass.Tests
         [Test, Category("Smoke")]
         public void WpfApplication_And_FluentMainWindow_CanBeInstantiatedInSTAThread()
         {
-            Exception? threadException = null;
+            FluentWindowManager.EnsureWpfApplication();
 
-            var thread = new Thread(() =>
-            {
-                try
-                {
-                    FluentWindowManager.EnsureWpfApplication();
-
-                    var host = new TestPluginHost();
-                    var vm = new MainViewModel(host);
-                    var win = new FluentMainWindow(host, vm);
-                    Assert.That(win, Is.Not.Null);
-                }
-                catch (Exception ex)
-                {
-                    threadException = ex;
-                }
-            });
-
-            thread.SetApartmentState(ApartmentState.STA);
-            thread.Start();
-            thread.Join(10000);
-
-            Assert.That(threadException, Is.Null, $"STA thread initialization threw: {threadException}");
+            var host = new TestPluginHost();
+            var vm = new MainViewModel(host);
+            var win = new FluentMainWindow(host, vm);
+            Assert.That(win, Is.Not.Null);
+            win.ForceClose();
         }
 
         [Test, Category("Smoke")]
