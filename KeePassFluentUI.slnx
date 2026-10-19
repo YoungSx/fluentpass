@@ -1,5 +1,2 @@
 <Solution>
-  <Folder Name="/src/">
-    <Project Path="src/KeePassFluentUI/KeePassFluentUI.csproj" />
-  </Folder>
 </Solution>

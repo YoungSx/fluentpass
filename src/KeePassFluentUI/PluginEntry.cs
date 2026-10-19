@@ -1,13 +1,9 @@
 using System;
 using System.Drawing;
-using System.Windows;
+using System.Runtime.CompilerServices;
 using System.Windows.Forms;
-using System.Windows.Forms.Integration;
 using KeePass.Forms;
 using KeePass.Plugins;
-using KeePassFluentUI.ViewModels;
-using KeePassFluentUI.Views;
-using Wpf.Ui.Markup;
 
 namespace KeePassFluentUI
 {
@@ -15,12 +11,16 @@ namespace KeePassFluentUI
     /// KeePass 官方插件加载机制核心规范：
     /// 类名必须严格为 [AssemblyName]Ext（即 KeePassFluentUIExt），
     /// 否则 PluginManager.CreatePluginInstance 会因 Activator.CreateInstanceFrom 找不到目标类而静默跳过插件。
+    /// 
+    /// 架构隔离原则 (Zero WPF in Entry)：
+    /// 本类内严禁声明任何 WPF 类型或字段。
+    /// 在 Windows 下通过 JIT NoInlining 隔离墙调用 FluentWindowManager 承载纯正的 WPF-UI (Fluent Design System)；
+    /// 在 Linux / macOS 下优雅降级提示，杜绝 Mono 缺失 PresentationFramework 导致的 TypeLoadException。
     /// </summary>
     public class KeePassFluentUIExt : Plugin
     {
         private IPluginHost? _host;
-        private FluentMainWindow? _fluentWindow;
-        private MainViewModel? _viewModel;
+        private bool _isWindows;
 
         public override string UpdateUrl => "https://github.com/fluentpass/fluentpass";
 
@@ -49,67 +49,55 @@ namespace KeePassFluentUI
             if (host == null) return false;
             _host = host;
 
-            // 规范 1: 确保 WPF Application 单例与 WPF-UI 资源就绪
-            InitializeWpfApplication();
+            // 跨平台守卫：探测是否为 Windows NT 原生环境
+            _isWindows = Environment.OSVersion.Platform == PlatformID.Win32NT;
 
-            // 构建 ViewModel
-            _viewModel = new MainViewModel(_host);
-
-            // 监听 KeePass 原版事件
-            _host.MainWindow.FileOpened += OnHostFileOpened;
-            _host.MainWindow.FileClosed += OnHostFileClosed;
-            _host.MainWindow.UIStateUpdated += OnHostUIStateUpdated;
+            if (_isWindows)
+            {
+                BootstrapWpf(host);
+            }
 
             return true;
         }
 
-        private void InitializeWpfApplication()
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void BootstrapWpf(IPluginHost host)
         {
-            if (System.Windows.Application.Current == null)
-            {
-                var app = new System.Windows.Application
-                {
-                    ShutdownMode = ShutdownMode.OnExplicitShutdown
-                };
-
-                app.Resources.MergedDictionaries.Add(new ThemesDictionary());
-                app.Resources.MergedDictionaries.Add(new ControlsDictionary());
-            }
+            FluentWindowManager.Initialize(host);
         }
 
         public void ShowFluentWindow()
         {
-            if (_host == null || _viewModel == null) return;
+            if (_host == null) return;
 
-            if (_fluentWindow == null || !_fluentWindow.IsLoaded)
+            if (_isWindows)
             {
-                _fluentWindow = new FluentMainWindow(_host, _viewModel);
-                
-                // 规范 2: 关键互操作——为非模态 WPF 窗口注入 WinForms 键盘消息循环
-                ElementHost.EnableModelessKeyboardInterop(_fluentWindow);
+                ShowWpfWindow();
             }
-
-            _viewModel.RefreshDatabaseState();
-
-            if (!_fluentWindow.IsVisible)
+            else
             {
-                _fluentWindow.Show();
+                MessageBox.Show(
+                    "KeePass Fluent UI 采用官方微软 Fluent Design System (WPF-UI)，深度依赖 Windows 11 DWMAPI 与 Direct3D 现代渲染管线。\n" +
+                    "当前检测到操作系统为 " + Environment.OSVersion.Platform + " (Mono 运行时)，暂不支持 WPF-UI 硬件加速视窗。\n" +
+                    "请在 Windows 10/11 环境下使用 Fluent 现代化视窗。",
+                    "KeePass Fluent UI - 平台提示",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
             }
+        }
 
-            _fluentWindow.Activate();
-
-            if (_fluentWindow.WindowState == WindowState.Minimized)
-            {
-                _fluentWindow.WindowState = WindowState.Normal;
-            }
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void ShowWpfWindow()
+        {
+            FluentWindowManager.ShowFluentWindow();
         }
 
         public override ToolStripMenuItem? GetMenuItem(PluginMenuType t)
         {
             if (t == PluginMenuType.Main)
             {
-                var menuItem = new ToolStripMenuItem("KeePass Fluent UI");
-                // 依用户指令：不设默认快捷键，避免与内置快捷键冲突
+                string menuText = _isWindows ? "KeePass Fluent UI" : "KeePass Fluent UI (Windows only)";
+                var menuItem = new ToolStripMenuItem(menuText);
                 menuItem.Click += (s, e) => ShowFluentWindow();
                 return menuItem;
             }
@@ -117,56 +105,21 @@ namespace KeePassFluentUI
             return null;
         }
 
-        private void OnHostFileOpened(object sender, FileOpenedEventArgs e)
-        {
-            _fluentWindow?.Dispatcher.InvokeAsync(() =>
-            {
-                _viewModel?.RefreshDatabaseState();
-            });
-        }
-
-        private void OnHostFileClosed(object sender, FileClosedEventArgs e)
-        {
-            _fluentWindow?.Dispatcher.InvokeAsync(() =>
-            {
-                _viewModel?.RefreshDatabaseState();
-            });
-        }
-
-        private void OnHostUIStateUpdated(object sender, EventArgs e)
-        {
-            _fluentWindow?.Dispatcher.InvokeAsync(() =>
-            {
-                _viewModel?.RefreshDatabaseState();
-            });
-        }
-
         public override void Terminate()
         {
-            if (_host != null && _host.MainWindow != null)
+            if (_isWindows)
             {
-                _host.MainWindow.FileOpened -= OnHostFileOpened;
-                _host.MainWindow.FileClosed -= OnHostFileClosed;
-                _host.MainWindow.UIStateUpdated -= OnHostUIStateUpdated;
+                ShutdownWpf();
             }
 
-            if (_fluentWindow != null)
-            {
-                _fluentWindow.Dispatcher.Invoke(() =>
-                {
-                    _fluentWindow.ForceClose();
-                });
-                _fluentWindow = null;
-            }
-
+            _host = null;
             base.Terminate();
         }
-    }
 
-    /// <summary>
-    /// 保留向后兼容别名
-    /// </summary>
-    public sealed class KeePassFluentPlugin : KeePassFluentUIExt
-    {
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void ShutdownWpf()
+        {
+            FluentWindowManager.Shutdown();
+        }
     }
 }
