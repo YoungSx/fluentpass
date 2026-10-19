@@ -28,6 +28,9 @@ namespace FluentPass.ViewModels
         private string _selectedTheme;
 
         [ObservableProperty]
+        private string _selectedLanguage;
+
+        [ObservableProperty]
         private int _autoMaskSeconds;
 
         [ObservableProperty]
@@ -35,6 +38,8 @@ namespace FluentPass.ViewModels
 
         [ObservableProperty]
         private string _versionDisplay = "1.0.0";
+
+        public string VersionInfoSummary => Loc.Get("Settings_VersionFormat", VersionDisplay);
 
         public SettingsViewModel(IPluginHost? host, Action? onCloseSettings = null, Action<string>? onThemeChanged = null)
         {
@@ -45,6 +50,7 @@ namespace FluentPass.ViewModels
             _autoTakeoverUI = SettingsService.GetAutoTakeoverUI(_host);
             _closeActionIndex = (int)SettingsService.GetCloseAction(_host);
             _selectedTheme = SettingsService.GetAppTheme(_host);
+            _selectedLanguage = SettingsService.GetLanguage(_host);
             _autoMaskSeconds = SettingsService.GetAutoMaskSeconds(_host);
             _autoMaskSecondsIndex = MapSecondsToIndex(_autoMaskSeconds);
 
@@ -57,6 +63,13 @@ namespace FluentPass.ViewModels
                 }
             }
             catch { }
+
+            Loc.Instance.LanguageChanged += OnLocLanguageChanged;
+        }
+
+        private void OnLocLanguageChanged(object? sender, EventArgs e)
+        {
+            OnPropertyChanged(nameof(VersionInfoSummary));
         }
 
         private static int MapSecondsToIndex(int seconds)
@@ -86,6 +99,13 @@ namespace FluentPass.ViewModels
         {
             SettingsService.SetAppTheme(_host, value);
             _onThemeChanged?.Invoke(value);
+        }
+
+        partial void OnSelectedLanguageChanged(string value)
+        {
+            SettingsService.SetLanguage(_host, value);
+            Loc.Instance.SetLanguagePreference(value);
+            OnPropertyChanged(nameof(VersionInfoSummary));
         }
 
         partial void OnAutoMaskSecondsIndexChanged(int value)
@@ -130,6 +150,7 @@ namespace FluentPass.ViewModels
             AutoTakeoverUI = SettingsService.DefaultAutoTakeoverUI;
             CloseActionIndex = (int)SettingsService.DefaultCloseAction;
             SelectedTheme = SettingsService.DefaultAppTheme;
+            SelectedLanguage = SettingsService.DefaultLanguage;
             AutoMaskSeconds = SettingsService.DefaultAutoMaskSeconds;
             AutoMaskSecondsIndex = MapSecondsToIndex(AutoMaskSeconds);
         }

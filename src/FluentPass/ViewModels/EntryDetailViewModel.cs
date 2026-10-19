@@ -89,7 +89,7 @@ namespace FluentPass.ViewModels
         private string _passwordQualityColor = "#D32F2F";
 
         [ObservableProperty]
-        private string _passwordQualityText = "未设置";
+        private string _passwordQualityText = string.Empty;
 
         // 编辑模式状态
         [ObservableProperty]
@@ -113,6 +113,12 @@ namespace FluentPass.ViewModels
         [ObservableProperty]
         private string _editNotes = string.Empty;
 
+        public string LastModifiedSummary => Loc.Get("Detail_ModifiedFormat", LastModifiedDisplay);
+        public string PasswordRevealBadgeText => Loc.Get("Detail_PasswordAutoMaskFormat", PasswordRevealSecondsRemaining);
+        public string HistoryHeader => Loc.Get("Detail_HistoryHeader", HistoryRevisions.Count);
+        public string CreatedTimeSummary => Loc.Get("Detail_CreatedFormat", CreatedTimeDisplay);
+        public string LastModifiedDetailSummary => Loc.Get("Detail_LastModifiedFormat", LastModifiedDisplay);
+
         public ObservableCollection<CustomFieldItemViewModel> CustomFields { get; } = new ObservableCollection<CustomFieldItemViewModel>();
         public ObservableCollection<AttachmentItemViewModel> Attachments { get; } = new ObservableCollection<AttachmentItemViewModel>();
         public ObservableCollection<EntryHistoryItemViewModel> HistoryRevisions { get; } = new ObservableCollection<EntryHistoryItemViewModel>();
@@ -124,6 +130,8 @@ namespace FluentPass.ViewModels
             _ownerWindow = ownerWindow;
             _onEntryModified = onEntryModified;
 
+            _passwordQualityText = Loc.Get("PwQuality_NotSet");
+
             _passwordHideTimer = new DispatcherTimer
             {
                 Interval = TimeSpan.FromSeconds(1)
@@ -131,6 +139,11 @@ namespace FluentPass.ViewModels
             _passwordHideTimer.Tick += OnPasswordTimerTick;
 
             RefreshData();
+        }
+
+        partial void OnPasswordRevealSecondsRemainingChanged(int value)
+        {
+            OnPropertyChanged(nameof(PasswordRevealBadgeText));
         }
 
         partial void OnEditPasswordChanged(string value)
@@ -175,27 +188,48 @@ namespace FluentPass.ViewModels
             if (bits == 0)
             {
                 PasswordQualityColor = "#9E9E9E";
-                PasswordQualityText = "无密码";
+                PasswordQualityText = Loc.Get("PwQuality_NoPassword");
             }
             else if (bits < 40)
             {
                 PasswordQualityColor = "#D32F2F";
-                PasswordQualityText = $"非常弱 ({bits} 位)";
+                PasswordQualityText = Loc.Get("PwQuality_VeryWeakFormat", bits);
             }
             else if (bits < 64)
             {
                 PasswordQualityColor = "#F57C00";
-                PasswordQualityText = $"弱 ({bits} 位)";
+                PasswordQualityText = Loc.Get("PwQuality_WeakFormat", bits);
             }
             else if (bits < 80)
             {
                 PasswordQualityColor = "#FBC02D";
-                PasswordQualityText = $"中等 ({bits} 位)";
+                PasswordQualityText = Loc.Get("PwQuality_ModerateFormat", bits);
             }
             else
             {
                 PasswordQualityColor = "#388E3C";
-                PasswordQualityText = $"强 ({bits} 位)";
+                PasswordQualityText = Loc.Get("PwQuality_StrongFormat", bits);
+            }
+        }
+
+        public void RefreshLocalizedProperties()
+        {
+            if (string.IsNullOrWhiteSpace(Model.Strings.ReadSafe(PwDefs.TitleField)))
+            {
+                Title = Loc.Get("Common_UntitledEntry");
+            }
+
+            OnPropertyChanged(nameof(LastModifiedSummary));
+            OnPropertyChanged(nameof(PasswordRevealBadgeText));
+            OnPropertyChanged(nameof(HistoryHeader));
+            OnPropertyChanged(nameof(CreatedTimeSummary));
+            OnPropertyChanged(nameof(LastModifiedDetailSummary));
+
+            UpdatePasswordQuality(IsEditing ? new ProtectedString(true, EditPassword) : Model.Strings.GetSafe(PwDefs.PasswordField));
+
+            foreach (var h in HistoryRevisions)
+            {
+                h.RefreshLocalizedProperties();
             }
         }
 
@@ -206,7 +240,7 @@ namespace FluentPass.ViewModels
             Title = Model.Strings.ReadSafe(PwDefs.TitleField);
             if (string.IsNullOrWhiteSpace(Title))
             {
-                Title = "(无标题条目)";
+                Title = Loc.Get("Common_UntitledEntry");
             }
 
             UserName = Model.Strings.ReadSafe(PwDefs.UserNameField);
@@ -242,13 +276,18 @@ namespace FluentPass.ViewModels
                 var histEntry = Model.History.GetAt((uint)i);
                 HistoryRevisions.Insert(0, new EntryHistoryItemViewModel(histEntry, (int)Model.History.UCount - i, RestoreRevision));
             }
+
+            OnPropertyChanged(nameof(LastModifiedSummary));
+            OnPropertyChanged(nameof(CreatedTimeSummary));
+            OnPropertyChanged(nameof(LastModifiedDetailSummary));
+            OnPropertyChanged(nameof(HistoryHeader));
         }
 
         public void RestoreRevision(PwEntry historyEntry)
         {
             var result = MessageService.Show(
-                $"确定要将当前条目还原为 {historyEntry.LastModificationTime.ToLocalTime():yyyy/MM/dd HH:mm:ss} 的历史版本吗？\n当前内容将自动备份为新的历史版本。",
-                "确认还原历史版本",
+                Loc.Get("Dialog_RestoreHistory_ConfirmFormat", historyEntry.LastModificationTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm:ss")),
+                Loc.Get("Dialog_RestoreHistory_Title"),
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
 
@@ -271,11 +310,11 @@ namespace FluentPass.ViewModels
 
                 RefreshData();
                 _onEntryModified?.Invoke();
-                NotificationService.ShowSuccess("还原成功", "已成功还原至所选历史版本，当前状态已自动备份。");
+                NotificationService.ShowSuccess(Loc.Get("Notification_RestoreSuccess_Title"), Loc.Get("Notification_RestoreSuccess_Message"));
             }
             catch (Exception ex)
             {
-                MessageService.Show($"还原版本失败: {ex.Message}");
+                MessageService.Show(Loc.Get("Dialog_RestoreHistory_FailedFormat", ex.Message));
             }
         }
 
@@ -348,11 +387,11 @@ namespace FluentPass.ViewModels
                     _host.Database);
                 SafeInvokeOnHost(() => _host.MainWindow?.StartClipboardCountdown());
                 CheckMinimizeAfterCopy();
-                NotificationService.ShowSuccess("已复制用户名", $"条目「{Title}」的用户名已复制到剪贴板。");
+                NotificationService.ShowSuccess(Loc.Get("Notification_CopiedUsername_Title"), Loc.Get("Notification_CopiedUsername_Message", Title));
             }
             catch (Exception ex)
             {
-                MessageService.Show($"复制失败: {ex.Message}");
+                MessageService.Show(Loc.Get("Status_CopiedUsernameFailedFormat", ex.Message));
             }
         }
 
@@ -369,11 +408,11 @@ namespace FluentPass.ViewModels
                     _host.Database);
                 SafeInvokeOnHost(() => _host.MainWindow?.StartClipboardCountdown());
                 CheckMinimizeAfterCopy();
-                NotificationService.ShowSuccess("已复制密码", $"条目「{Title}」的密码已复制到剪贴板，原版倒计时保护已生效。");
+                NotificationService.ShowSuccess(Loc.Get("Notification_CopiedPassword_Title"), Loc.Get("Notification_CopiedPassword_Message", Title));
             }
             catch (Exception ex)
             {
-                MessageService.Show($"复制密码失败: {ex.Message}");
+                MessageService.Show(Loc.Get("Status_CopiedPasswordFailedFormat", ex.Message));
             }
         }
 
@@ -390,11 +429,11 @@ namespace FluentPass.ViewModels
                     _host.Database);
                 SafeInvokeOnHost(() => _host.MainWindow?.StartClipboardCountdown());
                 CheckMinimizeAfterCopy();
-                NotificationService.ShowSuccess("已复制网址", $"条目「{Title}」的网址已复制到剪贴板。");
+                NotificationService.ShowSuccess(Loc.Get("Notification_CopiedUrl_Title"), Loc.Get("Notification_CopiedUrl_Message", Title));
             }
             catch (Exception ex)
             {
-                MessageService.Show($"复制链接失败: {ex.Message}");
+                MessageService.Show(Loc.Get("Status_CopiedUrlFailedFormat", ex.Message));
             }
         }
 
@@ -414,7 +453,7 @@ namespace FluentPass.ViewModels
             }
             catch (Exception ex)
             {
-                MessageService.Show($"打开链接失败: {ex.Message}");
+                MessageService.Show(Loc.Get("Status_OpenUrlFailedFormat", ex.Message));
             }
         }
 
@@ -431,7 +470,7 @@ namespace FluentPass.ViewModels
             }
             catch (Exception ex)
             {
-                MessageService.Show($"执行自动输入失败: {ex.Message}");
+                MessageService.Show(Loc.Get("Status_AutoTypeFailedFormat", ex.Message));
             }
         }
 
@@ -495,12 +534,12 @@ namespace FluentPass.ViewModels
 
                 if (notify)
                 {
-                    NotificationService.ShowSuccess("保存成功", $"条目「{Title}」的修改已保存。");
+                    NotificationService.ShowSuccess(Loc.Get("Notification_EntrySaved_Title"), Loc.Get("Notification_EntrySaved_Message", Title));
                 }
             }
             catch (Exception ex)
             {
-                MessageService.Show($"保存修改失败: {ex.Message}");
+                MessageService.Show(Loc.Get("Dialog_SaveEntry_FailedFormat", ex.Message));
             }
         }
 
@@ -543,7 +582,7 @@ namespace FluentPass.ViewModels
             }
             catch (Exception ex)
             {
-                MessageService.Show($"调起密码生成器失败: {ex.Message}");
+                MessageService.Show(Loc.Get("Dialog_PwGen_FailedFormat", ex.Message));
             }
         }
 
@@ -565,7 +604,7 @@ namespace FluentPass.ViewModels
             }
             catch (Exception ex)
             {
-                MessageService.Show($"调起原版编辑窗口失败: {ex.Message}");
+                MessageService.Show(Loc.Get("Status_OpenOriginalDialogFailedFormat", ex.Message));
             }
         }
     }

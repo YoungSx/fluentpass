@@ -15,6 +15,7 @@ using FluentPass.Common;
 using KeePassLib;
 using KeePassLib.Security;
 using Wpf.Ui.Appearance;
+using MessageService = FluentPass.Common.MessageService;
 
 namespace FluentPass.ViewModels
 {
@@ -22,9 +23,11 @@ namespace FluentPass.ViewModels
     {
         private readonly IPluginHost _host;
         private Window? _window;
+        private readonly DispatcherTimer _searchDebounceTimer;
+
         private PwDatabase? _currentLoadedDb;
         private string? _currentLoadedPath;
-        private readonly DispatcherTimer _searchDebounceTimer;
+
         private void SafeInvokeOnHost(Action action)
         {
             if (_host.MainWindow == null) return;
@@ -41,12 +44,11 @@ namespace FluentPass.ViewModels
             }
         }
 
-
         [ObservableProperty]
         private string _windowTitle = "Fluent Pass";
 
         [ObservableProperty]
-        private string _databaseName = "未打开数据库";
+        private string _databaseName = Loc.Get("Status_NotOpen");
 
         [ObservableProperty]
         private string _databasePath = string.Empty;
@@ -61,7 +63,7 @@ namespace FluentPass.ViewModels
         private bool _isModified = false;
 
         [ObservableProperty]
-        private string _statusMessage = "就绪";
+        private string _statusMessage = Loc.Get("Status_Ready");
 
         [ObservableProperty]
         private string _searchText = string.Empty;
@@ -95,6 +97,8 @@ namespace FluentPass.ViewModels
         [ObservableProperty]
         private int _filteredEntriesCount = 0;
 
+        public string EntriesSummaryText => Loc.Get("Entries_SummaryFormat", TotalEntriesCount, FilteredEntriesCount);
+
         public ObservableCollection<GroupItemViewModel> RootGroups { get; } = new ObservableCollection<GroupItemViewModel>();
         public ObservableCollection<EntryItemViewModel> Entries { get; } = new ObservableCollection<EntryItemViewModel>();
         public ObservableCollection<EntryItemViewModel> FilteredEntries { get; } = new ObservableCollection<EntryItemViewModel>();
@@ -116,7 +120,16 @@ namespace FluentPass.ViewModels
                 ApplyFilter();
             };
 
+            Loc.Instance.LanguageChanged += OnLocLanguageChanged;
+
             RefreshDatabaseState();
+        }
+
+        private void OnLocLanguageChanged(object? sender, EventArgs e)
+        {
+            RefreshDatabaseState();
+            OnPropertyChanged(nameof(EntriesSummaryText));
+            CurrentDetail?.RefreshLocalizedProperties();
         }
 
         public void AttachWindow(Window window)
@@ -128,6 +141,16 @@ namespace FluentPass.ViewModels
                 SwitchTheme(savedTheme);
             }
             catch { }
+        }
+
+        partial void OnTotalEntriesCountChanged(int value)
+        {
+            OnPropertyChanged(nameof(EntriesSummaryText));
+        }
+
+        partial void OnFilteredEntriesCountChanged(int value)
+        {
+            OnPropertyChanged(nameof(EntriesSummaryText));
         }
 
         partial void OnSearchTextChanged(string value)
@@ -192,11 +215,11 @@ namespace FluentPass.ViewModels
                 ClearData();
                 IsDatabaseOpen = false;
                 IsLocked = mw != null && mw.IsFileLocked(null);
-                DatabaseName = IsLocked ? "数据库已锁定" : "未打开数据库";
+                DatabaseName = IsLocked ? Loc.Get("Status_Locked") : Loc.Get("Status_NotOpen");
                 DatabasePath = string.Empty;
                 IsModified = false;
-                WindowTitle = IsLocked ? "Fluent Pass (已锁定)" : "Fluent Pass";
-                StatusMessage = IsLocked ? "数据库已锁定，请点击解锁" : "未打开数据库";
+                WindowTitle = IsLocked ? Loc.Get("App_TitleLocked") : Loc.Get("App_Title");
+                StatusMessage = IsLocked ? Loc.Get("Status_LockedClickToUnlock") : Loc.Get("Status_NotOpen");
                 return;
             }
 
@@ -205,7 +228,7 @@ namespace FluentPass.ViewModels
             IsModified = db.Modified;
 
             string name = string.IsNullOrEmpty(db.Name)
-                ? (string.IsNullOrEmpty(db.IOConnectionInfo.Path) ? "未命名数据库" : Path.GetFileName(db.IOConnectionInfo.Path))
+                ? (string.IsNullOrEmpty(db.IOConnectionInfo.Path) ? Loc.Get("Status_UnnamedDb") : Path.GetFileName(db.IOConnectionInfo.Path))
                 : db.Name;
 
             DatabaseName = name;
@@ -214,11 +237,17 @@ namespace FluentPass.ViewModels
 
             // 状态显示同步：当数据库已打开时，如果此前显示“未打开”或“已锁定”，重置为就绪状态
             if (string.IsNullOrEmpty(StatusMessage) ||
-                StatusMessage == "未打开数据库" ||
-                StatusMessage.StartsWith("数据库已锁定") ||
-                StatusMessage == "数据库已解锁")
+                StatusMessage == Loc.Get("Status_NotOpen") ||
+                StatusMessage == TranslationStore.Get("zh-CN", "Status_NotOpen") ||
+                StatusMessage == TranslationStore.Get("en-US", "Status_NotOpen") ||
+                StatusMessage.StartsWith(Loc.Get("Status_Locked")) ||
+                StatusMessage.StartsWith(TranslationStore.Get("zh-CN", "Status_Locked")) ||
+                StatusMessage.StartsWith(TranslationStore.Get("en-US", "Status_Locked")) ||
+                StatusMessage == Loc.Get("Status_Unlocked") ||
+                StatusMessage == TranslationStore.Get("zh-CN", "Status_Unlocked") ||
+                StatusMessage == TranslationStore.Get("en-US", "Status_Unlocked"))
             {
-                StatusMessage = IsModified ? "就绪 (存在未保存的修改)" : "就绪";
+                StatusMessage = IsModified ? Loc.Get("Status_ReadyUnsaved") : Loc.Get("Status_Ready");
             }
 
             // 多数据库切换或首次加载检测
@@ -259,64 +288,56 @@ namespace FluentPass.ViewModels
 
             TotalEntriesCount = 0;
             FilteredEntriesCount = 0;
-            SearchText = string.Empty;
-
-            IconConverterHelper.ClearCustomCache();
         }
 
         public void LoadGroups()
         {
             RootGroups.Clear();
             var db = _host.Database;
-            if (db?.RootGroup != null)
-            {
-                var rootVm = new GroupItemViewModel(db.RootGroup, null, _host.MainWindow, db);
-                RootGroups.Add(rootVm);
-                SelectedGroup = rootVm;
-            }
+            if (db == null || db.RootGroup == null) return;
+
+            var rootVm = new GroupItemViewModel(db.RootGroup, null, _host.MainWindow, db);
+            RootGroups.Add(rootVm);
+
+            SelectedGroup = rootVm;
         }
 
-        public void LoadGroupEntries(GroupItemViewModel? group)
+        public void LoadGroupEntries(GroupItemViewModel? groupVm)
         {
+            CurrentDetail?.HidePassword();
+            CurrentDetail = null;
+            SelectedEntry = null;
             Entries.Clear();
-            var db = _host.Database;
-            if (group != null && db != null)
+
+            if (groupVm == null)
             {
-                PwGroup? recycleBin = (db.RecycleBinEnabled && !db.RecycleBinUuid.Equals(PwUuid.Zero))
-                    ? db.RootGroup.FindGroup(db.RecycleBinUuid, true) : null;
-
-                bool isViewingRecycleBin = recycleBin != null && (group.Model.Equals(recycleBin) || group.Model.IsContainedIn(recycleBin));
-
-                IEnumerable<PwEntry> sourceEntries;
-                if (ShowSubgroupEntries)
-                {
-                    sourceEntries = group.Model.GetEntries(true)
-                        .Where(entry => isViewingRecycleBin || recycleBin == null || (!entry.ParentGroup.Equals(recycleBin) && !entry.ParentGroup.IsContainedIn(recycleBin)));
-                }
-                else
-                {
-                    sourceEntries = group.Model.Entries;
-                }
-
-                foreach (var entry in sourceEntries)
-                {
-                    Entries.Add(new EntryItemViewModel(entry, _host.MainWindow, db));
-                }
+                ApplyFilter();
+                return;
             }
 
-            TotalEntriesCount = Entries.Count;
+            var entries = groupVm.Model.GetEntries(ShowSubgroupEntries);
+            foreach (var entry in entries)
+            {
+                Entries.Add(new EntryItemViewModel(entry, _host.MainWindow, _host.Database));
+            }
+
             ApplyFilter();
         }
 
         public void ApplyFilter()
         {
-            PwUuid? preservedUuid = SelectedEntry?.Model.Uuid;
+            var preservedUuid = SelectedEntry?.Model.Uuid;
+
             FilteredEntries.Clear();
-            string query = (SearchText ?? string.Empty).Trim().ToLowerInvariant();
+
+            string query = SearchText?.Trim().ToLowerInvariant() ?? string.Empty;
             var db = _host.Database;
 
-            PwGroup? recycleBin = (db != null && db.RecycleBinEnabled && !db.RecycleBinUuid.Equals(PwUuid.Zero))
-                ? db.RootGroup.FindGroup(db.RecycleBinUuid, true) : null;
+            PwGroup? recycleBin = null;
+            if (db != null && db.RecycleBinEnabled && !db.RecycleBinUuid.Equals(PwUuid.Zero) && db.RootGroup != null)
+            {
+                recycleBin = db.RootGroup.FindGroup(db.RecycleBinUuid, true);
+            }
 
             bool isViewingRecycleBin = recycleBin != null && SelectedGroup != null &&
                 (SelectedGroup.Model.Equals(recycleBin) || SelectedGroup.Model.IsContainedIn(recycleBin));
@@ -398,12 +419,12 @@ namespace FluentPass.ViewModels
                     _host.Database);
                 SafeInvokeOnHost(() => _host.MainWindow?.StartClipboardCountdown());
                 CheckMinimizeAfterCopy();
-                StatusMessage = $"已复制密码: {target.Title}";
-                NotificationService.ShowSuccess("已复制密码", $"条目「{target.Title}」的密码已复制到剪贴板，原版倒计时保护已生效。");
+                StatusMessage = Loc.Get("Status_CopiedPasswordFormat", target.Title);
+                NotificationService.ShowSuccess(Loc.Get("Notification_CopiedPassword_Title"), Loc.Get("Notification_CopiedPassword_Message", target.Title));
             }
             catch (Exception ex)
             {
-                StatusMessage = $"复制密码失败: {ex.Message}";
+                StatusMessage = Loc.Get("Status_CopiedPasswordFailedFormat", ex.Message);
             }
         }
 
@@ -423,12 +444,12 @@ namespace FluentPass.ViewModels
                     _host.Database);
                 SafeInvokeOnHost(() => _host.MainWindow?.StartClipboardCountdown());
                 CheckMinimizeAfterCopy();
-                StatusMessage = $"已复制用户名: {target.Title}";
-                NotificationService.ShowSuccess("已复制用户名", $"条目「{target.Title}」的用户名已复制到剪贴板。");
+                StatusMessage = Loc.Get("Status_CopiedUsernameFormat", target.Title);
+                NotificationService.ShowSuccess(Loc.Get("Notification_CopiedUsername_Title"), Loc.Get("Notification_CopiedUsername_Message", target.Title));
             }
             catch (Exception ex)
             {
-                StatusMessage = $"复制用户名失败: {ex.Message}";
+                StatusMessage = Loc.Get("Status_CopiedUsernameFailedFormat", ex.Message);
             }
         }
 
@@ -448,12 +469,12 @@ namespace FluentPass.ViewModels
                     _host.Database);
                 SafeInvokeOnHost(() => _host.MainWindow?.StartClipboardCountdown());
                 CheckMinimizeAfterCopy();
-                StatusMessage = $"已复制网址: {target.Title}";
-                NotificationService.ShowSuccess("已复制网址", $"条目「{target.Title}」的网址已复制到剪贴板。");
+                StatusMessage = Loc.Get("Status_CopiedUrlFormat", target.Title);
+                NotificationService.ShowSuccess(Loc.Get("Notification_CopiedUrl_Title"), Loc.Get("Notification_CopiedUrl_Message", target.Title));
             }
             catch (Exception ex)
             {
-                StatusMessage = $"复制网址失败: {ex.Message}";
+                StatusMessage = Loc.Get("Status_CopiedUrlFailedFormat", ex.Message);
             }
         }
 
@@ -475,7 +496,7 @@ namespace FluentPass.ViewModels
             }
             catch (Exception ex)
             {
-                StatusMessage = $"打开链接失败: {ex.Message}";
+                StatusMessage = Loc.Get("Status_OpenUrlFailedFormat", ex.Message);
             }
         }
 
@@ -495,7 +516,7 @@ namespace FluentPass.ViewModels
             }
             catch (Exception ex)
             {
-                StatusMessage = $"执行自动输入失败: {ex.Message}";
+                StatusMessage = Loc.Get("Status_AutoTypeFailedFormat", ex.Message);
             }
         }
 
@@ -532,7 +553,7 @@ namespace FluentPass.ViewModels
             }
             catch (Exception ex)
             {
-                StatusMessage = $"调起原版编辑窗口失败: {ex.Message}";
+                StatusMessage = Loc.Get("Status_OpenOriginalDialogFailedFormat", ex.Message);
             }
         }
 
@@ -544,7 +565,7 @@ namespace FluentPass.ViewModels
             try
             {
                 var entry = new PwEntry(true, true);
-                entry.Strings.Set(PwDefs.TitleField, new ProtectedString(false, "新条目"));
+                entry.Strings.Set(PwDefs.TitleField, new ProtectedString(false, Loc.Get("New_Entry_DefaultTitle")));
                 entry.Strings.Set(PwDefs.UserNameField, new ProtectedString(false, Environment.UserName));
                 entry.Strings.Set(PwDefs.PasswordField, new ProtectedString(true, string.Empty));
                 entry.Strings.Set(PwDefs.UrlField, new ProtectedString(false, string.Empty));
@@ -563,12 +584,12 @@ namespace FluentPass.ViewModels
                 SelectedEntry = vm;
 
                 CurrentDetail?.BeginEdit();
-                StatusMessage = "已新建条目";
+                StatusMessage = Loc.Get("Status_EntryCreated");
                 RefreshDatabaseState();
             }
             catch (Exception ex)
             {
-                StatusMessage = $"新建条目失败: {ex.Message}";
+                StatusMessage = Loc.Get("Status_EntryCreateFailedFormat", ex.Message);
             }
         }
 
@@ -579,8 +600,8 @@ namespace FluentPass.ViewModels
             if (target == null || _host.Database == null) return;
 
             var result = MessageService.Show(
-                $"确定要删除条目 \"{target.Title}\" 吗？",
-                "确认删除",
+                Loc.Get("Dialog_DeleteEntry_ConfirmFormat", target.Title),
+                Loc.Get("Dialog_DeleteEntry_Title"),
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
 
@@ -615,13 +636,13 @@ namespace FluentPass.ViewModels
                 SelectedGroup?.RefreshSelfAndAncestors();
                 Entries.Remove(target);
                 ApplyFilter();
-                StatusMessage = $"已删除条目: {target.Title}";
+                StatusMessage = Loc.Get("Status_EntryDeletedFormat", target.Title);
                 RefreshDatabaseState();
-                NotificationService.ShowSuccess("已删除条目", $"条目「{target.Title}」已移至回收站。");
+                NotificationService.ShowSuccess(Loc.Get("Notification_EntryDeleted_Title"), Loc.Get("Notification_EntryDeleted_Message", target.Title));
             }
             catch (Exception ex)
             {
-                StatusMessage = $"删除条目失败: {ex.Message}";
+                StatusMessage = Loc.Get("Status_EntryDeleteFailedFormat", ex.Message);
             }
         }
 
@@ -638,13 +659,13 @@ namespace FluentPass.ViewModels
             uint totalItems = uGroups + uEntries;
             if (totalItems == 0)
             {
-                MessageService.Show("回收站当前已为空。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageService.Show(Loc.Get("Dialog_RecycleBinAlreadyEmpty"), Loc.Get("Common_Prompt"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
             var result = MessageService.Show(
-                $"确定要彻底清空回收站中的所有 {totalItems} 个项目吗？\n此操作将永久删除这些凭据且不可撤销！",
-                "清空回收站",
+                Loc.Get("Dialog_EmptyRecycleBin_ConfirmFormat", totalItems),
+                Loc.Get("Dialog_EmptyRecycleBin_Title"),
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
 
@@ -670,13 +691,13 @@ namespace FluentPass.ViewModels
 
                 SelectedGroup?.RefreshSelfAndAncestors();
                 LoadGroupEntries(SelectedGroup);
-                StatusMessage = "已清空回收站";
+                StatusMessage = Loc.Get("Status_RecycleBinEmptied");
                 RefreshDatabaseState();
-                NotificationService.ShowSuccess("清空回收站", "回收站已成功清空。");
+                NotificationService.ShowSuccess(Loc.Get("Notification_RecycleBinEmptied_Title"), Loc.Get("Notification_RecycleBinEmptied_Message"));
             }
             catch (Exception ex)
             {
-                StatusMessage = $"清空回收站失败: {ex.Message}";
+                StatusMessage = Loc.Get("Status_RecycleBinEmptyFailedFormat", ex.Message);
             }
         }
 
@@ -687,18 +708,18 @@ namespace FluentPass.ViewModels
 
             try
             {
-                var newSubGroup = new PwGroup(true, true, "新分组", PwIcon.Folder);
+                var newSubGroup = new PwGroup(true, true, Loc.Get("Groups_NewGroupName"), PwIcon.Folder);
                 SelectedGroup.Model.AddGroup(newSubGroup, true);
                 SelectedGroup.AddChildGroup(newSubGroup);
 
                 _host.Database.Modified = true;
                 SafeInvokeOnHost(() => _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true));
-                StatusMessage = "已新建分组";
+                StatusMessage = Loc.Get("Status_GroupCreated");
                 RefreshDatabaseState();
             }
             catch (Exception ex)
             {
-                StatusMessage = $"新建分组失败: {ex.Message}";
+                StatusMessage = Loc.Get("Status_GroupCreateFailedFormat", ex.Message);
             }
         }
 
@@ -707,13 +728,13 @@ namespace FluentPass.ViewModels
         {
             if (SelectedGroup == null || SelectedGroup.Parent == null || _host.Database == null)
             {
-                MessageService.Show("不能删除根分组！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageService.Show(Loc.Get("Dialog_CannotDeleteRootGroup"), Loc.Get("Common_Prompt"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
             var result = MessageService.Show(
-                $"确定要删除分组 \"{SelectedGroup.Name}\" 及其内部所有条目吗？",
-                "确认删除分组",
+                Loc.Get("Dialog_DeleteGroup_ConfirmFormat", SelectedGroup.Name),
+                Loc.Get("Dialog_DeleteGroup_Title"),
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
 
@@ -748,12 +769,12 @@ namespace FluentPass.ViewModels
                 parent.RemoveChildGroup(SelectedGroup);
                 SelectedGroup = parent;
 
-                StatusMessage = "已删除分组";
+                StatusMessage = Loc.Get("Status_GroupDeleted");
                 RefreshDatabaseState();
             }
             catch (Exception ex)
             {
-                StatusMessage = $"删除分组失败: {ex.Message}";
+                StatusMessage = Loc.Get("Status_GroupDeleteFailedFormat", ex.Message);
             }
         }
 
@@ -797,18 +818,18 @@ namespace FluentPass.ViewModels
 
                 if (saveResult)
                 {
-                    StatusMessage = "数据库已保存";
-                    NotificationService.ShowSuccess("保存成功", "数据库已成功保存。");
+                    StatusMessage = Loc.Get("Status_Saved");
+                    NotificationService.ShowSuccess(Loc.Get("Notification_SaveSuccess_Title"), Loc.Get("Notification_SaveSuccess_Message"));
                 }
                 else
                 {
-                    StatusMessage = "保存已取消或未完成";
+                    StatusMessage = Loc.Get("Status_SaveCancelled");
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = $"保存失败: {ex.Message}";
-                NotificationService.ShowError("保存失败", ex.Message);
+                StatusMessage = Loc.Get("Status_SaveFailedFormat", ex.Message);
+                NotificationService.ShowError(Loc.Get("Notification_SaveFailed_Title"), ex.Message);
             }
         }
 
@@ -819,12 +840,12 @@ namespace FluentPass.ViewModels
             {
                 SafeInvokeOnHost(() => _host.MainWindow?.LockAllDocuments());
                 RefreshDatabaseState();
-                StatusMessage = "数据库已锁定";
-                NotificationService.ShowInformation("数据库已锁定", "数据库已安全锁定。");
+                StatusMessage = Loc.Get("Status_Locked");
+                NotificationService.ShowInformation(Loc.Get("Notification_Locked_Title"), Loc.Get("Notification_Locked_Message"));
             }
             catch (Exception ex)
             {
-                StatusMessage = $"锁定失败: {ex.Message}";
+                StatusMessage = Loc.Get("Status_LockFailedFormat", ex.Message);
             }
         }
 
@@ -852,7 +873,7 @@ namespace FluentPass.ViewModels
             }
             catch (Exception ex)
             {
-                StatusMessage = $"解锁失败: {ex.Message}";
+                StatusMessage = Loc.Get("Status_UnlockFailedFormat", ex.Message);
             }
         }
 
@@ -868,20 +889,20 @@ namespace FluentPass.ViewModels
                     if (mw.Visible)
                     {
                         mw.Hide();
-                        StatusMessage = "原版窗口已隐藏";
+                        StatusMessage = Loc.Get("Status_OriginalWindowHidden");
                     }
                     else
                     {
                         mw.Show();
                         mw.BringToFront();
                         mw.Activate();
-                        StatusMessage = "原版窗口已显示";
+                        StatusMessage = Loc.Get("Status_OriginalWindowShown");
                     }
                 });
             }
             catch (Exception ex)
             {
-                StatusMessage = $"切换窗口失败: {ex.Message}";
+                StatusMessage = Loc.Get("Status_ToggleWindowFailedFormat", ex.Message);
             }
         }
 

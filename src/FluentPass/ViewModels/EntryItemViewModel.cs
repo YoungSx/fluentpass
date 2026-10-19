@@ -53,7 +53,7 @@ namespace FluentPass.ViewModels
             Title = Model.Strings.ReadSafe(PwDefs.TitleField);
             if (string.IsNullOrWhiteSpace(Title))
             {
-                Title = "(无标题)";
+                Title = Loc.Get("Common_Untitled");
             }
 
             UserName = Model.Strings.ReadSafe(PwDefs.UserNameField);

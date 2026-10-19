@@ -101,14 +101,14 @@
                     <ui:TextBlock Text="{Binding WindowTitle}" FontTypography="Caption" VerticalAlignment="Center" Margin="6,0,12,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                     <ui:Button Style="{StaticResource ActionIconButtonStyle}"
                                WindowChrome.IsHitTestVisibleInChrome="True"
-                               ToolTip="保存数据库 (Ctrl+S)"
+                               ToolTip="{common:Loc TitleBar_Save_Tooltip}"
                                Command="{Binding SaveDatabaseCommand}">
                         <ui:SymbolIcon Symbol="Save20" />
                     </ui:Button>
 
                     <ui:Button Style="{StaticResource ActionIconButtonStyle}"
                                WindowChrome.IsHitTestVisibleInChrome="True"
-                               ToolTip="锁定数据库 (Ctrl+L)"
+                               ToolTip="{common:Loc TitleBar_Lock_Tooltip}"
                                Command="{Binding LockDatabaseCommand}">
                         <ui:SymbolIcon Symbol="LockClosed20" />
                     </ui:Button>
@@ -124,7 +124,7 @@
                             WindowChrome.IsHitTestVisibleInChrome="True"
                             Visibility="{Binding IsDatabaseOpen, Converter={StaticResource BooleanToVisibilityConverter}}"
                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                            PlaceholderText="实时搜索条目 (Ctrl+F)..."
+                            PlaceholderText="{common:Loc TitleBar_Search_Placeholder}"
                             Icon="{ui:SymbolIcon Search20}"
                             ClearButtonEnabled="True" />
             </ui:TitleBar.CenterContent>
@@ -134,7 +134,7 @@
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,6,0">
                     <ui:Button Style="{StaticResource ActionIconButtonStyle}"
                                WindowChrome.IsHitTestVisibleInChrome="True"
-                               ToolTip="切换原版 KeePass 主窗口显示/隐藏"
+                               ToolTip="{common:Loc TitleBar_ToggleOriginal_Tooltip}"
                                Command="{Binding ToggleOriginalWindowCommand}">
                         <ui:SymbolIcon Symbol="WindowDevTools20" />
                     </ui:Button>
@@ -142,21 +142,21 @@
                     <!-- 主题切换下拉按钮 -->
                     <ui:DropDownButton Style="{StaticResource ActionIconButtonStyle}"
                                        WindowChrome.IsHitTestVisibleInChrome="True"
-                                       ToolTip="切换外观主题">
+                                       ToolTip="{common:Loc TitleBar_Theme_Tooltip}">
                         <ui:DropDownButton.Icon>
                             <ui:SymbolIcon Symbol="WeatherMoon20" />
                         </ui:DropDownButton.Icon>
                         <ui:DropDownButton.Flyout>
                             <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                                <ui:MenuItem Header="深色主题 (Dark)"
+                                <ui:MenuItem Header="{common:Loc TitleBar_Theme_Dark}"
                                              Icon="{ui:SymbolIcon WeatherMoon24}"
                                              Command="{Binding SwitchThemeCommand}"
                                              CommandParameter="Dark" />
-                                <ui:MenuItem Header="浅色主题 (Light)"
+                                <ui:MenuItem Header="{common:Loc TitleBar_Theme_Light}"
                                              Icon="{ui:SymbolIcon WeatherSunny24}"
                                              Command="{Binding SwitchThemeCommand}"
                                              CommandParameter="Light" />
-                                <ui:MenuItem Header="跟随系统 (System)"
+                                <ui:MenuItem Header="{common:Loc TitleBar_Theme_System}"
                                              Icon="{ui:SymbolIcon Desktop24}"
                                              Command="{Binding SwitchThemeCommand}"
                                              CommandParameter="System" />
@@ -167,7 +167,7 @@
                     <!-- 设置中心入口按钮 -->
                     <ui:Button Style="{StaticResource ActionIconButtonStyle}"
                                WindowChrome.IsHitTestVisibleInChrome="True"
-                               ToolTip="设置中心 (Ctrl+,)"
+                               ToolTip="{common:Loc TitleBar_Settings_Tooltip}"
                                Command="{Binding OpenSettingsCommand}">
                         <ui:SymbolIcon Symbol="Settings20" />
                     </ui:Button>
@@ -183,7 +183,7 @@
             <Grid Visibility="{Binding IsLocked, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                     <ui:SymbolIcon Symbol="LockClosed48" FontSize="64" Margin="0,0,0,16" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                    <ui:TextBlock Text="数据库已锁定"
+                    <ui:TextBlock Text="{common:Loc Db_Locked_Title}"
                                   FontTypography="TitleLarge"
                                   HorizontalAlignment="Center"
                                   Margin="0,0,0,8" />
@@ -193,7 +193,7 @@
                                   HorizontalAlignment="Center"
                                   Margin="0,0,0,24" />
                     <ui:Button Appearance="Primary"
-                               Content="立即解锁数据库"
+                               Content="{common:Loc Db_Locked_Button}"
                                Icon="{ui:SymbolIcon Key24}"
                                HorizontalAlignment="Center"
                                Padding="24,10"
@@ -219,17 +219,17 @@
                 </Grid.Style>
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                     <ui:SymbolIcon Symbol="FolderOpen24" FontSize="64" Margin="0,0,0,16" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                    <ui:TextBlock Text="未打开任何密码数据库"
+                    <ui:TextBlock Text="{common:Loc Db_NotOpen_Title}"
                                   FontTypography="TitleLarge"
                                   HorizontalAlignment="Center"
                                   Margin="0,0,0,8" />
-                    <ui:TextBlock Text="请在 KeePass 中打开或创建 KDBX 数据库"
+                    <ui:TextBlock Text="{common:Loc Db_NotOpen_Subtitle}"
                                   FontTypography="Body"
                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                   HorizontalAlignment="Center"
                                   Margin="0,0,0,24" />
                     <ui:Button Appearance="Secondary"
-                               Content="呼出原版窗口进行操作"
+                               Content="{common:Loc Db_NotOpen_Button}"
                                HorizontalAlignment="Center"
                                Command="{Binding ToggleOriginalWindowCommand}" />
                 </StackPanel>
@@ -262,21 +262,21 @@
 
                         <!-- 左栏顶栏工具 -->
                         <Grid Grid.Row="0" Margin="4,2,4,8">
-                            <ui:TextBlock Text="分组目录" FontTypography="BodyStrong" VerticalAlignment="Center" />
+                            <ui:TextBlock Text="{common:Loc Groups_Title}" FontTypography="BodyStrong" VerticalAlignment="Center" />
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                 <ui:Button Style="{StaticResource DangerIconButtonStyle}"
-                                           ToolTip="清空回收站"
+                                           ToolTip="{common:Loc Groups_EmptyRecycleBin_Tooltip}"
                                            Visibility="{Binding IsRecycleBinSelected, Converter={StaticResource BooleanToVisibilityConverter}}"
                                            Command="{Binding EmptyRecycleBinCommand}">
                                     <ui:SymbolIcon Symbol="Dismiss20" />
                                 </ui:Button>
                                 <ui:Button Style="{StaticResource ActionIconButtonStyle}"
-                                           ToolTip="在选中分组下新建子分组"
+                                           ToolTip="{common:Loc Groups_NewSubGroup_Tooltip}"
                                            Command="{Binding NewGroupCommand}">
                                     <ui:SymbolIcon Symbol="FolderAdd20" />
                                 </ui:Button>
                                 <ui:Button Style="{StaticResource ActionIconButtonStyle}"
-                                           ToolTip="删除当前分组"
+                                           ToolTip="{common:Loc Groups_DeleteGroup_Tooltip}"
                                            Command="{Binding DeleteGroupCommand}">
                                     <ui:SymbolIcon Symbol="Delete20" />
                                 </ui:Button>
@@ -345,17 +345,11 @@
                                           TextTrimming="CharacterEllipsis"
                                           ToolTip="{Binding RelativeSource={RelativeSource Self}, Path=Text}"
                                           FontTypography="Caption"
-                                          Foreground="{DynamicResource TextFillColorSecondaryBrush}">
-                                <ui:TextBlock.Text>
-                                    <MultiBinding StringFormat="共 {0} 个条目 (显示 {1} 项)">
-                                        <Binding Path="TotalEntriesCount" />
-                                        <Binding Path="FilteredEntriesCount" />
-                                    </MultiBinding>
-                                </ui:TextBlock.Text>
-                            </ui:TextBlock>
+                                          Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                          Text="{Binding EntriesSummaryText}" />
                             <ui:Button Grid.Column="1"
                                        Appearance="Primary"
-                                       Content="新建"
+                                       Content="{common:Loc Entries_NewButton}"
                                        Icon="{ui:SymbolIcon Add20}"
                                        Command="{Binding NewEntryCommand}" />
                         </Grid>
@@ -382,43 +376,43 @@
                                 </ui:ListView.ItemContainerStyle>
                                 <ui:ListView.ContextMenu>
                                     <ContextMenu>
-                                        <ui:MenuItem Header="复制密码"
+                                        <ui:MenuItem Header="{common:Loc Menu_CopyPassword}"
                                                      InputGestureText="Ctrl+C"
                                                      Icon="{ui:SymbolIcon Copy20}"
                                                      Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.CopySelectedPasswordCommand}"
                                                      CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
-                                        <ui:MenuItem Header="复制用户名"
+                                        <ui:MenuItem Header="{common:Loc Menu_CopyUsername}"
                                                      InputGestureText="Ctrl+B"
                                                      Icon="{ui:SymbolIcon Person20}"
                                                      Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.CopySelectedUsernameCommand}"
                                                      CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
-                                        <ui:MenuItem Header="复制网址"
+                                        <ui:MenuItem Header="{common:Loc Menu_CopyUrl}"
                                                      Icon="{ui:SymbolIcon Link20}"
                                                      Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.CopySelectedUrlCommand}"
                                                      CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
-                                        <ui:MenuItem Header="在浏览器中打开"
+                                        <ui:MenuItem Header="{common:Loc Menu_OpenUrl}"
                                                      InputGestureText="Ctrl+U"
                                                      Icon="{ui:SymbolIcon Open20}"
                                                      Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.OpenSelectedUrlCommand}"
                                                      CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
-                                        <ui:MenuItem Header="执行自动输入 (Auto-Type)"
+                                        <ui:MenuItem Header="{common:Loc Menu_AutoType}"
                                                      InputGestureText="Ctrl+V"
                                                      Icon="{ui:SymbolIcon Keyboard20}"
                                                      Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.AutoTypeSelectedCommand}"
                                                      CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
                                         <Separator />
-                                        <ui:MenuItem Header="编辑条目"
+                                        <ui:MenuItem Header="{common:Loc Menu_EditEntry}"
                                                      InputGestureText="Enter"
                                                      Icon="{ui:SymbolIcon Edit20}"
                                                      Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.EditSelectedEntryCommand}"
                                                      CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
-                                        <ui:MenuItem Header="删除条目"
+                                        <ui:MenuItem Header="{common:Loc Menu_DeleteEntry}"
                                                      InputGestureText="Del"
                                                      Icon="{ui:SymbolIcon Delete20}"
                                                      Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.DeleteEntryCommand}"
                                                      CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
                                         <Separator />
-                                        <ui:MenuItem Header="调起原版 KeePass 编辑窗口"
+                                        <ui:MenuItem Header="{common:Loc Menu_OpenOriginalDialog}"
                                                      Icon="{ui:SymbolIcon WindowDevTools24}"
                                                      Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.OpenOriginalSelectedEntryCommand}"
                                                      CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
@@ -457,8 +451,8 @@
                                         VerticalAlignment="Center"
                                         Visibility="{Binding FilteredEntries.Count, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
                                 <ui:SymbolIcon Symbol="FolderOpen24" FontSize="44" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,0,10" />
-                                <ui:TextBlock Text="无密码条目" FontTypography="BodyStrong" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center" />
-                                <ui:TextBlock Text="当前分组下暂无条目，可点击上方「+ 新建」"
+                                <ui:TextBlock Text="{common:Loc Empty_NoEntries_Title}" FontTypography="BodyStrong" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center" />
+                                <ui:TextBlock Text="{common:Loc Empty_NoEntries_Description}"
                                               FontTypography="Caption"
                                               Foreground="{DynamicResource TextFillColorTertiaryBrush}"
                                               HorizontalAlignment="Center"
@@ -494,8 +488,8 @@
                             </Grid.Style>
                             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                                 <ui:SymbolIcon Symbol="DocumentBulletList24" FontSize="56" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,0,12" />
-                                <ui:TextBlock Text="未选择条目" FontTypography="Subtitle" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center" />
-                                <ui:TextBlock Text="从左侧或中间列表选择一条凭据以查看详情" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                                <ui:TextBlock Text="{common:Loc Empty_NoSelectedEntry_Title}" FontTypography="Subtitle" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center" />
+                                <ui:TextBlock Text="{common:Loc Empty_NoSelectedEntry_Description}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0" />
                             </StackPanel>
                         </Grid>
 
@@ -527,13 +521,13 @@
                                         <!-- 查看模式标题 -->
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
                                             <ui:TextBlock Text="{Binding Title}" FontTypography="Title" TextTrimming="CharacterEllipsis" />
-                                            <ui:TextBlock Text="{Binding LastModifiedDisplay, StringFormat='{}修改于 {0}'}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,2,0,0" />
+                                            <ui:TextBlock Text="{Binding LastModifiedSummary}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,2,0,0" />
                                         </StackPanel>
 
                                         <!-- 编辑模式标题 (单行平齐对齐，与保存/取消按钮位于同一水平居中线上) -->
                                         <Grid Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}">
                                             <ui:TextBox Text="{Binding EditTitle, UpdateSourceTrigger=PropertyChanged}"
-                                                        PlaceholderText="条目标题"
+                                                        PlaceholderText="{common:Loc Detail_TitlePlaceholder}"
                                                         FontSize="15"
                                                         FontWeight="SemiBold"
                                                         ClearButtonEnabled="True" />
@@ -543,19 +537,19 @@
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                                             <!-- 查看模式下的工具 -->
                                             <StackPanel Orientation="Horizontal" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
-                                                <ui:Button Appearance="Primary" Margin="0,0,6,0" Command="{Binding BeginEditCommand}" Icon="{ui:SymbolIcon Edit20}" Content="编辑" />
-                                                <ui:Button Style="{StaticResource ActionIconButtonStyle}" ToolTip="执行全局自动输入 (Auto-Type)" Command="{Binding PerformAutoTypeCommand}">
+                                                <ui:Button Appearance="Primary" Margin="0,0,6,0" Command="{Binding BeginEditCommand}" Icon="{ui:SymbolIcon Edit20}" Content="{common:Loc Detail_Button_Edit}" />
+                                                <ui:Button Style="{StaticResource ActionIconButtonStyle}" ToolTip="{common:Loc Detail_AutoType_Tooltip}" Command="{Binding PerformAutoTypeCommand}">
                                                     <ui:SymbolIcon Symbol="Keyboard20" />
                                                 </ui:Button>
-                                                <ui:Button Style="{StaticResource ActionIconButtonStyle}" ToolTip="调起原版 KeePass 高级编辑窗口" Command="{Binding InvokeOriginalEntryDialogCommand}">
+                                                <ui:Button Style="{StaticResource ActionIconButtonStyle}" ToolTip="{common:Loc Detail_OpenOriginalDialog_Tooltip}" Command="{Binding InvokeOriginalEntryDialogCommand}">
                                                     <ui:SymbolIcon Symbol="Open20" />
                                                 </ui:Button>
                                             </StackPanel>
 
                                             <!-- 编辑模式下的工具 -->
                                             <StackPanel Orientation="Horizontal" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                                <ui:Button Appearance="Primary" Margin="0,0,6,0" Command="{Binding SaveEditCommand}" Icon="{ui:SymbolIcon Checkmark20}" Content="保存" />
-                                                <ui:Button Appearance="Secondary" Command="{Binding CancelEditCommand}" Content="取消" />
+                                                <ui:Button Appearance="Primary" Margin="0,0,6,0" Command="{Binding SaveEditCommand}" Icon="{ui:SymbolIcon Checkmark20}" Content="{common:Loc Detail_Button_Save}" />
+                                                <ui:Button Appearance="Secondary" Command="{Binding CancelEditCommand}" Content="{common:Loc Detail_Button_Cancel}" />
                                             </StackPanel>
                                         </StackPanel>
                                     </Grid>
@@ -575,7 +569,7 @@
 
                                         <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Margin="0,0,0,6">
                                             <ui:SymbolIcon Symbol="Person20" Margin="0,0,6,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                                            <ui:TextBlock Text="用户名 (User Name)" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                                            <ui:TextBlock Text="{common:Loc Detail_Field_UserName}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
                                         </StackPanel>
 
                                         <!-- 查看模式（不可编辑）：平整纯净展示，支持鼠标划词与一键复制 -->
@@ -584,7 +578,7 @@
                                                      Text="{Binding UserName}"
                                                      FontSize="14"
                                                      Visibility="{Binding UserName, Converter={StaticResource StringToVisibilityConverter}}" />
-                                            <ui:TextBlock Text="（未设置用户名）"
+                                            <ui:TextBlock Text="{common:Loc Detail_NotSet_UserName}"
                                                           FontTypography="Body"
                                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"
                                                           FontStyle="Italic"
@@ -595,10 +589,10 @@
                                         <!-- 编辑模式（可编辑）：标准的 Fluent 输入框，带有清晰边框、底色与清除按钮 -->
                                         <ui:TextBox Grid.Row="1" Grid.Column="0"
                                                     Text="{Binding EditUserName, UpdateSourceTrigger=PropertyChanged}"
-                                                    PlaceholderText="请输入用户名"
+                                                    PlaceholderText="{common:Loc Detail_Placeholder_UserName}"
                                                     ClearButtonEnabled="True"
                                                     Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                        <ui:Button Grid.Row="1" Grid.Column="1" Style="{StaticResource ActionIconButtonStyle}" Margin="8,0,0,0" ToolTip="复制用户名" Command="{Binding CopyUsernameCommand}">
+                                        <ui:Button Grid.Row="1" Grid.Column="1" Style="{StaticResource ActionIconButtonStyle}" Margin="8,0,0,0" ToolTip="{common:Loc Detail_CopyUserName_Tooltip}" Command="{Binding CopyUsernameCommand}">
                                             <ui:SymbolIcon Symbol="Copy20" />
                                         </ui:Button>
                                     </Grid>
@@ -610,12 +604,12 @@
                                         <Grid Margin="0,0,0,6">
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                 <ui:SymbolIcon Symbol="Key20" Margin="0,0,6,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                                                <ui:TextBlock Text="密码 (Password)" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                                                <ui:TextBlock Text="{common:Loc Detail_Field_Password}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
                                             </StackPanel>
                                             <!-- 倒计时安全提示使用 Fluent InfoBadge -->
                                             <ui:InfoBadge HorizontalAlignment="Right"
                                                           Severity="Caution"
-                                                          Value="{Binding PasswordRevealSecondsRemaining, StringFormat='{}{0} 秒后自动遮蔽'}"
+                                                          Value="{Binding PasswordRevealBadgeText}"
                                                           Visibility="{Binding IsPasswordRevealed, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                         </Grid>
 
@@ -639,13 +633,13 @@
 
                                             <!-- 切换明文按钮 -->
                                             <ui:Button Grid.Column="1" Style="{StaticResource ActionIconButtonStyle}" Margin="8,0,0,0"
-                                                       ToolTip="显示/隐藏明文 (10秒后自动遮蔽)" Command="{Binding TogglePasswordVisibilityCommand}">
+                                                       ToolTip="{common:Loc Detail_TogglePassword_Tooltip}" Command="{Binding TogglePasswordVisibilityCommand}">
                                                 <ui:SymbolIcon Symbol="Eye20" />
                                             </ui:Button>
 
                                             <!-- 复制密码按钮 -->
                                             <ui:Button Grid.Column="2" Appearance="Primary" Margin="4,0,0,0"
-                                                       ToolTip="安全复制密码 (原版剪贴板倒计时自动清空)" Command="{Binding CopyPasswordCommand}">
+                                                       ToolTip="{common:Loc Detail_CopyPassword_Tooltip}" Command="{Binding CopyPasswordCommand}">
                                                 <ui:SymbolIcon Symbol="Copy20" />
                                             </ui:Button>
                                         </Grid>
@@ -662,7 +656,7 @@
                                             <ui:TextBox Grid.Column="0"
                                                         Text="{Binding EditPassword, UpdateSourceTrigger=PropertyChanged}"
                                                         FontFamily="Consolas"
-                                                        PlaceholderText="输入密码"
+                                                        PlaceholderText="{common:Loc Detail_Placeholder_Password}"
                                                         Visibility="{Binding IsEditPasswordRevealed, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
                                             <!-- 密文输入框 -->
@@ -673,13 +667,13 @@
 
                                             <!-- 切换防窥显隐 -->
                                             <ui:Button Grid.Column="1" Style="{StaticResource ActionIconButtonStyle}" Margin="8,0,0,0"
-                                                       ToolTip="显示/隐藏明文 (防窥保护)" Command="{Binding ToggleEditPasswordVisibilityCommand}">
+                                                       ToolTip="{common:Loc Detail_ToggleEditPassword_Tooltip}" Command="{Binding ToggleEditPasswordVisibilityCommand}">
                                                 <ui:SymbolIcon Symbol="Eye20" />
                                             </ui:Button>
 
                                             <!-- 调起原版密码生成器 -->
                                             <ui:Button Grid.Column="2" Style="{StaticResource ActionIconButtonStyle}" Margin="4,0,0,0"
-                                                       ToolTip="调起原版密码生成器" Command="{Binding InvokePwGeneratorCommand}">
+                                                       ToolTip="{common:Loc Detail_InvokePwGen_Tooltip}" Command="{Binding InvokePwGeneratorCommand}">
                                                 <ui:SymbolIcon Symbol="Wand20" />
                                             </ui:Button>
                                         </Grid>
@@ -714,7 +708,7 @@
 
                                         <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Margin="0,0,0,6">
                                             <ui:SymbolIcon Symbol="Globe20" Margin="0,0,6,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                                            <ui:TextBlock Text="网址 (URL)" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                                            <ui:TextBlock Text="{common:Loc Detail_Field_Url}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
                                         </StackPanel>
 
                                         <!-- 查看模式（不可编辑）：平整展示，支持划词复制与快捷打开 -->
@@ -724,7 +718,7 @@
                                                      FontSize="14"
                                                      Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
                                                      Visibility="{Binding Url, Converter={StaticResource StringToVisibilityConverter}}" />
-                                            <ui:TextBlock Text="（未设置网址）"
+                                            <ui:TextBlock Text="{common:Loc Detail_NotSet_Url}"
                                                           FontTypography="Body"
                                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"
                                                           FontStyle="Italic"
@@ -735,20 +729,20 @@
                                         <!-- 编辑模式（可编辑）：带边框的 Fluent 输入框 -->
                                         <ui:TextBox Grid.Row="1" Grid.Column="0"
                                                     Text="{Binding EditUrl, UpdateSourceTrigger=PropertyChanged}"
-                                                    PlaceholderText="https://..."
+                                                    PlaceholderText="{common:Loc Detail_Placeholder_Url}"
                                                     ClearButtonEnabled="True"
                                                     Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                        <ui:Button Grid.Row="1" Grid.Column="1" Style="{StaticResource ActionIconButtonStyle}" Margin="8,0,0,0" ToolTip="在默认浏览器中打开" Command="{Binding OpenUrlCommand}">
+                                        <ui:Button Grid.Row="1" Grid.Column="1" Style="{StaticResource ActionIconButtonStyle}" Margin="8,0,0,0" ToolTip="{common:Loc Detail_OpenUrl_Tooltip}" Command="{Binding OpenUrlCommand}">
                                             <ui:SymbolIcon Symbol="Open20" />
                                         </ui:Button>
-                                        <ui:Button Grid.Row="1" Grid.Column="2" Style="{StaticResource ActionIconButtonStyle}" Margin="4,0,0,0" ToolTip="复制网址" Command="{Binding CopyUrlCommand}">
+                                        <ui:Button Grid.Row="1" Grid.Column="2" Style="{StaticResource ActionIconButtonStyle}" Margin="4,0,0,0" ToolTip="{common:Loc Detail_CopyUrl_Tooltip}" Command="{Binding CopyUrlCommand}">
                                             <ui:SymbolIcon Symbol="Copy20" />
                                         </ui:Button>
                                     </Grid>
                                 </ui:Card>
 
                                 <!-- ================= 字段 4: 备注 (Notes) 原生 CardExpander ================= -->
-                                <ui:CardExpander Header="备注 (Notes)"
+                                <ui:CardExpander Header="{common:Loc Detail_Field_Notes}"
                                                  Icon="{ui:SymbolIcon Document24}"
                                                  IsExpanded="True"
                                                  Margin="0,0,0,10">
@@ -759,7 +753,7 @@
                                                      Text="{Binding Notes}"
                                                      MinHeight="60" MaxHeight="180"
                                                      Visibility="{Binding Notes, Converter={StaticResource StringToVisibilityConverter}}" />
-                                            <ui:TextBlock Text="（无备注内容）"
+                                            <ui:TextBlock Text="{common:Loc Detail_NotSet_Notes}"
                                                           FontTypography="Body"
                                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"
                                                           FontStyle="Italic"
@@ -770,14 +764,14 @@
                                         <!-- 编辑模式（可编辑）：多行表单输入框，带边框与滚动条 -->
                                         <ui:TextBox Text="{Binding EditNotes, UpdateSourceTrigger=PropertyChanged}"
                                                     AcceptsReturn="True" MinHeight="70" MaxHeight="180"
-                                                    PlaceholderText="请输入备注信息..."
+                                                    PlaceholderText="{common:Loc Detail_Placeholder_Notes}"
                                                     TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
                                                     Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                     </Grid>
                                 </ui:CardExpander>
 
                                 <!-- ================= 字段 5: 自定义附加字段 原生 CardExpander ================= -->
-                                <ui:CardExpander Header="自定义附加字段"
+                                <ui:CardExpander Header="{common:Loc Detail_Field_CustomFields}"
                                                  Icon="{ui:SymbolIcon Tag24}"
                                                  IsExpanded="True"
                                                  Margin="0,0,0,10"
@@ -797,7 +791,7 @@
                                                              FontSize="14" />
                                                     <ui:Button Grid.Column="2" Style="{StaticResource ActionIconButtonStyle}" Margin="6,0,0,0"
                                                                Visibility="{Binding IsProtected, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                                               Command="{Binding ToggleRevealCommand}" ToolTip="查看明文">
+                                                               Command="{Binding ToggleRevealCommand}" ToolTip="{common:Loc Detail_ViewPlaintext_Tooltip}">
                                                         <ui:SymbolIcon Symbol="Eye20" />
                                                     </ui:Button>
                                                 </Grid>
@@ -807,7 +801,7 @@
                                 </ui:CardExpander>
 
                                 <!-- ================= 字段 6: 二进制附件 原生 CardExpander ================= -->
-                                <ui:CardExpander Header="二进制附件"
+                                <ui:CardExpander Header="{common:Loc Detail_Field_Attachments}"
                                                  Icon="{ui:SymbolIcon Attach24}"
                                                  IsExpanded="True"
                                                  Margin="0,0,0,10"
@@ -833,7 +827,7 @@
                                 </ui:CardExpander>
 
                                 <!-- ================= 字段 7: 历史修改版本 原生 CardExpander ================= -->
-                                <ui:CardExpander Header="{Binding HistoryRevisions.Count, StringFormat='{}历史版本快照 ({0})'}"
+                                <ui:CardExpander Header="{Binding HistoryHeader}"
                                                  Icon="{ui:SymbolIcon History24}"
                                                  IsExpanded="False"
                                                  Margin="0,0,0,10"
@@ -850,13 +844,12 @@
                                                         </Grid.ColumnDefinitions>
                                                         <ui:SymbolIcon Grid.Column="0" Symbol="History20" Margin="0,0,10,0" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                            <ui:TextBlock Text="{Binding LastModifiedDisplay, StringFormat='{}快照时间: {0}'}" FontTypography="BodyStrong" />
-                                                            <ui:TextBlock Text="{Binding Title, StringFormat='{}条目标题: {0}'}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                                            <ui:TextBlock Text="{Binding SnapshotTimeDisplay}" FontTypography="BodyStrong" />
+                                                            <ui:TextBlock Text="{Binding EntryTitleDisplay}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                                                         </StackPanel>
                                                         <ui:Button Grid.Column="2" Appearance="Secondary" Padding="12,4"
-                                                                   Command="{Binding RestoreCommand}" ToolTip="将条目还原至此历史版本 (当前状态将自动创建新快照)">
-                                                            还原
-                                                        </ui:Button>
+                                                                   Command="{Binding RestoreCommand}" ToolTip="{common:Loc Detail_RestoreHistory_Tooltip}"
+                                                                   Content="{common:Loc Detail_RestoreHistory_Button}" />
                                                     </Grid>
                                                 </ui:Card>
                                             </DataTemplate>
@@ -866,8 +859,8 @@
 
                                 <!-- 底部创建与修改时间 -->
                                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                    <ui:TextBlock Text="{Binding CreatedTimeDisplay, StringFormat='{}创建时间: {0}'}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,16,0" />
-                                    <ui:TextBlock Text="{Binding LastModifiedDisplay, StringFormat='{}最后修改: {0}'}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                                    <ui:TextBlock Text="{Binding CreatedTimeSummary}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,16,0" />
+                                    <ui:TextBlock Text="{Binding LastModifiedDetailSummary}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
                                 </StackPanel>
                             </StackPanel>
                         </ui:DynamicScrollViewer>

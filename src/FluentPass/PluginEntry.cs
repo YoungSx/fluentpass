@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Forms;
 using KeePass.Forms;
 using KeePass.Plugins;
+using FluentPass.Common;
 
 namespace FluentPass
 {
@@ -87,10 +88,8 @@ namespace FluentPass
             else
             {
                 MessageBox.Show(
-                    "Fluent Pass 采用官方微软 Fluent Design System (WPF-UI)，深度依赖 Windows 11 DWMAPI 与 Direct3D 现代渲染管线。\n" +
-                    "当前检测到操作系统为 " + Environment.OSVersion.Platform + " (Mono 运行时)，暂不支持 WPF-UI 硬件加速视窗。\n" +
-                    "请在 Windows 10/11 环境下使用 Fluent 现代化视窗。",
-                    "Fluent Pass - 平台提示",
+                    Loc.Get("Platform_NoticeMessage", Environment.OSVersion.Platform),
+                    Loc.Get("Platform_NoticeTitle"),
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information);
             }
