@@ -878,8 +878,9 @@
             </Grid>
 
             <!-- 现代化设置中心视图 (设置中心开启时展示) -->
-            <views:SettingsView DataContext="{Binding Settings}"
-                                Visibility="{Binding IsSettingsOpen, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            <Grid Visibility="{Binding IsSettingsOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <views:SettingsView DataContext="{Binding Settings}" />
+            </Grid>
 
             <!-- 全局 Toast 提示承载容器 -->
             <ui:SnackbarPresenter x:Name="RootSnackbarPresenter"

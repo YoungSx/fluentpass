@@ -104,6 +104,7 @@ namespace FluentPass.ViewModels
             _host = host ?? throw new ArgumentNullException(nameof(host));
 
             Settings = new SettingsViewModel(_host, () => IsSettingsOpen = false, theme => SwitchTheme(theme));
+            Settings.IsSettingsOpen = IsSettingsOpen;
 
             _searchDebounceTimer = new DispatcherTimer
             {
@@ -881,6 +882,14 @@ namespace FluentPass.ViewModels
             catch (Exception ex)
             {
                 StatusMessage = $"切换窗口失败: {ex.Message}";
+            }
+        }
+
+        partial void OnIsSettingsOpenChanged(bool value)
+        {
+            if (Settings != null)
+            {
+                Settings.IsSettingsOpen = value;
             }
         }
 

@@ -139,6 +139,22 @@ namespace FluentPass.Tests
         }
 
         [Test]
+        public void SettingsViewModel_IsSettingsOpen_DefaultsFalse_And_CloseCommandSetsFalse()
+        {
+            bool closed = false;
+            var vm = new SettingsViewModel(_host, () => closed = true);
+
+            Assert.That(vm.IsSettingsOpen, Is.False);
+
+            vm.IsSettingsOpen = true;
+            Assert.That(vm.IsSettingsOpen, Is.True);
+
+            vm.CloseSettingsCommand.Execute(null);
+            Assert.That(vm.IsSettingsOpen, Is.False);
+            Assert.That(closed, Is.True);
+        }
+
+        [Test]
         public void SettingsViewModel_ResetSettings_RestoresDefaults()
         {
             var vm = new SettingsViewModel(_host);
