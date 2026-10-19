@@ -488,7 +488,7 @@
                         </Grid>
 
                         <!-- 已选择条目的详情面板 (采用 DynamicScrollViewer 实现平滑流动滚动) -->
-                        <ui:DynamicScrollViewer DataContext="{Binding CurrentDetail}" VerticalScrollBarVisibility="Auto" VerticalAlignment="Stretch">
+                        <ui:DynamicScrollViewer DataContext="{Binding CurrentDetail}" VerticalScrollBarVisibility="Auto" VerticalAlignment="Stretch" Focusable="False">
                             <ui:DynamicScrollViewer.Style>
                                 <Style TargetType="ui:DynamicScrollViewer" BasedOn="{StaticResource {x:Type ui:DynamicScrollViewer}}">
                                     <Setter Property="Visibility" Value="Visible" />
@@ -513,20 +513,19 @@
                                         <Image Grid.Column="0" Source="{Binding IconSource}" Width="36" Height="36" Margin="0,0,14,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality" />
                                         
                                         <!-- 查看模式标题 -->
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
                                             <ui:TextBlock Text="{Binding Title}" FontTypography="Title" TextTrimming="CharacterEllipsis" />
                                             <ui:TextBlock Text="{Binding LastModifiedDisplay, StringFormat='{}修改于 {0}'}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,2,0,0" />
                                         </StackPanel>
 
-                                        <!-- 编辑模式标题 -->
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <!-- 编辑模式标题 (单行平齐对齐，与保存/取消按钮位于同一水平居中线上) -->
+                                        <Grid Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}">
                                             <ui:TextBox Text="{Binding EditTitle, UpdateSourceTrigger=PropertyChanged}"
                                                         PlaceholderText="条目标题"
-                                                        FontSize="16"
-                                                        ClearButtonEnabled="True"
-                                                        Margin="0,0,0,4" />
-                                            <ui:InfoBadge Severity="Attention" Value="正在编辑条目" HorizontalAlignment="Left" />
-                                        </StackPanel>
+                                                        FontSize="15"
+                                                        FontWeight="SemiBold"
+                                                        ClearButtonEnabled="True" />
+                                        </Grid>
 
                                         <!-- 动作按钮栏 -->
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
