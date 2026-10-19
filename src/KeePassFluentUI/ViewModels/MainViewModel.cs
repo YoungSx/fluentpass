@@ -25,6 +25,22 @@ namespace KeePassFluentUI.ViewModels
         private PwDatabase? _currentLoadedDb;
         private string? _currentLoadedPath;
         private readonly DispatcherTimer _searchDebounceTimer;
+        private void SafeInvokeOnHost(Action action)
+        {
+            if (_host.MainWindow == null) return;
+            var mw = _host.MainWindow;
+            if (mw.IsDisposed || !mw.IsHandleCreated) return;
+
+            if (mw.InvokeRequired)
+            {
+                mw.Invoke(action);
+            }
+            else
+            {
+                action();
+            }
+        }
+
 
         [ObservableProperty]
         private string _windowTitle = "KeePass Fluent UI";
@@ -181,6 +197,15 @@ namespace KeePassFluentUI.ViewModels
             DatabaseName = name;
             DatabasePath = db.IOConnectionInfo.Path ?? string.Empty;
             WindowTitle = $"KeePass Fluent UI - {DatabaseName}{(IsModified ? " *" : "")}";
+
+            // 状态显示同步：当数据库已打开时，如果此前显示“未打开”或“已锁定”，重置为就绪状态
+            if (string.IsNullOrEmpty(StatusMessage) ||
+                StatusMessage == "未打开数据库" ||
+                StatusMessage.StartsWith("数据库已锁定") ||
+                StatusMessage == "数据库已解锁")
+            {
+                StatusMessage = IsModified ? "就绪 (存在未保存的修改)" : "就绪";
+            }
 
             // 多数据库切换或首次加载检测
             bool isDbSwitched = (db != _currentLoadedDb) ||
@@ -350,7 +375,7 @@ namespace KeePassFluentUI.ViewModels
                     _host.MainWindow,
                     target.Model,
                     _host.Database);
-                _host.MainWindow?.StartClipboardCountdown();
+                SafeInvokeOnHost(() => _host.MainWindow?.StartClipboardCountdown());
                 CheckMinimizeAfterCopy();
                 StatusMessage = $"已复制密码: {target.Title}";
                 NotificationService.ShowSuccess("已复制密码", $"条目「{target.Title}」的密码已复制到剪贴板，原版倒计时保护已生效。");
@@ -375,7 +400,7 @@ namespace KeePassFluentUI.ViewModels
                     _host.MainWindow,
                     target.Model,
                     _host.Database);
-                _host.MainWindow?.StartClipboardCountdown();
+                SafeInvokeOnHost(() => _host.MainWindow?.StartClipboardCountdown());
                 CheckMinimizeAfterCopy();
                 StatusMessage = $"已复制用户名: {target.Title}";
                 NotificationService.ShowSuccess("已复制用户名", $"条目「{target.Title}」的用户名已复制到剪贴板。");
@@ -400,7 +425,7 @@ namespace KeePassFluentUI.ViewModels
                     _host.MainWindow,
                     target.Model,
                     _host.Database);
-                _host.MainWindow?.StartClipboardCountdown();
+                SafeInvokeOnHost(() => _host.MainWindow?.StartClipboardCountdown());
                 CheckMinimizeAfterCopy();
                 StatusMessage = $"已复制网址: {target.Title}";
                 NotificationService.ShowSuccess("已复制网址", $"条目「{target.Title}」的网址已复制到剪贴板。");
@@ -477,7 +502,7 @@ namespace KeePassFluentUI.ViewModels
                 IWin32Window? owner = _window != null ? new Wpf32Window(_window) : null;
                 if (form.ShowDialog(owner) == DialogResult.OK)
                 {
-                    _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true);
+                    SafeInvokeOnHost(() => _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true));
                     target.RefreshState();
                     CurrentDetail?.RefreshData();
                     SelectedGroup?.RefreshSelfAndAncestors();
@@ -509,7 +534,7 @@ namespace KeePassFluentUI.ViewModels
                 SelectedGroup.RefreshSelfAndAncestors();
 
                 _host.Database.Modified = true;
-                _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true);
+                SafeInvokeOnHost(() => _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true));
 
                 var vm = new EntryItemViewModel(entry, _host.MainWindow, _host.Database);
                 Entries.Insert(0, vm);
@@ -564,7 +589,7 @@ namespace KeePassFluentUI.ViewModels
                 }
 
                 db.Modified = true;
-                _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true);
+                SafeInvokeOnHost(() => _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true));
 
                 SelectedGroup?.RefreshSelfAndAncestors();
                 Entries.Remove(target);
@@ -620,7 +645,7 @@ namespace KeePassFluentUI.ViewModels
                 recycleBin.Groups.Clear();
 
                 db.Modified = true;
-                _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true);
+                SafeInvokeOnHost(() => _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true));
 
                 SelectedGroup?.RefreshSelfAndAncestors();
                 LoadGroupEntries(SelectedGroup);
@@ -646,7 +671,7 @@ namespace KeePassFluentUI.ViewModels
                 SelectedGroup.AddChildGroup(newSubGroup);
 
                 _host.Database.Modified = true;
-                _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true);
+                SafeInvokeOnHost(() => _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true));
                 StatusMessage = "已新建分组";
                 RefreshDatabaseState();
             }
@@ -696,7 +721,7 @@ namespace KeePassFluentUI.ViewModels
                 }
 
                 db.Modified = true;
-                _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true);
+                SafeInvokeOnHost(() => _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true));
 
                 var parent = SelectedGroup.Parent;
                 parent.RemoveChildGroup(SelectedGroup);
@@ -714,18 +739,47 @@ namespace KeePassFluentUI.ViewModels
         [RelayCommand]
         public void SaveDatabase()
         {
-            if (!_host.Database.IsOpen) return;
+            if (_host.Database == null || !_host.Database.IsOpen) return;
 
             try
             {
-                _host.MainWindow?.SaveDatabase(_host.Database, null);
+                // 如果当前正在编辑条目，先保存条目的临时编辑数据
+                if (CurrentDetail != null && CurrentDetail.IsEditing)
+                {
+                    CurrentDetail.SaveEditInternal(notify: false);
+                }
+
+                bool saveResult = true;
+                if (_host.MainWindow != null)
+                {
+                    SafeInvokeOnHost(() =>
+                    {
+                        // 调用 KeePass 原生标准 UIFileSave 触发全部验证与事件，并重置原生窗口 UI 状态
+                        saveResult = _host.MainWindow.UIFileSave(true);
+                        _host.MainWindow.UpdateUI(false, null, true, null, true, null, false);
+                    });
+                }
+                else
+                {
+                    _host.Database.Save(null);
+                }
+
                 RefreshDatabaseState();
-                StatusMessage = "数据库已保存";
-                NotificationService.ShowSuccess("保存成功", "数据库已成功保存。");
+
+                if (saveResult)
+                {
+                    StatusMessage = "数据库已保存";
+                    NotificationService.ShowSuccess("保存成功", "数据库已成功保存。");
+                }
+                else
+                {
+                    StatusMessage = "保存已取消或未完成";
+                }
             }
             catch (Exception ex)
             {
                 StatusMessage = $"保存失败: {ex.Message}";
+                NotificationService.ShowError("保存失败", ex.Message);
             }
         }
 
@@ -734,7 +788,7 @@ namespace KeePassFluentUI.ViewModels
         {
             try
             {
-                _host.MainWindow?.LockAllDocuments();
+                SafeInvokeOnHost(() => _host.MainWindow?.LockAllDocuments());
                 RefreshDatabaseState();
                 StatusMessage = "数据库已锁定";
                 NotificationService.ShowInformation("数据库已锁定", "数据库已安全锁定。");
@@ -750,18 +804,21 @@ namespace KeePassFluentUI.ViewModels
         {
             try
             {
-                KeePassLib.Serialization.IOConnectionInfo? ioc = null;
-                var activeDoc = _host.MainWindow?.DocumentManager?.ActiveDocument;
-                if (activeDoc != null && activeDoc.LockedIoc != null)
+                SafeInvokeOnHost(() =>
                 {
-                    ioc = activeDoc.LockedIoc;
-                }
-                else if (_host.Database != null && _host.Database.IOConnectionInfo != null)
-                {
-                    ioc = _host.Database.IOConnectionInfo;
-                }
+                    KeePassLib.Serialization.IOConnectionInfo? ioc = null;
+                    var activeDoc = _host.MainWindow?.DocumentManager?.ActiveDocument;
+                    if (activeDoc != null && activeDoc.LockedIoc != null)
+                    {
+                        ioc = activeDoc.LockedIoc;
+                    }
+                    else if (_host.Database != null && _host.Database.IOConnectionInfo != null)
+                    {
+                        ioc = _host.Database.IOConnectionInfo;
+                    }
 
-                _host.MainWindow?.OpenDatabase(ioc, null, false);
+                    _host.MainWindow?.OpenDatabase(ioc, null, false);
+                });
                 RefreshDatabaseState();
             }
             catch (Exception ex)
@@ -775,19 +832,23 @@ namespace KeePassFluentUI.ViewModels
         {
             try
             {
-                var mw = _host.MainWindow;
-                if (mw.Visible)
+                SafeInvokeOnHost(() =>
                 {
-                    mw.Hide();
-                    StatusMessage = "原版窗口已隐藏";
-                }
-                else
-                {
-                    mw.Show();
-                    mw.BringToFront();
-                    mw.Activate();
-                    StatusMessage = "原版窗口已显示";
-                }
+                    var mw = _host.MainWindow;
+                    if (mw == null) return;
+                    if (mw.Visible)
+                    {
+                        mw.Hide();
+                        StatusMessage = "原版窗口已隐藏";
+                    }
+                    else
+                    {
+                        mw.Show();
+                        mw.BringToFront();
+                        mw.Activate();
+                        StatusMessage = "原版窗口已显示";
+                    }
+                });
             }
             catch (Exception ex)
             {

@@ -34,14 +34,7 @@ namespace KeePassFluentUI.Common
             }
             else if (value is string strVal)
             {
-                if (bool.TryParse(strVal, out bool parsedBool))
-                {
-                    flag = parsedBool;
-                }
-                else
-                {
-                    flag = !string.IsNullOrEmpty(strVal);
-                }
+                flag = !string.IsNullOrEmpty(strVal);
             }
 
             bool inverse = Invert;
@@ -75,6 +68,34 @@ namespace KeePassFluentUI.Common
             }
 
             return false;
+        }
+    }
+
+    [ValueConversion(typeof(string), typeof(Visibility))]
+    public class StringToVisibilityConverter : IValueConverter
+    {
+        public bool Invert { get; set; }
+
+        public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            bool hasText = !string.IsNullOrEmpty(value as string);
+            bool inverse = Invert;
+            if (parameter is string paramStr && paramStr.Equals("Inverse", StringComparison.OrdinalIgnoreCase))
+            {
+                inverse = !inverse;
+            }
+
+            if (inverse)
+            {
+                hasText = !hasText;
+            }
+
+            return hasText ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            throw new NotSupportedException();
         }
     }
 }
