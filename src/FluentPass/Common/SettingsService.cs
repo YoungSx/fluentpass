@@ -96,7 +96,10 @@ namespace FluentPass.Common
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(theme))
+                if (string.IsNullOrWhiteSpace(theme) ||
+                    (!string.Equals(theme, "Dark", StringComparison.OrdinalIgnoreCase) &&
+                     !string.Equals(theme, "Light", StringComparison.OrdinalIgnoreCase) &&
+                     !string.Equals(theme, "System", StringComparison.OrdinalIgnoreCase)))
                 {
                     theme = DefaultAppTheme;
                 }

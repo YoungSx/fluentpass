@@ -67,20 +67,23 @@ namespace FluentPass
 
             if (!SettingsService.GetAutoTakeoverUI(_host)) return;
 
-            // 1. 模态窗口守卫：检测是否有模态窗体或密码输入框开启
-            bool hasModal = false;
-            try
+            // 1. 模态窗口守卫：检测是否有模态窗体或密码输入框开启，或主窗口因系统/Win32模态对话框被禁用
+            bool hasModal = !mw.Enabled;
+            if (!hasModal)
             {
-                foreach (System.Windows.Forms.Form form in System.Windows.Forms.Application.OpenForms)
+                try
                 {
-                    if (form.Modal || form.GetType().Name.IndexOf("Key", StringComparison.OrdinalIgnoreCase) >= 0)
+                    foreach (System.Windows.Forms.Form form in System.Windows.Forms.Application.OpenForms)
                     {
-                        hasModal = true;
-                        break;
+                        if (form.Modal || form.GetType().Name.IndexOf("Key", StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            hasModal = true;
+                            break;
+                        }
                     }
                 }
+                catch { }
             }
-            catch { }
 
             if (hasModal)
             {
@@ -212,6 +215,11 @@ namespace FluentPass
             {
                 _viewModel?.RefreshDatabaseState();
             });
+
+            if (!_hasAutoTakenOver && _host != null && SettingsService.GetAutoTakeoverUI(_host))
+            {
+                _host.MainWindow?.BeginInvoke(new Action(TryPerformAutoTakeover));
+            }
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -235,7 +243,7 @@ namespace FluentPass
             {
                 try
                 {
-                    _fluentWindow.Close();
+                    _fluentWindow.ForceClose();
                 }
                 catch { }
                 _fluentWindow = null;

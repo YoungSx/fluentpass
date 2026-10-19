@@ -120,6 +120,25 @@ namespace FluentPass.Tests
         }
 
         [Test]
+        public void SettingsService_CorruptedConfigValues_FallbackToDefaults()
+        {
+            _host.CustomConfig.SetString(SettingsService.CloseActionKey, "invalid_enum_val");
+            Assert.That(SettingsService.GetCloseAction(_host), Is.EqualTo(WindowCloseAction.RestoreOriginalWindow));
+
+            _host.CustomConfig.SetString(SettingsService.CloseActionKey, "999");
+            Assert.That(SettingsService.GetCloseAction(_host), Is.EqualTo(WindowCloseAction.RestoreOriginalWindow));
+
+            _host.CustomConfig.SetString(SettingsService.AutoTakeoverKey, "not_a_bool");
+            Assert.That(SettingsService.GetAutoTakeoverUI(_host), Is.True);
+
+            _host.CustomConfig.SetString(SettingsService.AutoMaskSecondsKey, "not_a_number");
+            Assert.That(SettingsService.GetAutoMaskSeconds(_host), Is.EqualTo(10));
+
+            _host.CustomConfig.SetString(SettingsService.AppThemeKey, "HackerNeonGreen");
+            Assert.That(SettingsService.GetAppTheme(_host), Is.EqualTo("System"));
+        }
+
+        [Test]
         public void SettingsViewModel_ResetSettings_RestoresDefaults()
         {
             var vm = new SettingsViewModel(_host);

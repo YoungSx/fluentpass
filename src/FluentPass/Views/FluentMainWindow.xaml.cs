@@ -181,6 +181,11 @@ namespace FluentPass.Views
                         _viewModel.LockDatabaseCommand.Execute(null);
                         e.Handled = true;
                     }
+                    else if (e.Key == Key.OemComma)
+                    {
+                        _viewModel.IsSettingsOpen = !_viewModel.IsSettingsOpen;
+                        e.Handled = true;
+                    }
                 }
                 return;
             }
@@ -283,6 +288,19 @@ namespace FluentPass.Views
             {
                 base.OnClosing(e);
                 return;
+            }
+
+            // 🛡️ 守卫：如果宿主已不存在或已 Disposed，直接放行关闭，杜绝孤儿进程
+            if (_host.MainWindow == null || _host.MainWindow.IsDisposed)
+            {
+                ForceClose();
+                return;
+            }
+
+            // 🛡️ 守卫：先提交正在内联编辑的临时草稿，确保脏状态同步至 KeePass 数据库
+            if (_viewModel.CurrentDetail != null && _viewModel.CurrentDetail.IsEditing)
+            {
+                _viewModel.CurrentDetail.SaveEditInternal(notify: false);
             }
 
             var closeAction = SettingsService.GetCloseAction(_host);
