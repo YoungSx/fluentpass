@@ -25,7 +25,7 @@
 - **规范**：
   - **剪贴板**：必须调用官方 `ClipboardUtil.CopyAndMinimize(_host.MainWindow, text, true, _host.Database, entry, PwDefs.PasswordField)`，保留原版防剪贴板窃听、防历史记录记录及倒计时安全清空逻辑。
   - **自动输入**：必须调用原版 `AutoType.PerformIntoCurrentWindow(...)`。
-  - **历史版本备份**：条目任何修改持久化前，必须先调用 `entry.CreateBackup(_host.Database)`，遵从官方事务历史规范。
+  - **历史版本备份**：条目任何修改持久化前，必须先调用 `entry.CreateBackup(_host.Database)`，遵循官方事务历史规范。
   - **持久化**：保存操作直接调用 `_host.MainWindow.SaveDatabase(_host.Database, null)`，同步反映数据库未保存脏星号状态。
 
 ### 铁律 4：渐进式现代化与原生 WinForms 兜底（Graceful Fallback Invariant）
@@ -58,7 +58,7 @@
 | 模块 | 功能范围 | 技术实现要点 |
 | :--- | :--- | :--- |
 | **主视窗** | Fluent Design / Mica (云母) / Acrylic 材质主窗口 | 继承 `Wpf.Ui.Controls.FluentWindow`，挂载 TitleBar，跟随 Win11 桌面材质 |
-| **导航树 (左栏)** | 数据库分级展开、收起、节点选中 | 递归构建 `GroupItemViewModel`，集成原版 68 种内置图标及自定义客户图标流 |
+| **导航树 (左栏)** | 数据库分级展开、收起、节点选中 | 递归构建 `GroupItemViewModel`，集成原版 68 种内置图标及自定义客图标流 |
 | **凭据列表 (中栏)** | 虚拟化条目列表、实时复合搜索 | 使用 `VirtualizingStackPanel` 支撑万级凭据流畅滚动；支持标题/用户名/URL/备注即时模糊过滤 |
 | **详情面板 (右栏)** | 条目卡片查看与内联编辑模式 | 查看模式展示各标准与自定义字段；内联模式支持快速修改标题、用户名、密码、URL，保存时强制生成备份 |
 | **密码安全取用** | 默认掩码隐藏、按需明文查看、安全复制 | 10秒超时自动重新遮蔽；调用原版 `ClipboardUtil` 享受自动倒计时抹除 |
@@ -123,4 +123,65 @@ _host.MainWindow.UpdateUI(false, null, true, null, true, null, true);
 - [ ] 是否在 ViewModel 中将密码解密成了 `string` 驻留在内存中？**[严禁]**
 - [ ] 是否重写了加解密或破坏了第三方安全插件的 Hook 点？**[严禁]**
 - [ ] 编译出的 DLL 属性 `ProductName` 是否依然为 `"KeePass Plugin"`？**[必须]**
-- [ ] `tests/FluentPass.Tests` 下的所有单元测试与 Smoke 测试是否全部通过？**[必须]**
+- [ ] `tests/FluentPass.Tests` 下的所有单元测试、集成测试与 Smoke 冒烟测试是否全部通过？**[必须]**
+
+---
+
+## 5. 测试金字塔与发布工程规范（QA, Testing Pyramid & Release Engineering）
+
+### 5.1 黄金分层比例（Golden Testing Pyramid Ratio）
+
+本项目严格遵循微服务与高可靠桌面软件的测试金字塔黄金分层准则：
+
+```
+       / \
+      /   \        冒烟与端到端测试 (Smoke & E2E Tests, ~10%)
+     /-----\       - 跨平台无头桌面验证、STA 线程窗口启动、Plugin 生命周期与元数据
+    /       \
+   /---------\     集成测试 (Integration Tests, ~20%)
+  /           \    - 数据库事务备份、安全解密遮蔽周期、全库搜索联动、群组树递归冒泡
+ /-------------\
+/               \  单元测试 (Unit Tests, ~70%)
+-----------------  - 纯转换器、节流防抖、通知模型、格式化器、独立 ViewModel 属性映射
+```
+
+1. **单元测试 (Unit Tests, 目标 ~70%)**：
+   - 标识：`[Category("Unit")]`
+   - 特点：毫秒级响应、零外部依赖、高频快速阻断。
+   - 覆盖：`ConvertersTests`, `IdleThrottleTests`, `NotificationServiceTests`, `AttachmentItemViewModelUnitTests`, `CustomFieldItemViewModelUnitTests`, `EntryHistoryItemViewModelUnitTests`, `EntryItemViewModelUnitTests`, `IconConverterHelperUnitTests`, `MessageServiceUnitTests`。
+2. **集成测试 (Integration Tests, 目标 ~20%)**：
+   - 标识：`[Category("Integration")]`
+   - 特点：秒级执行，覆盖 KeePassLib 内存模型多组件协同。
+   - 覆盖：`EntrySecurityTests`（内存零泄漏）、`EntryTransactionBackupTests`（强制备份防丢）、`FilterAndSearchTests`（复合搜索）、`GroupHierarchyTests`（树计数冒泡）、`Phase3Tests`（密码熵值评估、回收站 Tombstones 机制）、`StateSyncAndSaveTests`（全双工状态同步）。
+3. **冒烟与端到端测试 (Smoke & E2E Tests, 目标 ~10%)**：
+   - 标识：`[Category("Smoke")]`
+   - 特点：关键路径连通性测试、二进制物理装载与跨平台守护。
+   - 覆盖：`SmokeTests`（STA 线程窗口唤起、生命周期、16x16 嵌入式图标校验）、`PluginLoadingDiagnosticsTests`（动态反射装配与 CheckCompatibilityPriv 校验）、CI 级 Linux Xvfb + KeePass2 跨平台无头虚拟桌面冒烟。
+
+### 5.2 CI 流水线分层与并行架构
+
+GitHub Actions CI 流水线采用分层并行设计：
+1. **Layer 1: 构建与单元测试快速失败（Build & Unit Tests）**：
+   - 编译 Release 产物并立即执行单元测试（Fast Feedback）。
+   - 若单元测试未通过，流水线毫秒级阻断，避免算力浪费。
+2. **Layer 2 (Parallel): 双轨并行深度测试**：
+   - **Track A (Windows)**：执行所有集成测试 (`Category=Integration`) 与 Windows 冒烟诊断 (`Category=Smoke`)。
+   - **Track B (Ubuntu + Mono)**：无需等待 Windows 测试，直接消费构建工件，并行启动虚拟桌面 (Xvfb) 运行 KeePass2 进行真实加载冒烟测试并截屏留档。
+3. **Layer 3: 质量门禁汇总（CI Summary）**：
+   - 聚合所有并行任务指标，向 Step Summary 输出全量状态矩阵。
+
+### 5.3 生产发版流程与标准化脚本
+
+发版流程支持完全自动化的 GitHub Actions 流水线与标准化本地辅助脚本：
+- **触发机制**：推送 `v*` 语义化版本 Tag 或通过 Actions 的 `workflow_dispatch` 手动触发。
+- **发布产物**：
+  1. `FluentPass-vX.Y.Z.zip`：含插件 DLL 与完整安装说明。
+  2. `FluentPass.dll`：单文件即插即用插件。
+  3. `SHA256SUMS.txt`：全产物哈希防篡改校验。
+- **发版助手脚本**：
+  - Windows / PowerShell：`.\scripts\release.ps1 -Version "v1.0.0" -Push`
+  - Linux / Bash：`./scripts/release.sh v1.0.0 --push`
+  - 支持 `-DryRun` / `--dry-run` 模式预演前置检查。
+
+> 📖 **发版操作指南**：完整发版前核查清单、GitHub Actions Web 手动发布步骤、资产校验及回滚机制，详见专页文档：  
+> 👉 **[发版操作指南 (RELEASE.md)](RELEASE.md)**

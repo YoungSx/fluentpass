@@ -7,10 +7,10 @@ using NUnit.Framework;
 
 namespace FluentPass.Tests
 {
-    [TestFixture, Apartment(System.Threading.ApartmentState.STA)]
+    [TestFixture, Apartment(System.Threading.ApartmentState.STA), Category("Smoke"), Category("Integration")]
     public class PluginLoadingDiagnosticsTests
     {
-        [Test]
+        [Test, Category("Smoke"), Category("Integration")]
         public void DiagnoseKeePassPluginLoading()
         {
             var pluginPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "FluentPass.dll");

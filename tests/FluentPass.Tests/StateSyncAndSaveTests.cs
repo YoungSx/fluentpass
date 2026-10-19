@@ -8,7 +8,7 @@ using NUnit.Framework;
 
 namespace FluentPass.Tests
 {
-    [TestFixture, Apartment(System.Threading.ApartmentState.STA)]
+    [TestFixture, Apartment(System.Threading.ApartmentState.STA), Category("Integration")]
     public class StateSyncAndSaveTests
     {
         private TestPluginHost _host = null!;
@@ -22,7 +22,7 @@ namespace FluentPass.Tests
             _mainVm = new MainViewModel(_host);
         }
 
-        [Test]
+        [Test, Category("Integration")]
         public void StatusMessage_WhenDatabaseIsOpen_ShouldBeReadyNotUnopened()
         {
             // Initial state with open database
@@ -34,7 +34,7 @@ namespace FluentPass.Tests
             Assert.That(_mainVm.StatusMessage, Does.StartWith("就绪"));
         }
 
-        [Test]
+        [Test, Category("Integration")]
         public void StatusMessage_WhenDatabaseModified_ShouldReflectUnsavedChanges()
         {
             _host.Database.Modified = true;
@@ -46,7 +46,7 @@ namespace FluentPass.Tests
             Assert.That(_mainVm.WindowTitle, Does.EndWith("*"));
         }
 
-        [Test]
+        [Test, Category("Integration")]
         public void SaveDatabase_WhenEditingEntry_ShouldAutoCommitEntryAndSaveDatabase()
         {
             var entry = TestPluginHost.CreateTestEntry("Initial Title", "testuser", "secret");
@@ -74,7 +74,7 @@ namespace FluentPass.Tests
             Assert.That(_mainVm.StatusMessage, Is.EqualTo("数据库已保存"));
         }
 
-        [Test]
+        [Test, Category("Integration")]
         public void Database_CloseAndReopen_StatusMessageTransitionsCleanly()
         {
             // Simulate database close

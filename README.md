@@ -73,7 +73,7 @@
 ### 简单 3 步完成安装
 
 1. **下载插件**：
-   前往 [Releases 页面](https://github.com/fluentpass/fluentpass/releases) 下载最新编译好的单文件 `FluentPass.dll`。
+   前往 [Releases 页面](https://github.com/fluentpass/fluentpass/releases) 下载最新编译好的单文件 `FluentPass.dll` 或 Zip 安装包。
 
 2. **放入 Plugins 文件夹**：
    将下载好的 `FluentPass.dll` 复制到 KeePass 的 `Plugins` 目录下：
@@ -137,10 +137,18 @@
 
 ```
 fluentpass/
+├── .github/
+│   └── workflows/
+│       ├── ci.yml                          # 分层并行 CI 质量门禁流水线
+│       └── release.yml                     # 自动化生产发版与产物打包流水线
 ├── assets/                                 # 官方 Logo 与高清界面截图
 │   ├── icon.png                            # 1254x1254 品牌矢量源图
 │   └── screenshot.png                      # Windows 11 Mica 材质主视窗截图
+├── scripts/
+│   ├── release.ps1                         # Windows / PowerShell 标准化发版脚本
+│   └── release.sh                          # Linux / macOS / Bash 标准化发版脚本
 ├── ARCHITECTURE.md                         # 架构设计、铁律与功能边界白皮书 (必读)
+├── RELEASE.md                              # 完整发版操作指南与核查清单 (必读)
 ├── src/
 │   └── FluentPass/
 │       ├── Common/
@@ -162,7 +170,7 @@ fluentpass/
 │       ├── FluentPass.csproj               # SDK-Style net48 项目文件
 │       └── PluginEntry.cs                  # KeePass 插件主入口 (FluentPassExt)
 ├── tests/
-│   └── FluentPass.Tests/                   # 自动化测试与 STA 宿主测试工程 (14 个用例全部通过)
+│   └── FluentPass.Tests/                   # 自动化测试与 STA 宿主测试工程 (76 项测试用例)
 ├── build.ps1                               # 一键本地构建、部署与调试脚本
 └── README.md
 ```
@@ -197,19 +205,65 @@ fluentpass/
 
 ### 自动化测试与质量保障
 
-项目包含专属的 NUnit 自动化测试工程 `tests/FluentPass.Tests`，覆盖全链路核心逻辑（14 项测试用例全部通过）：
+项目包含专属的 NUnit 自动化测试工程 `tests/FluentPass.Tests`，严格遵循**测试金字塔黄金分层准则**（单元测试 ~70%、集成测试 ~20%、冒烟测试 ~10%）：
 
 ```powershell
-# 运行完整单元测试与 Smoke 测试
-dotnet test tests\FluentPass.Tests\FluentPass.Tests.csproj --test-adapter-path "tests\FluentPass.Tests\bin\Debug\net48"
+# 1. 运行快速反馈单元测试 (~70% 黄金层)
+dotnet test tests\FluentPass.Tests\FluentPass.Tests.csproj --filter "Category=Unit"
+
+# 2. 运行深层业务集成测试 (~20% 黄金层)
+dotnet test tests\FluentPass.Tests\FluentPass.Tests.csproj --filter "Category=Integration"
+
+# 3. 运行端到端与宿主冒烟测试 (~10% 黄金层)
+dotnet test tests\FluentPass.Tests\FluentPass.Tests.csproj --filter "Category=Smoke"
+
+# 运行全量测试套件 (76 项测试用例全部通过)
+dotnet test tests\FluentPass.Tests\FluentPass.Tests.csproj
 ```
 
-- **EntrySecurityTests**：验证内存安全铁律，列表属性绝对不解密明文密码；验证密码按需展开及隐藏时立即置空释放；敏感自定义字段默认掩码。
-- **EntryTransactionBackupTests**：验证保存修改前严格在历史记录集合中新增备份副本，确保数据可恢复。
-- **FilterAndSearchTests**：验证标题、用户名、网址、备注等字段的实时模糊搜索过滤。
-- **GroupHierarchyTests**：验证树形分组层级递归构建与条目统计。
-- **IdleThrottleTests**：验证高频输入事件节流（避免误判闲置自动锁定）。
-- **SmokeTests**：验证插件接口版本、KeePass 规范 16x16 小图标流与 Mica 窗口 XAML 资源完整性。
+- **单元测试 (Unit Tests)**：
+  - `ConvertersTests`：XAML 转换器与异常防御。
+  - `IdleThrottleTests`：用户高频输入节流与防闲置误锁算法。
+  - `NotificationServiceTests`：线程安全消息队列与状态重置。
+  - `AttachmentItemViewModelUnitTests`：文件大小人类可读格式化（B、KB、MB）。
+  - `CustomFieldItemViewModelUnitTests`：敏感自定义字段掩码隐藏与按需揭示。
+  - `EntryHistoryItemViewModelUnitTests`：历史记录恢复与空标题安全回退。
+  - `EntryItemViewModelUnitTests`：内存零泄露、80字符截断与 UUID 等价性。
+  - `IconConverterHelperUnitTests`：冻结位图源生成与缓存释放。
+  - `MessageServiceUnitTests`：弹窗阻断测试状态控制。
+- **集成测试 (Integration Tests)**：
+  - `EntrySecurityTests`：验证内存安全铁律，列表属性绝对不解密明文密码；验证密码按需展开及隐藏时立即置空释放；敏感自定义字段默认掩码。
+  - `EntryTransactionBackupTests`：验证保存修改前严格在历史记录集合中新增备份副本，确保数据可恢复。
+  - `FilterAndSearchTests`：验证标题、用户名、网址、备注等字段的实时模糊搜索过滤与全库搜索。
+  - `GroupHierarchyTests`：验证树形分组层级递归构建与条目统计向上冒泡。
+  - `Phase3Tests`：密码熵值评估、条目历史恢复与回收站永久清空墓碑机制。
+  - `StateSyncAndSaveTests`：数据库开启、修改、关闭全双工状态同步与持久化。
+- **冒烟与跨平台测试 (Smoke Tests)**：
+  - `SmokeTests`：验证插件接口版本、KeePass 规范 16x16 小图标流与 Mica 窗口 XAML 资源完整性、跨平台守卫无崩溃。
+  - `PluginLoadingDiagnosticsTests`：KeePass 原生插件管理器反射装配诊断。
+  - `CI Linux Headless Smoke`：GitHub Actions 环境下 Mono + KeePass2 + Xvfb 跨平台虚拟桌面真实无头启动冒烟。
+
+### 🚀 生产发版流程与脚本
+
+本项目拥有标准化的 GitHub Actions Release 流水线（自动打包 Zip、生成 SHA256 校验和、自动生成发布说明）：
+
+```powershell
+# PowerShell (Windows)
+# 1. 演练模式（校验 Git 状态与版本号格式）
+.\scripts\release.ps1 -Version "v1.0.0" -DryRun
+
+# 2. 正式发版并推送触发 CI 流水线
+.\scripts\release.ps1 -Version "v1.0.0" -Push
+```
+
+```bash
+# Bash (Linux / macOS)
+./scripts/release.sh v1.0.0 --dry-run
+./scripts/release.sh v1.0.0 --push
+```
+
+> 📖 **完整发版指引**：发版前自查核对清单、GitHub Actions Web 手动触发方式、发布产物说明及线上回滚指南，详见：  
+> 👉 **[发版操作指南 (RELEASE.md)](RELEASE.md)**
 
 ---
 

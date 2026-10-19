@@ -1,15 +1,39 @@
-name: CI/CD Pipeline
+name: CI Pipeline
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [ master, main, 'chore/**', 'feature/**', 'fix/**' ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - '.github/workflows/ci.yml'
+      - '*.sln'
+      - '*.slnx'
+      - 'build.*'
   pull_request:
     branches: [ master, main ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - '.github/workflows/ci.yml'
+      - '*.sln'
+      - '*.slnx'
+      - 'build.*'
   workflow_dispatch:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
-  build-and-test-windows:
-    name: Build & Test (Windows)
+  # =========================================================================
+  # Layer 1: Build & Fast-Fail Unit Tests (Windows)
+  # =========================================================================
+  build:
+    name: Build & Unit Tests (Windows)
     runs-on: windows-latest
     steps:
       - name: Checkout Repository
@@ -23,7 +47,15 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
+      - name: Cache KeePass 2.x
+        id: cache-keepass
+        uses: actions/cache@v4
+        with:
+          path: C:\Program Files\KeePass Password Safe 2
+          key: keepass-2.57.1-win
+
       - name: Download and Setup KeePass 2.x
+        if: steps.cache-keepass.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
           $keepassDir = "C:\Program Files\KeePass Password Safe 2"
@@ -42,7 +74,6 @@ jobs:
           }
 
           if (-not (Test-Path "$keepassDir\KeePass.exe")) {
-            Write-Host "KeePass.exe not found at $keepassDir, installing via Chocolatey..."
             choco install keepass -y --no-progress
           }
 
@@ -65,8 +96,9 @@ jobs:
           Copy-Item "src\FluentPass\bin\Release\net48\FluentPass.dll" -Destination "$pluginDir\FluentPass.dll" -Force
           Write-Host "Deployed FluentPass.dll to $pluginDir"
 
-      - name: Run Unit Tests
-        run: dotnet test tests/FluentPass.Tests/FluentPass.Tests.csproj --configuration Release --no-build --verbosity normal /p:KeePassDir="C:\Program Files\KeePass Password Safe 2"
+      # --- 快速失败第一道防线：单元测试 (~70% 黄金金字塔分层) ---
+      - name: Run Unit Tests (Fast Feedback)
+        run: dotnet test tests/FluentPass.Tests/FluentPass.Tests.csproj --configuration Release --no-build --verbosity normal --filter "Category=Unit" /p:KeePassDir="C:\Program Files\KeePass Password Safe 2"
 
       - name: Archive Build Artifact
         uses: actions/upload-artifact@v4
@@ -75,9 +107,85 @@ jobs:
           path: src/FluentPass/bin/Release/net48/FluentPass.dll
           if-no-files-found: error
 
-  linux-smoke-test:
-    name: Linux Compatibility & Smoke Test (Ubuntu)
-    needs: build-and-test-windows
+      - name: Archive Test Binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: FluentPass-Test-Binaries
+          path: tests/FluentPass.Tests/bin/Release/net48/
+          if-no-files-found: error
+
+  # =========================================================================
+  # Layer 2 (Parallel A): Integration & Windows Smoke Tests (Windows)
+  # =========================================================================
+  integration-and-smoke-windows:
+    name: Integration & Smoke Tests (Windows)
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Cache KeePass 2.x
+        id: cache-keepass
+        uses: actions/cache@v4
+        with:
+          path: C:\Program Files\KeePass Password Safe 2
+          key: keepass-2.57.1-win
+
+      - name: Download KeePass 2.x if not cached
+        if: steps.cache-keepass.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $keepassDir = "C:\Program Files\KeePass Password Safe 2"
+          New-Item -ItemType Directory -Path $keepassDir -Force | Out-Null
+          curl.exe -fSL "https://downloads.sourceforge.net/project/keepass/KeePass%202.x/2.57.1/KeePass-2.57.1.zip" -o "$env:TEMP\keepass.zip"
+          tar.exe -xf "$env:TEMP\keepass.zip" -C "$keepassDir"
+
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: FluentPass-Binary
+          path: src/FluentPass/bin/Release/net48/
+
+      - name: Download Test Binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: FluentPass-Test-Binaries
+          path: tests/FluentPass.Tests/bin/Release/net48/
+
+      - name: Deploy Plugin to KeePass Plugins Directory
+        shell: pwsh
+        run: |
+          $pluginDir = "C:\Program Files\KeePass Password Safe 2\Plugins"
+          New-Item -ItemType Directory -Path $pluginDir -Force | Out-Null
+          Copy-Item "src\FluentPass\bin\Release\net48\FluentPass.dll" -Destination "$pluginDir\FluentPass.dll" -Force
+          # Ensure test runner directory also has FluentPass.dll
+          Copy-Item "src\FluentPass\bin\Release\net48\FluentPass.dll" -Destination "tests\FluentPass.Tests\bin\Release\net48\FluentPass.dll" -Force
+          Write-Host "Plugin deployed successfully."
+
+      # --- 集成测试分层 (~20% 黄金金字塔分层) ---
+      - name: Run Integration Tests
+        run: dotnet test tests/FluentPass.Tests/FluentPass.Tests.csproj --configuration Release --no-build --verbosity normal --filter "Category=Integration" /p:KeePassDir="C:\Program Files\KeePass Password Safe 2"
+
+      # --- Windows 冒烟与诊断测试分层 (~10% 黄金金字塔分层) ---
+      - name: Run Windows Smoke Tests
+        run: dotnet test tests/FluentPass.Tests/FluentPass.Tests.csproj --configuration Release --no-build --verbosity normal --filter "Category=Smoke" /p:KeePassDir="C:\Program Files\KeePass Password Safe 2"
+
+  # =========================================================================
+  # Layer 2 (Parallel B): Cross-Platform Linux Headless Smoke Test (Ubuntu)
+  # Runs concurrently with Windows Integration & Smoke Tests!
+  # =========================================================================
+  cross-platform-smoke-linux:
+    name: Cross-Platform Smoke Test (Ubuntu + Mono)
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -133,11 +241,9 @@ jobs:
           KP_PID=$!
           sleep 5
 
-          # Capture desktop screenshot
           mkdir -p screenshots
           scrot screenshots/keepass_linux_desktop.png
 
-          # Verify no crash or unhandled exception occurred
           if ! kill -0 $KP_PID 2>/dev/null; then
             echo "ERROR: KeePass2 exited prematurely on Linux!"
             cat /tmp/keepass.log
@@ -155,3 +261,34 @@ jobs:
         with:
           name: Linux-Smoke-Screenshot
           path: screenshots/keepass_linux_desktop.png
+
+  # =========================================================================
+  # Layer 3: CI Quality Gate Summary
+  # =========================================================================
+  ci-summary:
+    name: CI Quality Gate Summary
+    needs: [build, integration-and-smoke-windows, cross-platform-smoke-linux]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Quality Gate Summary Report
+        run: |
+          BUILD_STATUS="${{ needs.build.result }}"
+          INTEG_STATUS="${{ needs.integration-and-smoke-windows.result }}"
+          SMOKE_STATUS="${{ needs.cross-platform-smoke-linux.result }}"
+
+          echo "### 🚀 CI Pipeline Execution Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Pipeline Layer | Platform / Target | Test Pyramid Ratio | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- | :--- | :--- |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Build & Fast-Fail** | Windows Latest (MSBuild + .NET 8) | Unit Tests (~70%) | $BUILD_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Deep Verification** | Windows Latest (.NET 4.8 / STA) | Integration Tests (~20%) + Smoke (~10%) | $INTEG_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Cross-Platform Smoke** | Ubuntu Latest (Mono 6.x + Xvfb) | Headless Runtime Smoke | $SMOKE_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$BUILD_STATUS" = "success" ] && [ "$INTEG_STATUS" = "success" ] && [ "$SMOKE_STATUS" = "success" ]; then
+            echo "✅ **All Quality Gate tiers passed successfully! Ready for release.**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **One or more pipeline layers failed. Check logs above.**" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi

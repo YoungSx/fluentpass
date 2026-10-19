@@ -9,7 +9,7 @@ using NUnit.Framework;
 
 namespace FluentPass.Tests
 {
-    [TestFixture, Apartment(System.Threading.ApartmentState.STA)]
+    [TestFixture, Apartment(System.Threading.ApartmentState.STA), Category("Integration")]
     public class EntrySecurityTests
     {
         [SetUp]
@@ -17,7 +17,8 @@ namespace FluentPass.Tests
         {
             Common.MessageService.EnableDialogs = false;
         }
-        [Test]
+
+        [Test, Category("Integration")]
         public void EntryItemViewModel_ShouldNeverExposeDecryptedPasswordInProperties()
         {
             // 规范 3: 内存安全零妥协 - 列表项绝对不解密密码
@@ -53,7 +54,7 @@ namespace FluentPass.Tests
             Assert.That(vm.HasPassword, Is.True);
         }
 
-        [Test]
+        [Test, Category("Integration")]
         public void EntryDetailViewModel_ShouldOnlyRevealPasswordOnDemand_AndClearOnHide()
         {
             const string secretPassword = "TopSecretPassword456$";
@@ -79,7 +80,7 @@ namespace FluentPass.Tests
             Assert.That(detailVm.RevealedPassword, Is.Null, "Revealed password must be cleared to null upon hide!");
         }
 
-        [Test]
+        [Test, Category("Integration")]
         public void CustomFieldItemViewModel_ShouldProtectSensitiveFieldsByDefault()
         {
             const string secretPin = "987654";

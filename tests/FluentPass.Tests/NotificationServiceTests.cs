@@ -7,7 +7,7 @@ using Wpf.Ui.Controls;
 
 namespace FluentPass.Tests
 {
-    [TestFixture, Apartment(ApartmentState.STA)]
+    [TestFixture, Apartment(ApartmentState.STA), Category("Unit")]
     public class NotificationServiceTests
     {
         [SetUp]
@@ -22,7 +22,7 @@ namespace FluentPass.Tests
             NotificationService.ClearHistory();
         }
 
-        [Test]
+        [Test, Category("Unit")]
         public void ShowSuccess_RecordsNotificationCorrectly()
         {
             NotificationService.ShowSuccess("Success Title", "Operation completed successfully.", 4);
@@ -36,7 +36,7 @@ namespace FluentPass.Tests
             Assert.That(last.Icon, Is.Not.Null);
         }
 
-        [Test]
+        [Test, Category("Unit")]
         public void ShowInformation_RecordsNotificationCorrectly()
         {
             NotificationService.ShowInformation("Info Title", "Here is some info.");
@@ -49,7 +49,7 @@ namespace FluentPass.Tests
             Assert.That(last.Timeout, Is.EqualTo(TimeSpan.FromSeconds(3)));
         }
 
-        [Test]
+        [Test, Category("Unit")]
         public void ShowWarning_RecordsNotificationCorrectly()
         {
             NotificationService.ShowWarning("Warning Title", "Be careful!");
@@ -60,7 +60,7 @@ namespace FluentPass.Tests
             Assert.That(last.Appearance, Is.EqualTo(ControlAppearance.Caution));
         }
 
-        [Test]
+        [Test, Category("Unit")]
         public void ShowError_RecordsNotificationCorrectly()
         {
             NotificationService.ShowError("Error Title", "Something failed!");
@@ -72,7 +72,7 @@ namespace FluentPass.Tests
             Assert.That(last.Timeout, Is.EqualTo(TimeSpan.FromSeconds(5)));
         }
 
-        [Test]
+        [Test, Category("Unit")]
         public async Task Show_FromBackgroundThread_IsThreadSafe()
         {
             int taskCount = 10;
@@ -93,7 +93,7 @@ namespace FluentPass.Tests
             Assert.That(history.Count, Is.EqualTo(taskCount));
         }
 
-        [Test]
+        [Test, Category("Unit")]
         public void ClearHistory_ResetsHistoryAndLastNotification()
         {
             NotificationService.ShowInformation("Title 1", "Msg 1");

@@ -9,7 +9,7 @@ using NUnit.Framework;
 
 namespace FluentPass.Tests
 {
-    [TestFixture, Apartment(System.Threading.ApartmentState.STA)]
+    [TestFixture, Apartment(System.Threading.ApartmentState.STA), Category("Integration")]
     public class Phase3Tests
     {
         private TestPluginHost _host = null!;
@@ -23,7 +23,7 @@ namespace FluentPass.Tests
             _mainVm = new MainViewModel(_host);
         }
 
-        [Test]
+        [Test, Category("Integration")]
         public void PasswordQuality_EstimationAndClassification_ShouldBeAccurate()
         {
             var entry = TestPluginHost.CreateTestEntry("Test", "user", "123456");
@@ -41,7 +41,7 @@ namespace FluentPass.Tests
             Assert.That(detailVm.PasswordQualityPercent, Is.GreaterThan(60));
         }
 
-        [Test]
+        [Test, Category("Integration")]
         public void EntryHistory_Restore_ShouldPreserveUuidAndBackupCurrentState()
         {
             var entry = TestPluginHost.CreateTestEntry("Original Title", "user1", "pass1");
@@ -73,7 +73,7 @@ namespace FluentPass.Tests
             Assert.That(entry.History.GetAt(1).Strings.ReadSafe(PwDefs.TitleField), Is.EqualTo("Modified Title V2"));
         }
 
-        [Test]
+        [Test, Category("Integration")]
         public void RecycleBin_Emptying_ShouldRecordDeletedObjectsAndRetainContainer()
         {
             var recycleBin = new PwGroup(true, true, "Recycle Bin", PwIcon.TrashBin);
@@ -111,7 +111,7 @@ namespace FluentPass.Tests
             Assert.That(_host.Database.DeletedObjects.Any(d => d.Uuid.Equals(trashSubGroup.Uuid)), Is.True);
         }
 
-        [Test]
+        [Test, Category("Integration")]
         public void RecycleBin_Viewing_WithSubgroupsEnabled_ShouldNotFilterOutRecycleBinEntries()
         {
             var recycleBin = new PwGroup(true, true, "Recycle Bin", PwIcon.TrashBin);
@@ -132,7 +132,7 @@ namespace FluentPass.Tests
             Assert.That(_mainVm.FilteredEntries[0].Title, Is.EqualTo("Trash Entry"));
         }
 
-        [Test]
+        [Test, Category("Integration")]
         public void EntryItemViewModel_UuidEquality_ShouldPreserveSelectionOnFilter()
         {
             var e1 = TestPluginHost.CreateTestEntry("Alpha Entry", "a", "p");
