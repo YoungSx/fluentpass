@@ -52,27 +52,27 @@ jobs:
           Write-Host "KeePass 2.x is ready at $keepassDir"
 
       - name: Restore NuGet Packages
-        run: dotnet restore KeePassFluentUI.sln
+        run: dotnet restore FluentPass.sln
 
-      - name: Build KeePassFluentUI (Release)
-        run: msbuild KeePassFluentUI.sln /p:Configuration=Release /p:Platform="Any CPU" /p:KeePassDir="C:\Program Files\KeePass Password Safe 2"
+      - name: Build FluentPass (Release)
+        run: msbuild FluentPass.sln /p:Configuration=Release /p:Platform="Any CPU" /p:KeePassDir="C:\Program Files\KeePass Password Safe 2"
 
       - name: Deploy Built Plugin for Diagnostic Tests
         shell: pwsh
         run: |
           $pluginDir = "C:\Program Files\KeePass Password Safe 2\Plugins"
           New-Item -ItemType Directory -Path $pluginDir -Force | Out-Null
-          Copy-Item "src\KeePassFluentUI\bin\Release\net48\KeePassFluentUI.dll" -Destination "$pluginDir\KeePassFluentUI.dll" -Force
-          Write-Host "Deployed KeePassFluentUI.dll to $pluginDir"
+          Copy-Item "src\FluentPass\bin\Release\net48\FluentPass.dll" -Destination "$pluginDir\FluentPass.dll" -Force
+          Write-Host "Deployed FluentPass.dll to $pluginDir"
 
       - name: Run Unit Tests
-        run: dotnet test tests/KeePassFluentUI.Tests/KeePassFluentUI.Tests.csproj --configuration Release --no-build --verbosity normal /p:KeePassDir="C:\Program Files\KeePass Password Safe 2"
+        run: dotnet test tests/FluentPass.Tests/FluentPass.Tests.csproj --configuration Release --no-build --verbosity normal /p:KeePassDir="C:\Program Files\KeePass Password Safe 2"
 
       - name: Archive Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: KeePassFluentUI-Binary
-          path: src/KeePassFluentUI/bin/Release/net48/KeePassFluentUI.dll
+          name: FluentPass-Binary
+          path: src/FluentPass/bin/Release/net48/FluentPass.dll
           if-no-files-found: error
 
   linux-smoke-test:
@@ -86,7 +86,7 @@ jobs:
       - name: Download Build Artifact
         uses: actions/download-artifact@v4
         with:
-          name: KeePassFluentUI-Binary
+          name: FluentPass-Binary
           path: artifacts/
 
       - name: Install Mono, KeePass2, Xvfb and Scrot
@@ -96,15 +96,15 @@ jobs:
 
       - name: Deploy Plugin to KeePass Directories
         run: |
-          DLL_PATH=$(find artifacts -name "KeePassFluentUI.dll" | head -n 1)
+          DLL_PATH=$(find artifacts -name "FluentPass.dll" | head -n 1)
           if [ -z "$DLL_PATH" ]; then
-            echo "ERROR: KeePassFluentUI.dll not found in artifacts directory!"
+            echo "ERROR: FluentPass.dll not found in artifacts directory!"
             exit 1
           fi
           echo "Found plugin at: $DLL_PATH"
           sudo mkdir -p /usr/lib/keepass2/Plugins
           sudo cp "$DLL_PATH" /usr/lib/keepass2/Plugins/
-          sudo chmod 644 /usr/lib/keepass2/Plugins/KeePassFluentUI.dll
+          sudo chmod 644 /usr/lib/keepass2/Plugins/FluentPass.dll
           mkdir -p ~/.config/KeePass/Plugins
           cp "$DLL_PATH" ~/.config/KeePass/Plugins/
 
@@ -144,7 +144,7 @@ jobs:
             exit 1
           fi
 
-          echo "KeePass2 is running cleanly with KeePassFluentUI installed!"
+          echo "KeePass2 is running cleanly with FluentPass installed!"
           cat /tmp/keepass.log
 
           kill $KP_PID || true

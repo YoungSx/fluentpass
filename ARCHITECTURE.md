@@ -1,7 +1,7 @@
-# KeePass Fluent UI 架构设计与工程约束白皮书
+# Fluent Pass 架构设计与工程约束白皮书
 
 > **致后续维护者与协作者**：
-> 本文档是本项目（KeePass Fluent UI）的最高架构约束指南。任何功能演进、重构或 PR **必须严格遵守本文档所划定的边界与设计铁律**。
+> 本文档是本项目（Fluent Pass）的最高架构约束指南。任何功能演进、重构或 PR **必须严格遵守本文档所划定的边界与设计铁律**。
 > 本项目**不是**重新实现一个密码管理器，而是让官方 KeePass 2.x 焕发第二春的**同进程原生外壳**。违背下述铁律的修改将被直接否决。
 
 ---
@@ -32,7 +32,7 @@
 - **禁止项**：严禁盲目重写低频、极其复杂的高级系统设置界面。
 - **原因**：KeePass 生态中有大量第三方硬件与安全插件（例如 **YubiKey OTP / Challenge-Response、Windows Hello、OtpKeyProv、KeePassPasskey** 等），它们深度 Hook 了原版的密钥提示框 `KeyPromptForm`。若重写密钥输入窗口，将直接破坏第三方硬件密钥生态！
 - **规范**：
-  - **必须由 Fluent UI 承载的高频操作**：日常凭据检索、树形分组浏览、常用字段复制、条目快速增删改、内联编辑、主题切换。
+  - **必须由 Fluent Pass 承载的高频操作**：日常凭据检索、树形分组浏览、常用字段复制、条目快速增删改、内联编辑、主题切换。
   - **必须回退或直接唤起原版 WinForms 对话框的低频操作**：
     - 数据库主密钥输入/修改（`KeyPromptForm`）。
     - 数据库高级设置（`DatabaseSettingsForm`，加密算法、KDF 迭代轮数等）。
@@ -45,9 +45,9 @@
   - **禁止使用 `.plgx` 格式**：KeePass 内置的 PLGX 动态编译器无法编译 WPF BAML 资源字典与现代 C# 语法。
   - **禁止散落输出多个 DLL**：必须打包为单一预编译 `.dll`，严防用户遗漏依赖。
 - **规范**：
-  - 使用 `Costura.Fody` 将 `WPF-UI`、`CommunityToolkit.Mvvm` 等依赖全部打包并入 `KeePassFluentUI.dll`（需在 `FodyWeavers.xml` 中排除 `KeePass` 本身）。
+  - 使用 `Costura.Fody` 将 `WPF-UI`、`CommunityToolkit.Mvvm` 等依赖全部打包并入 `FluentPass.dll`（需在 `FodyWeavers.xml` 中排除 `KeePass` 本身）。
   - **PE FileVersionInfo 强校验**：`.csproj` 中必须设置 `<Product>KeePass Plugin</Product>`。KeePass 官方 `PluginManager.LoadPlugins` 会在底层核验该 PE 字段，若不匹配会静默跳过插件。
-  - **入口类强命名规则**：导出类必须严格继承 `KeePass.Plugins.Plugin`，且类名必须为 `[AssemblyName]Ext`（即 `KeePassFluentUIExt`），以匹配 KeePass 官方的 `Activator.CreateInstanceFrom` 查找模式。
+  - **入口类强命名规则**：导出类必须严格继承 `KeePass.Plugins.Plugin`，且类名必须为 `[AssemblyName]Ext`（即 `FluentPassExt`），以匹配 KeePass 官方的 `Activator.CreateInstanceFrom` 查找模式。
 
 ---
 
@@ -123,4 +123,4 @@ _host.MainWindow.UpdateUI(false, null, true, null, true, null, true);
 - [ ] 是否在 ViewModel 中将密码解密成了 `string` 驻留在内存中？**[严禁]**
 - [ ] 是否重写了加解密或破坏了第三方安全插件的 Hook 点？**[严禁]**
 - [ ] 编译出的 DLL 属性 `ProductName` 是否依然为 `"KeePass Plugin"`？**[必须]**
-- [ ] `tests/KeePassFluentUI.Tests` 下的所有单元测试与 Smoke 测试是否全部通过？**[必须]**
+- [ ] `tests/FluentPass.Tests` 下的所有单元测试与 Smoke 测试是否全部通过？**[必须]**

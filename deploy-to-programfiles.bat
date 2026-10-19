@@ -1,7 +1,7 @@
 @echo off
-:: 一键以管理员权限将 KeePassFluentUI.dll 复制到 Program Files 全局目录
-set "SOURCE=%~dp0src\KeePassFluentUI\bin\Release\net48\KeePassFluentUI.dll"
-set "DEST=C:\Program Files\KeePass Password Safe 2\Plugins\KeePassFluentUI.dll"
+:: 一键以管理员权限将 FluentPass.dll 复制到 Program Files 全局目录
+set "SOURCE=%~dp0src\FluentPass\bin\Release\net48\FluentPass.dll"
+set "DEST=C:\Program Files\KeePass Password Safe 2\Plugins\FluentPass.dll"
 
 net session >nul 2>&1
 if %errorLevel% == 0 (
