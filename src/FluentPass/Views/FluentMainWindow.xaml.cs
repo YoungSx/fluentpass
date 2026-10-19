@@ -41,7 +41,7 @@ namespace FluentPass.Views
 
             try
             {
-                if (Wpf.Ui.UiApplication.Current != null && Wpf.Ui.UiApplication.Current.Dispatcher.CheckAccess())
+                if (Wpf.Ui.UiApplication.Current != null)
                 {
                     Wpf.Ui.UiApplication.Current.MainWindow = this;
                 }
