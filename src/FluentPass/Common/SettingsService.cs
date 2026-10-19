@@ -15,11 +15,13 @@ namespace FluentPass.Common
         public const string AutoTakeoverKey = "FluentPass_AutoTakeoverUI";
         public const string CloseActionKey = "FluentPass_CloseAction";
         public const string AppThemeKey = "FluentPass_AppTheme";
+        public const string LanguageKey = "FluentPass_Language";
         public const string AutoMaskSecondsKey = "FluentPass_AutoMaskSeconds";
 
         public const bool DefaultAutoTakeoverUI = true;
         public const WindowCloseAction DefaultCloseAction = WindowCloseAction.RestoreOriginalWindow;
         public const string DefaultAppTheme = "System";
+        public const string DefaultLanguage = "Auto";
         public const int DefaultAutoMaskSeconds = 10;
 
         public static bool GetAutoTakeoverUI(IPluginHost? host)
@@ -104,6 +106,39 @@ namespace FluentPass.Common
                     theme = DefaultAppTheme;
                 }
                 host?.CustomConfig?.SetString(AppThemeKey, theme);
+            }
+            catch { }
+        }
+
+        public static string GetLanguage(IPluginHost? host)
+        {
+            var val = host?.CustomConfig?.GetString(LanguageKey);
+            if (string.IsNullOrWhiteSpace(val))
+            {
+                return DefaultLanguage;
+            }
+
+            if (string.Equals(val, "zh-CN", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(val, "zh", StringComparison.OrdinalIgnoreCase)) return "zh-CN";
+            if (string.Equals(val, "en-US", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(val, "en", StringComparison.OrdinalIgnoreCase)) return "en-US";
+            if (string.Equals(val, "Auto", StringComparison.OrdinalIgnoreCase)) return "Auto";
+
+            return DefaultLanguage;
+        }
+
+        public static void SetLanguage(IPluginHost? host, string language)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(language) ||
+                    (!string.Equals(language, "zh-CN", StringComparison.OrdinalIgnoreCase) &&
+                     !string.Equals(language, "en-US", StringComparison.OrdinalIgnoreCase) &&
+                     !string.Equals(language, "Auto", StringComparison.OrdinalIgnoreCase)))
+                {
+                    language = DefaultLanguage;
+                }
+                host?.CustomConfig?.SetString(LanguageKey, language);
             }
             catch { }
         }

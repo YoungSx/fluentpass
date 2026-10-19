@@ -320,8 +320,8 @@ namespace FluentPass.Views
             if (_host.Database != null && _host.Database.IsOpen && _host.Database.Modified)
             {
                 var result = MessageService.Show(
-                    "当前数据库有未保存的更改。是否立即保存？",
-                    "Fluent Pass",
+                    Loc.Get("Dialog_UnsavedChanges_Prompt"),
+                    Loc.Get("Dialog_UnsavedChanges_Title"),
                     MessageBoxButton.YesNoCancel,
                     MessageBoxImage.Question);
 

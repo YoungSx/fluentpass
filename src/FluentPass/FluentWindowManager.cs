@@ -26,6 +26,7 @@ namespace FluentPass
         {
             _host = host;
 
+            Loc.Instance.Initialize(_host);
             EnsureWpfApplication();
             _viewModel = new MainViewModel(_host);
 
@@ -117,6 +118,7 @@ namespace FluentPass
             }
 
             EnsureWpfUiDictionaries(app.Resources);
+            Loc.Instance.UpdateApplicationResources();
         }
 
         private static void EnsureWpfUiDictionaries(ResourceDictionary resources)
