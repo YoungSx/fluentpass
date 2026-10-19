@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/fluentpass/fluentpass/releases"><img src="https://img.shields.io/badge/Release-v1.0.0-blue.svg?style=flat-square" alt="Release" /></a>
+  <a href="https://github.com/YoungSx/fluentpass/releases"><img src="https://img.shields.io/badge/Release-v1.0.0-blue.svg?style=flat-square" alt="Release" /></a>
   <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-0078D6.svg?style=flat-square" alt="Platform" />
   <img src="https://img.shields.io/badge/KeePass-2.x%20Plugin-2E7D32.svg?style=flat-square" alt="KeePass 2.x" />
   <img src="https://img.shields.io/badge/.NET-Framework%204.8-512BD4.svg?style=flat-square" alt=".NET 4.8" />
@@ -70,15 +70,35 @@
 - **KeePass 宿主**：[KeePass 2.x](https://keepass.info/) (官方安装版或 Portable 便携版)
 - **运行时环境**：.NET Framework 4.8（Windows 10/11 系统已原生内置，**无需额外安装**）
 
-### 简单 3 步完成安装
+### ⚡ 方式一：PowerShell 一键安装（推荐）
+
+打开 Windows PowerShell，复制并执行以下一行命令即可自动完成最新 Release 版本的下载、检测安装路径与安全部署：
+
+```powershell
+irm https://raw.githubusercontent.com/YoungSx/fluentpass/main/scripts/install.ps1 | iex
+```
+
+> [!TIP]
+> - **权限自动提权**：如果 KeePass 安装在 `C:\Program Files` 目录下，脚本会自动弹出 Windows 标准 UAC 提权请求，无需手动使用“以管理员身份运行”打开终端；
+> - **安装后自动启动**：若希望安装完成后直接唤起 KeePass，可传入 `-Launch` 参数：
+>   ```powershell
+>   & { irm https://raw.githubusercontent.com/YoungSx/fluentpass/main/scripts/install.ps1 } | iex -ArgumentList "-Launch"
+>   ```
+> - **国内网络加速**：若遇到直连 GitHub 访问受限或超时，可使用内置镜像代理加速通道：
+>   ```powershell
+>   irm https://ghp.ci/https://raw.githubusercontent.com/YoungSx/fluentpass/main/scripts/install.ps1 | iex
+>   ```
+
+### 📦 方式二：手动下载与安装
 
 1. **下载插件**：
-   前往 [Releases 页面](https://github.com/fluentpass/fluentpass/releases) 下载最新编译好的单文件 `FluentPass.dll` 或 Zip 安装包。
+   前往 [Releases 页面](https://github.com/YoungSx/fluentpass/releases) 下载最新编译好的单文件 `FluentPass.dll` 或 Zip 安装包。
 
 2. **放入 Plugins 文件夹**：
    将下载好的 `FluentPass.dll` 复制到 KeePass 的 `Plugins` 目录下：
    - **默认安装路径**：`C:\Program Files\KeePass Password Safe 2\Plugins`
    - **便携版路径**：KeePass 解压目录中的 `Plugins` 文件夹
+   - **用户数据路径**：`%APPDATA%\KeePass\Plugins`
 
 3. **启动 KeePass**：
    启动 KeePass 并解锁数据库，Fluent Pass 现代化窗口将自动呈现！
@@ -145,6 +165,7 @@ fluentpass/
 │   ├── icon.png                            # 1254x1254 品牌矢量源图
 │   └── screenshot.png                      # Windows 11 Mica 材质主视窗截图
 ├── scripts/
+│   ├── install.ps1                         # PowerShell 一键在线安装最新 Release 脚本
 │   ├── release.ps1                         # Windows / PowerShell 标准化发版脚本
 │   └── release.sh                          # Linux / macOS / Bash 标准化发版脚本
 ├── ARCHITECTURE.md                         # 架构设计、铁律与功能边界白皮书 (必读)
