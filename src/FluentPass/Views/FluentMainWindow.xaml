@@ -378,6 +378,9 @@
                                     <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
                                     <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
                                     <Setter Property="Padding" Value="4,3" />
+                                    <Setter Property="AllowDrop" Value="True" />
+                                    <EventSetter Event="DragOver" Handler="OnTreeViewItemDragOver" />
+                                    <EventSetter Event="Drop" Handler="OnTreeViewItemDrop" />
                                 </Style>
                             </TreeView.ItemContainerStyle>
                         </TreeView>
@@ -424,6 +427,7 @@
                             <ui:ListView x:Name="EntriesListView"
                                          ItemsSource="{Binding FilteredEntries}"
                                          SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
+                                         SelectionMode="Extended"
                                          BorderThickness="0"
                                          Background="Transparent"
                                          VerticalAlignment="Stretch"
@@ -436,6 +440,9 @@
                                 </ui:ListView.Resources>
                                 <ui:ListView.ItemContainerStyle>
                                     <Style TargetType="ui:ListViewItem" BasedOn="{StaticResource {x:Type ui:ListViewItem}}">
+                                        <EventSetter Event="PreviewMouseLeftButtonDown" Handler="OnListViewItemPreviewMouseLeftButtonDown" />
+                                        <EventSetter Event="PreviewMouseMove" Handler="OnListViewItemPreviewMouseMove" />
+                                        <EventSetter Event="PreviewMouseLeftButtonUp" Handler="OnListViewItemPreviewMouseLeftButtonUp" />
                                         <EventSetter Event="PreviewMouseRightButtonDown" Handler="OnListViewItemPreviewMouseRightButtonDown" />
                                     </Style>
                                 </ui:ListView.ItemContainerStyle>
