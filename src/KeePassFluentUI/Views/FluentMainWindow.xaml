@@ -8,21 +8,36 @@
         xmlns:common="clr-namespace:KeePassFluentUI.Common"
         mc:Ignorable="d"
         Title="{Binding WindowTitle}"
-        Height="760" Width="1200"
+        Height="780" Width="1240"
         MinHeight="560" MinWidth="920"
         WindowStartupLocation="CenterScreen"
         WindowBackdropType="Mica"
         ExtendsContentIntoTitleBar="True">
 
     <Window.Resources>
-        <common:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ui:ThemesDictionary Theme="Dark" />
+                <ui:ControlsDictionary />
+            </ResourceDictionary.MergedDictionaries>
 
-        <Style x:Key="ActionIconButtonStyle" TargetType="ui:Button">
-            <Setter Property="Appearance" Value="Transparent" />
-            <Setter Property="Padding" Value="6,4" />
-            <Setter Property="Margin" Value="2,0" />
-            <Setter Property="Cursor" Value="Hand" />
-        </Style>
+            <common:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+
+            <Style x:Key="ActionIconButtonStyle" TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                <Setter Property="Appearance" Value="Transparent" />
+                <Setter Property="Padding" Value="6,4" />
+                <Setter Property="Margin" Value="2,0" />
+                <Setter Property="Cursor" Value="Hand" />
+            </Style>
+
+            <Style x:Key="DangerIconButtonStyle" TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                <Setter Property="Appearance" Value="Transparent" />
+                <Setter Property="Padding" Value="6,4" />
+                <Setter Property="Margin" Value="2,0" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+            </Style>
+        </ResourceDictionary>
     </Window.Resources>
 
     <Grid>
@@ -172,11 +187,11 @@
                         <Grid Grid.Row="0" Margin="4,2,4,8">
                             <ui:TextBlock Text="分组目录" FontTypography="BodyStrong" VerticalAlignment="Center" />
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                <ui:Button Style="{StaticResource ActionIconButtonStyle}"
+                                <ui:Button Style="{StaticResource DangerIconButtonStyle}"
                                            ToolTip="清空回收站"
                                            Visibility="{Binding IsRecycleBinSelected, Converter={StaticResource BooleanToVisibilityConverter}}"
                                            Command="{Binding EmptyRecycleBinCommand}">
-                                    <ui:SymbolIcon Symbol="Dismiss20" Foreground="#D32F2F" />
+                                    <ui:SymbolIcon Symbol="Dismiss20" />
                                 </ui:Button>
                                 <ui:Button Style="{StaticResource ActionIconButtonStyle}"
                                            ToolTip="在选中分组下新建子分组"
@@ -191,7 +206,7 @@
                             </StackPanel>
                         </Grid>
 
-                        <!-- 递归分组树 -->
+                        <!-- 现代 Fluent 递归分组树 -->
                         <TreeView Grid.Row="1"
                                   ItemsSource="{Binding RootGroups}"
                                   BorderThickness="0"
@@ -199,21 +214,27 @@
                                   SelectedItemChanged="OnTreeViewSelectedItemChanged">
                             <TreeView.ItemTemplate>
                                 <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                                    <StackPanel Orientation="Horizontal" Margin="2,4">
-                                        <Image Source="{Binding IconSource}" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center" />
-                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontSize="13" />
-                                        <TextBlock Text="{Binding EntryCount, StringFormat='{} ({0})'}" 
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
-                                                   VerticalAlignment="Center" 
-                                                   FontSize="11" />
-                                    </StackPanel>
+                                    <Grid Margin="2,3">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Image Grid.Column="0" Source="{Binding IconSource}" Width="16" Height="16" Margin="0,0,8,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality" />
+                                        <ui:TextBlock Grid.Column="1" Text="{Binding Name}" FontTypography="Body" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                        <ui:InfoBadge Grid.Column="2"
+                                                      Value="{Binding EntryCount}"
+                                                      Severity="Informational"
+                                                      Margin="8,0,4,0"
+                                                      VerticalAlignment="Center" />
+                                    </Grid>
                                 </HierarchicalDataTemplate>
                             </TreeView.ItemTemplate>
                             <TreeView.ItemContainerStyle>
-                                <Style TargetType="TreeViewItem">
+                                <Style TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}">
                                     <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
                                     <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
-                                    <Setter Property="Padding" Value="4,2" />
+                                    <Setter Property="Padding" Value="4,3" />
                                 </Style>
                             </TreeView.ItemContainerStyle>
                         </TreeView>
@@ -244,6 +265,7 @@
                                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                                         PlaceholderText="实时搜索条目 (Ctrl+F)..."
                                         Icon="{ui:SymbolIcon Search20}"
+                                        ClearButtonEnabled="True"
                                         Margin="0,0,6,0" />
                             <ui:Button Grid.Column="1"
                                        Appearance="Primary"
@@ -253,19 +275,19 @@
                         </Grid>
 
                         <!-- 列表统计信息与 Win11 官方 ToggleSwitch 开关 -->
-                        <Grid Grid.Row="1" Margin="6,2,6,6">
+                        <Grid Grid.Row="1" Margin="6,2,6,8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12">
-                                <TextBlock.Text>
+                            <ui:TextBlock Grid.Column="0" VerticalAlignment="Center" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                                <ui:TextBlock.Text>
                                     <MultiBinding StringFormat="共 {0} 个条目 (显示 {1} 项)">
                                         <Binding Path="TotalEntriesCount" />
                                         <Binding Path="FilteredEntriesCount" />
                                     </MultiBinding>
-                                </TextBlock.Text>
-                            </TextBlock>
+                                </ui:TextBlock.Text>
+                            </ui:TextBlock>
                             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                 <ui:ToggleSwitch OnContent="子组"
                                                  OffContent="子组"
@@ -344,33 +366,28 @@
                             </ui:ListView.ContextMenu>
                             <ui:ListView.ItemTemplate>
                                 <DataTemplate>
-                                    <Border BorderThickness="0,0,0,1"
-                                            BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
-                                            Padding="6,8"
-                                            Background="Transparent">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
+                                    <Grid Margin="4,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
 
-                                            <!-- 图标 -->
-                                            <Image Grid.Column="0" Source="{Binding IconSource}" Width="24" Height="24" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                        <!-- 图标 -->
+                                        <Image Grid.Column="0" Source="{Binding IconSource}" Width="24" Height="24" Margin="4,0,12,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality" />
 
-                                            <!-- 条目文本摘要 -->
-                                            <Grid Grid.Column="1">
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="Auto" />
-                                                </Grid.RowDefinitions>
-                                                <TextBlock Grid.Row="0" Text="{Binding Title}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" />
-                                                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,2,0,0">
-                                                    <TextBlock Text="{Binding UserName}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="11" Margin="0,0,10,0" TextTrimming="CharacterEllipsis" MaxWidth="140" />
-                                                    <TextBlock Text="{Binding LastModifiedDisplay}" Foreground="{DynamicResource TextFillColorTertiaryBrush}" FontSize="11" />
-                                                </StackPanel>
-                                            </Grid>
+                                        <!-- 条目文本摘要 -->
+                                        <Grid Grid.Column="1" VerticalAlignment="Center">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <ui:TextBlock Grid.Row="0" Text="{Binding Title}" FontTypography="BodyStrong" TextTrimming="CharacterEllipsis" />
+                                            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,2,0,0">
+                                                <ui:TextBlock Text="{Binding UserName}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,10,0" TextTrimming="CharacterEllipsis" MaxWidth="140" />
+                                                <ui:TextBlock Text="{Binding LastModifiedDisplay}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                                            </StackPanel>
                                         </Grid>
-                                    </Border>
+                                    </Grid>
                                 </DataTemplate>
                             </ui:ListView.ItemTemplate>
                         </ui:ListView>
@@ -403,10 +420,10 @@
                             </StackPanel>
                         </Grid>
 
-                        <!-- 已选择条目的详情面板 -->
-                        <ScrollViewer DataContext="{Binding CurrentDetail}" VerticalScrollBarVisibility="Auto">
-                            <ScrollViewer.Style>
-                                <Style TargetType="ScrollViewer">
+                        <!-- 已选择条目的详情面板 (采用 DynamicScrollViewer 实现平滑流动滚动) -->
+                        <ui:DynamicScrollViewer DataContext="{Binding CurrentDetail}" VerticalScrollBarVisibility="Auto">
+                            <ui:DynamicScrollViewer.Style>
+                                <Style TargetType="ui:DynamicScrollViewer" BasedOn="{StaticResource {x:Type ui:DynamicScrollViewer}}">
                                     <Setter Property="Visibility" Value="Visible" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding}" Value="{x:Null}">
@@ -414,193 +431,227 @@
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
-                            </ScrollViewer.Style>
+                            </ui:DynamicScrollViewer.Style>
 
                             <StackPanel Margin="0,0,8,0">
                                 <!-- 顶部标题与操作卡片 -->
-                                <Grid Margin="0,0,0,16">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
+                                <ui:Card Margin="0,0,0,14" Padding="14,12">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
 
-                                    <Image Grid.Column="0" Source="{Binding IconSource}" Width="32" Height="32" Margin="0,0,12,0" VerticalAlignment="Center" />
-                                    
-                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                        <ui:TextBlock Text="{Binding Title}" FontTypography="Title" TextTrimming="CharacterEllipsis" />
-                                        <ui:TextBlock Text="{Binding LastModifiedDisplay, StringFormat='{}修改于 {0}'}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
-                                    </StackPanel>
-
-                                    <!-- 动作按钮栏 -->
-                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                        <!-- 查看模式下的工具 -->
-                                        <StackPanel Orientation="Horizontal" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
-                                            <ui:Button Appearance="Primary" Margin="0,0,4,0" Command="{Binding BeginEditCommand}" Icon="{ui:SymbolIcon Edit20}" Content="编辑" />
-                                            <ui:Button Style="{StaticResource ActionIconButtonStyle}" ToolTip="执行全局自动输入 (Auto-Type)" Command="{Binding PerformAutoTypeCommand}">
-                                                <ui:SymbolIcon Symbol="Keyboard20" />
-                                            </ui:Button>
-                                            <ui:Button Style="{StaticResource ActionIconButtonStyle}" ToolTip="调起原版 KeePass 高级编辑窗口" Command="{Binding InvokeOriginalEntryDialogCommand}">
-                                                <ui:SymbolIcon Symbol="Open20" />
-                                            </ui:Button>
+                                        <Image Grid.Column="0" Source="{Binding IconSource}" Width="36" Height="36" Margin="0,0,14,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality" />
+                                        
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <ui:TextBlock Text="{Binding Title}" FontTypography="Title" TextTrimming="CharacterEllipsis" />
+                                            <ui:TextBlock Text="{Binding LastModifiedDisplay, StringFormat='{}修改于 {0}'}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,2,0,0" />
                                         </StackPanel>
 
-                                        <!-- 编辑模式下的工具 -->
-                                        <StackPanel Orientation="Horizontal" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                            <ui:Button Appearance="Primary" Margin="0,0,4,0" Command="{Binding SaveEditCommand}" Icon="{ui:SymbolIcon Checkmark20}" Content="保存" />
-                                            <ui:Button Appearance="Secondary" Command="{Binding CancelEditCommand}" Content="取消" />
-                                        </StackPanel>
-                                    </StackPanel>
-                                </Grid>
+                                        <!-- 动作按钮栏 -->
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <!-- 查看模式下的工具 -->
+                                            <StackPanel Orientation="Horizontal" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
+                                                <ui:Button Appearance="Primary" Margin="0,0,6,0" Command="{Binding BeginEditCommand}" Icon="{ui:SymbolIcon Edit20}" Content="编辑" />
+                                                <ui:Button Style="{StaticResource ActionIconButtonStyle}" ToolTip="执行全局自动输入 (Auto-Type)" Command="{Binding PerformAutoTypeCommand}">
+                                                    <ui:SymbolIcon Symbol="Keyboard20" />
+                                                </ui:Button>
+                                                <ui:Button Style="{StaticResource ActionIconButtonStyle}" ToolTip="调起原版 KeePass 高级编辑窗口" Command="{Binding InvokeOriginalEntryDialogCommand}">
+                                                    <ui:SymbolIcon Symbol="Open20" />
+                                                </ui:Button>
+                                            </StackPanel>
 
-                                <Separator Margin="0,0,0,16" Background="{DynamicResource DividerStrokeColorDefaultBrush}" />
+                                            <!-- 编辑模式下的工具 -->
+                                            <StackPanel Orientation="Horizontal" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                <ui:Button Appearance="Primary" Margin="0,0,6,0" Command="{Binding SaveEditCommand}" Icon="{ui:SymbolIcon Checkmark20}" Content="保存" />
+                                                <ui:Button Appearance="Secondary" Command="{Binding CancelEditCommand}" Content="取消" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Grid>
+                                </ui:Card>
 
                                 <!-- ================= 字段 1: 用户名 ================= -->
-                                <ui:TextBlock Text="用户名 (User Name)" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,4" />
-                                <Grid Margin="0,0,0,12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <!-- 查看模式 -->
-                                    <ui:TextBox Grid.Column="0" IsReadOnly="True" Text="{Binding UserName}" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}" />
-                                    <!-- 编辑模式 -->
-                                    <ui:TextBox Grid.Column="0" Text="{Binding EditUserName, UpdateSourceTrigger=PropertyChanged}" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                    <ui:Button Grid.Column="1" Style="{StaticResource ActionIconButtonStyle}" Margin="6,0,0,0" ToolTip="复制用户名" Command="{Binding CopyUsernameCommand}">
-                                        <ui:SymbolIcon Symbol="Copy20" />
-                                    </ui:Button>
-                                </Grid>
+                                <ui:Card Margin="0,0,0,10" Padding="14,10">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Margin="0,0,0,6">
+                                            <ui:SymbolIcon Symbol="Person20" Margin="0,0,6,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                            <ui:TextBlock Text="用户名 (User Name)" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                                        </StackPanel>
+
+                                        <!-- 查看模式 -->
+                                        <ui:TextBox Grid.Row="1" Grid.Column="0" IsReadOnly="True" Text="{Binding UserName}" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}" />
+                                        <!-- 编辑模式 -->
+                                        <ui:TextBox Grid.Row="1" Grid.Column="0" Text="{Binding EditUserName, UpdateSourceTrigger=PropertyChanged}" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                        <ui:Button Grid.Row="1" Grid.Column="1" Style="{StaticResource ActionIconButtonStyle}" Margin="8,0,0,0" ToolTip="复制用户名" Command="{Binding CopyUsernameCommand}">
+                                            <ui:SymbolIcon Symbol="Copy20" />
+                                        </ui:Button>
+                                    </Grid>
+                                </ui:Card>
 
                                 <!-- ================= 字段 2: 密码安全交互区 ================= -->
-                                <Grid Margin="0,0,0,4">
-                                    <ui:TextBlock Text="密码 (Password)" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                                    <!-- 倒计时提示 -->
-                                    <TextBlock HorizontalAlignment="Right" Foreground="#FFA500" FontSize="11"
-                                               Visibility="{Binding IsPasswordRevealed, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                               Text="{Binding PasswordRevealSecondsRemaining, StringFormat='{}{0} 秒后自动遮蔽'}" />
-                                </Grid>
+                                <ui:Card Margin="0,0,0,10" Padding="14,10">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,6">
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <ui:SymbolIcon Symbol="Key20" Margin="0,0,6,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                                <ui:TextBlock Text="密码 (Password)" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                            <!-- 倒计时安全提示使用 Fluent InfoBadge -->
+                                            <ui:InfoBadge HorizontalAlignment="Right"
+                                                          Severity="Caution"
+                                                          Value="{Binding PasswordRevealSecondsRemaining, StringFormat='{}{0} 秒后自动遮蔽'}"
+                                                          Visibility="{Binding IsPasswordRevealed, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                        </Grid>
 
-                                <!-- 查看模式下的密码 -->
-                                <Grid Margin="0,0,0,6" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
+                                        <!-- 查看模式下的密码 -->
+                                        <Grid Margin="0,0,0,8" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
 
-                                    <!-- 掩码状态展示 -->
-                                    <ui:TextBox Grid.Column="0" IsReadOnly="True" Text="{Binding PasswordMasked}" FontFamily="Consolas"
-                                                Visibility="{Binding IsPasswordRevealed, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}" />
+                                            <!-- 掩码状态展示 -->
+                                            <ui:TextBox Grid.Column="0" IsReadOnly="True" Text="{Binding PasswordMasked}" FontFamily="Consolas"
+                                                        Visibility="{Binding IsPasswordRevealed, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}" />
 
-                                    <!-- 明文展开状态展示 (带高亮边框警示) -->
-                                    <ui:TextBox Grid.Column="0" IsReadOnly="True" Text="{Binding RevealedPassword}" FontFamily="Consolas" FontWeight="SemiBold"
-                                                Visibility="{Binding IsPasswordRevealed, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                            <!-- 明文展开状态展示 -->
+                                            <ui:TextBox Grid.Column="0" IsReadOnly="True" Text="{Binding RevealedPassword}" FontFamily="Consolas" FontWeight="SemiBold"
+                                                        Visibility="{Binding IsPasswordRevealed, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-                                    <!-- 切换明文按钮 -->
-                                    <ui:Button Grid.Column="1" Style="{StaticResource ActionIconButtonStyle}" Margin="6,0,0,0"
-                                               ToolTip="显示/隐藏明文 (10秒自动遮蔽)" Command="{Binding TogglePasswordVisibilityCommand}">
-                                        <ui:SymbolIcon Symbol="Eye20" />
-                                    </ui:Button>
+                                            <!-- 切换明文按钮 -->
+                                            <ui:Button Grid.Column="1" Style="{StaticResource ActionIconButtonStyle}" Margin="8,0,0,0"
+                                                       ToolTip="显示/隐藏明文 (10秒后自动遮蔽)" Command="{Binding TogglePasswordVisibilityCommand}">
+                                                <ui:SymbolIcon Symbol="Eye20" />
+                                            </ui:Button>
 
-                                    <!-- 复制密码按钮 -->
-                                    <ui:Button Grid.Column="2" Style="{StaticResource ActionIconButtonStyle}" Margin="2,0,0,0"
-                                               ToolTip="安全复制密码 (原版剪贴板倒计时自动清空)" Command="{Binding CopyPasswordCommand}">
-                                        <ui:SymbolIcon Symbol="Copy20" />
-                                    </ui:Button>
-                                </Grid>
+                                            <!-- 复制密码按钮 -->
+                                            <ui:Button Grid.Column="2" Appearance="Primary" Margin="4,0,0,0"
+                                                       ToolTip="安全复制密码 (原版剪贴板倒计时自动清空)" Command="{Binding CopyPasswordCommand}">
+                                                <ui:SymbolIcon Symbol="Copy20" />
+                                            </ui:Button>
+                                        </Grid>
 
-                                <!-- 编辑模式下的密码 (防窥保护) -->
-                                <Grid Margin="0,0,0,6" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
+                                        <!-- 编辑模式下的密码 (防窥保护) -->
+                                        <Grid Margin="0,0,0,8" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
 
-                                    <!-- 掩码状态 (默认脱敏防窥) -->
-                                    <ui:TextBox Grid.Column="0"
-                                                Text="{Binding EditPassword, UpdateSourceTrigger=PropertyChanged}"
-                                                FontFamily="Consolas"
-                                                Visibility="{Binding IsEditPasswordRevealed, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                            <!-- 掩码状态 (默认脱敏防窥) -->
+                                            <ui:TextBox Grid.Column="0"
+                                                        Text="{Binding EditPassword, UpdateSourceTrigger=PropertyChanged}"
+                                                        FontFamily="Consolas"
+                                                        Visibility="{Binding IsEditPasswordRevealed, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-                                    <ui:PasswordBox Grid.Column="0"
-                                                    Password="{Binding EditPassword, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
-                                                    FontFamily="Consolas"
-                                                    Visibility="{Binding IsEditPasswordRevealed, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}" />
+                                            <ui:PasswordBox Grid.Column="0"
+                                                            Password="{Binding EditPassword, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                                            FontFamily="Consolas"
+                                                            Visibility="{Binding IsEditPasswordRevealed, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}" />
 
-                                    <!-- 切换防窥显隐 -->
-                                    <ui:Button Grid.Column="1" Style="{StaticResource ActionIconButtonStyle}" Margin="6,0,0,0"
-                                               ToolTip="显示/隐藏明文 (防窥保护)" Command="{Binding ToggleEditPasswordVisibilityCommand}">
-                                        <ui:SymbolIcon Symbol="Eye20" />
-                                    </ui:Button>
+                                            <!-- 切换防窥显隐 -->
+                                            <ui:Button Grid.Column="1" Style="{StaticResource ActionIconButtonStyle}" Margin="8,0,0,0"
+                                                       ToolTip="显示/隐藏明文 (防窥保护)" Command="{Binding ToggleEditPasswordVisibilityCommand}">
+                                                <ui:SymbolIcon Symbol="Eye20" />
+                                            </ui:Button>
 
-                                    <!-- 调起原版密码生成器 -->
-                                    <ui:Button Grid.Column="2" Style="{StaticResource ActionIconButtonStyle}" Margin="2,0,0,0"
-                                               ToolTip="调起原版密码生成器" Command="{Binding InvokePwGeneratorCommand}">
-                                        <ui:SymbolIcon Symbol="Wand20" />
-                                    </ui:Button>
-                                </Grid>
+                                            <!-- 调起原版密码生成器 -->
+                                            <ui:Button Grid.Column="2" Style="{StaticResource ActionIconButtonStyle}" Margin="4,0,0,0"
+                                                       ToolTip="调起原版密码生成器" Command="{Binding InvokePwGeneratorCommand}">
+                                                <ui:SymbolIcon Symbol="Wand20" />
+                                            </ui:Button>
+                                        </Grid>
 
-                                <!-- 密码质量与熵值估算指示条 -->
-                                <Grid Margin="0,0,0,12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <ProgressBar Grid.Column="0" Height="4" VerticalAlignment="Center"
-                                                 Value="{Binding PasswordQualityPercent}" Maximum="100"
-                                                 Foreground="{Binding PasswordQualityColor}" Margin="0,0,8,0" />
-                                    <TextBlock Grid.Column="1" Text="{Binding PasswordQualityText}" FontSize="11"
-                                               Foreground="{Binding PasswordQualityColor}" VerticalAlignment="Center" />
-                                </Grid>
+                                        <!-- 密码质量与熵值估算指示条 -->
+                                        <Grid Margin="0,2,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <ProgressBar Grid.Column="0" Height="4" VerticalAlignment="Center"
+                                                         Value="{Binding PasswordQualityPercent}" Maximum="100"
+                                                         Foreground="{Binding PasswordQualityColor}" Margin="0,0,8,0" />
+                                            <ui:TextBlock Grid.Column="1" Text="{Binding PasswordQualityText}" FontTypography="Caption"
+                                                          Foreground="{Binding PasswordQualityColor}" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </StackPanel>
+                                </ui:Card>
 
                                 <!-- ================= 字段 3: 网址 (URL) ================= -->
-                                <ui:TextBlock Text="网址 (URL)" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,4" />
-                                <Grid Margin="0,0,0,12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <ui:TextBox Grid.Column="0" IsReadOnly="True" Text="{Binding Url}" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}" />
-                                    <ui:TextBox Grid.Column="0" Text="{Binding EditUrl, UpdateSourceTrigger=PropertyChanged}" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                    <ui:Button Grid.Column="1" Style="{StaticResource ActionIconButtonStyle}" Margin="6,0,0,0" ToolTip="在默认浏览器中打开" Command="{Binding OpenUrlCommand}">
-                                        <ui:SymbolIcon Symbol="Open20" />
-                                    </ui:Button>
-                                    <ui:Button Grid.Column="2" Style="{StaticResource ActionIconButtonStyle}" Margin="2,0,0,0" ToolTip="复制网址" Command="{Binding CopyUrlCommand}">
-                                        <ui:SymbolIcon Symbol="Copy20" />
-                                    </ui:Button>
-                                </Grid>
+                                <ui:Card Margin="0,0,0,10" Padding="14,10">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
 
-                                <!-- ================= 字段 4: 备注 (Notes) ================= -->
-                                <ui:TextBlock Text="备注 (Notes)" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,4" />
-                                <Grid Margin="0,0,0,12">
-                                    <ui:TextBox IsReadOnly="True" Text="{Binding Notes}" AcceptsReturn="True" MinHeight="70" MaxHeight="140"
-                                                TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
-                                                Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}" />
-                                    <ui:TextBox Text="{Binding EditNotes, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" MinHeight="70" MaxHeight="140"
-                                                TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
-                                                Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                </Grid>
+                                        <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Margin="0,0,0,6">
+                                            <ui:SymbolIcon Symbol="Globe20" Margin="0,0,6,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                            <ui:TextBlock Text="网址 (URL)" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                                        </StackPanel>
 
-                                <!-- ================= 字段 5: 自定义字段 (Custom Fields) 原生 CardExpander ================= -->
+                                        <ui:TextBox Grid.Row="1" Grid.Column="0" IsReadOnly="True" Text="{Binding Url}" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}" />
+                                        <ui:TextBox Grid.Row="1" Grid.Column="0" Text="{Binding EditUrl, UpdateSourceTrigger=PropertyChanged}" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                        <ui:Button Grid.Row="1" Grid.Column="1" Style="{StaticResource ActionIconButtonStyle}" Margin="8,0,0,0" ToolTip="在默认浏览器中打开" Command="{Binding OpenUrlCommand}">
+                                            <ui:SymbolIcon Symbol="Open20" />
+                                        </ui:Button>
+                                        <ui:Button Grid.Row="1" Grid.Column="2" Style="{StaticResource ActionIconButtonStyle}" Margin="4,0,0,0" ToolTip="复制网址" Command="{Binding CopyUrlCommand}">
+                                            <ui:SymbolIcon Symbol="Copy20" />
+                                        </ui:Button>
+                                    </Grid>
+                                </ui:Card>
+
+                                <!-- ================= 字段 4: 备注 (Notes) 原生 CardExpander ================= -->
+                                <ui:CardExpander Header="备注 (Notes)"
+                                                 Icon="Document24"
+                                                 IsExpanded="True"
+                                                 Margin="0,0,0,10">
+                                    <Grid Margin="0,4,0,0">
+                                        <ui:TextBox IsReadOnly="True" Text="{Binding Notes}" AcceptsReturn="True" MinHeight="70" MaxHeight="180"
+                                                    TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                                                    Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}" />
+                                        <ui:TextBox Text="{Binding EditNotes, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" MinHeight="70" MaxHeight="180"
+                                                    TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                                                    Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                    </Grid>
+                                </ui:CardExpander>
+
+                                <!-- ================= 字段 5: 自定义附加字段 原生 CardExpander ================= -->
                                 <ui:CardExpander Header="自定义附加字段"
                                                  Icon="Tag24"
                                                  IsExpanded="True"
-                                                 Margin="0,0,0,12"
+                                                 Margin="0,0,0,10"
                                                  Visibility="{Binding CustomFields.Count, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <ItemsControl ItemsSource="{Binding CustomFields}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <Grid Margin="0,4">
                                                     <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="120" />
+                                                        <ColumnDefinition Width="130" />
                                                         <ColumnDefinition Width="*" />
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0" Text="{Binding Key}" FontWeight="Medium" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                    <ui:TextBlock Grid.Column="0" Text="{Binding Key}" FontTypography="BodyStrong" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />
                                                     <ui:TextBox Grid.Column="1" IsReadOnly="True" Text="{Binding DisplayValue}" />
-                                                    <ui:Button Grid.Column="2" Style="{StaticResource ActionIconButtonStyle}"
+                                                    <ui:Button Grid.Column="2" Style="{StaticResource ActionIconButtonStyle}" Margin="6,0,0,0"
                                                                Visibility="{Binding IsProtected, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                                Command="{Binding ToggleRevealCommand}" ToolTip="查看明文">
                                                         <ui:SymbolIcon Symbol="Eye20" />
@@ -611,59 +662,59 @@
                                     </ItemsControl>
                                 </ui:CardExpander>
 
-                                <!-- ================= 字段 6: 附件 (Attachments) 原生 CardExpander ================= -->
+                                <!-- ================= 字段 6: 二进制附件 原生 CardExpander ================= -->
                                 <ui:CardExpander Header="二进制附件"
                                                  Icon="Attach24"
                                                  IsExpanded="True"
-                                                 Margin="0,0,0,12"
+                                                 Margin="0,0,0,10"
                                                  Visibility="{Binding Attachments.Count, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <ItemsControl ItemsSource="{Binding Attachments}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <Border BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" Padding="4,6">
+                                                <ui:Card Margin="0,3" Padding="12,8">
                                                     <Grid>
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="Auto" />
                                                             <ColumnDefinition Width="*" />
                                                             <ColumnDefinition Width="Auto" />
                                                         </Grid.ColumnDefinitions>
-                                                        <ui:SymbolIcon Grid.Column="0" Symbol="Attach20" Margin="0,0,8,0" />
-                                                        <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" />
-                                                        <TextBlock Grid.Column="2" Text="{Binding SizeDisplay}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                                                        <ui:SymbolIcon Grid.Column="0" Symbol="Attach20" Margin="0,0,10,0" VerticalAlignment="Center" Foreground="{DynamicResource SystemAccentColorBrush}" />
+                                                        <ui:TextBlock Grid.Column="1" Text="{Binding Name}" FontTypography="BodyStrong" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                        <ui:InfoBadge Grid.Column="2" Value="{Binding SizeDisplay}" Severity="Informational" VerticalAlignment="Center" />
                                                     </Grid>
-                                                </Border>
+                                                </ui:Card>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
                                 </ui:CardExpander>
 
-                                <!-- ================= 字段 7: 历史修改版本 (History Revisions) 原生 CardExpander ================= -->
+                                <!-- ================= 字段 7: 历史修改版本 原生 CardExpander ================= -->
                                 <ui:CardExpander Header="{Binding HistoryRevisions.Count, StringFormat='{}历史版本快照 ({0})'}"
                                                  Icon="History24"
                                                  IsExpanded="False"
-                                                 Margin="0,0,0,12"
+                                                 Margin="0,0,0,10"
                                                  Visibility="{Binding HistoryRevisions.Count, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <ItemsControl ItemsSource="{Binding HistoryRevisions}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <Border BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" Padding="4,6">
+                                                <ui:Card Margin="0,3" Padding="12,8">
                                                     <Grid>
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="Auto" />
                                                             <ColumnDefinition Width="*" />
                                                             <ColumnDefinition Width="Auto" />
                                                         </Grid.ColumnDefinitions>
-                                                        <ui:SymbolIcon Grid.Column="0" Symbol="History20" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                                        <ui:SymbolIcon Grid.Column="0" Symbol="History20" Margin="0,0,10,0" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                            <TextBlock Text="{Binding LastModifiedDisplay, StringFormat='{}快照时间: {0}'}" FontSize="12" FontWeight="SemiBold" />
-                                                            <TextBlock Text="{Binding Title, StringFormat='{}标题: {0}'}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="11" />
+                                                            <ui:TextBlock Text="{Binding LastModifiedDisplay, StringFormat='{}快照时间: {0}'}" FontTypography="BodyStrong" />
+                                                            <ui:TextBlock Text="{Binding Title, StringFormat='{}条目标题: {0}'}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                                                         </StackPanel>
-                                                        <ui:Button Grid.Column="2" Appearance="Secondary" Padding="8,4" FontSize="11"
+                                                        <ui:Button Grid.Column="2" Appearance="Secondary" Padding="12,4"
                                                                    Command="{Binding RestoreCommand}" ToolTip="将条目还原至此历史版本 (当前状态将自动创建新快照)">
                                                             还原
                                                         </ui:Button>
                                                     </Grid>
-                                                </Border>
+                                                </ui:Card>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
@@ -671,11 +722,11 @@
 
                                 <!-- 底部创建与修改时间 -->
                                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                    <TextBlock Text="{Binding CreatedTimeDisplay, StringFormat='{}创建时间: {0}'}" Foreground="{DynamicResource TextFillColorTertiaryBrush}" FontSize="11" Margin="0,0,16,0" />
-                                    <TextBlock Text="{Binding LastModifiedDisplay, StringFormat='{}最后修改: {0}'}" Foreground="{DynamicResource TextFillColorTertiaryBrush}" FontSize="11" />
+                                    <ui:TextBlock Text="{Binding CreatedTimeDisplay, StringFormat='{}创建时间: {0}'}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,16,0" />
+                                    <ui:TextBlock Text="{Binding LastModifiedDisplay, StringFormat='{}最后修改: {0}'}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
                                 </StackPanel>
                             </StackPanel>
-                        </ScrollViewer>
+                        </ui:DynamicScrollViewer>
                     </Grid>
                 </ui:Card>
             </Grid>
@@ -688,23 +739,26 @@
                                   Panel.ZIndex="1000" />
         </Grid>
 
-        <!-- 底部状态栏 -->
+        <!-- 现代化 Fluent 底部状态栏 -->
         <Border Grid.Row="2"
                 Background="{DynamicResource SolidBackgroundFillColorSecondaryBrush}"
                 BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                 BorderThickness="0,1,0,0"
-                Padding="12,6">
+                Padding="14,6">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" Orientation="Horizontal">
-                    <ui:TextBlock Text="{Binding StatusMessage}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <ui:SymbolIcon Symbol="Info20" Margin="0,0,8,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    <ui:TextBlock Text="{Binding StatusMessage}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
                 </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <ui:TextBlock Text="{Binding DatabasePath}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,12,0" />
-                    <ui:TextBlock Text="KeePass Fluent UI v1.0 (In-Process)" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <ui:SymbolIcon Symbol="Database20" Margin="0,0,6,0" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                    <ui:TextBlock Text="{Binding DatabasePath}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,16,0" VerticalAlignment="Center" />
+                    <ui:SymbolIcon Symbol="ShieldCheckmark20" Margin="0,0,6,0" Foreground="{DynamicResource SystemFillColorSuccessBrush}" />
+                    <ui:TextBlock Text="Fluent Pass (In-Process)" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" VerticalAlignment="Center" />
                 </StackPanel>
             </Grid>
         </Border>
