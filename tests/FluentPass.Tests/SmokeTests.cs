@@ -23,9 +23,11 @@ namespace FluentPass.Tests
         {
             var plugin = new FluentPassExt();
             Assert.That(plugin.UpdateUrl, Is.Not.Null.And.Not.Empty);
-            // SmallIcon 可以安全读取
+            // SmallIcon 可以安全读取，且严格符合 KeePass 官方 16x16 像素规范
             var icon = plugin.SmallIcon;
             Assert.That(icon, Is.Not.Null);
+            Assert.That(icon!.Width, Is.EqualTo(16));
+            Assert.That(icon.Height, Is.EqualTo(16));
         }
 
         [Test]

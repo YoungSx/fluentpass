@@ -21,13 +21,22 @@ namespace FluentPass
     {
         private IPluginHost? _host;
         private bool _isWindows;
+        private Image? _cachedSmallIcon;
 
         public override string UpdateUrl => "https://github.com/fluentpass/fluentpass";
 
+        /// <summary>
+        /// KeePass 规范的小图标（严格要求 16x16 像素，用于插件管理器与菜单项）
+        /// </summary>
         public override Image? SmallIcon
         {
             get
             {
+                if (_cachedSmallIcon != null)
+                {
+                    return _cachedSmallIcon;
+                }
+
                 try
                 {
                     var icoStream = typeof(FluentPassExt).Assembly.GetManifestResourceStream("FluentPass.Resources.AppIcon.ico");
@@ -35,7 +44,8 @@ namespace FluentPass
                     {
                         using (var ico = new Icon(icoStream, 16, 16))
                         {
-                            return ico.ToBitmap();
+                            _cachedSmallIcon = ico.ToBitmap();
+                            return _cachedSmallIcon;
                         }
                     }
                 }
@@ -97,7 +107,10 @@ namespace FluentPass
             if (t == PluginMenuType.Main)
             {
                 string menuText = _isWindows ? "Fluent Pass" : "Fluent Pass (Windows only)";
-                var menuItem = new ToolStripMenuItem(menuText);
+                var menuItem = new ToolStripMenuItem(menuText)
+                {
+                    Image = SmallIcon
+                };
                 menuItem.Click += (s, e) => ShowFluentWindow();
                 return menuItem;
             }
@@ -111,6 +124,9 @@ namespace FluentPass
             {
                 ShutdownWpf();
             }
+
+            _cachedSmallIcon?.Dispose();
+            _cachedSmallIcon = null;
 
             _host = null;
             base.Terminate();
