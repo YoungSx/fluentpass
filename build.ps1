@@ -7,20 +7,20 @@ param(
 $ErrorActionPreference = "Stop"
 
 Write-Host "==========================================" -ForegroundColor Cyan
-Write-Host " Building KeePassFluentUI ($Configuration)" -ForegroundColor Cyan
+Write-Host " Building FluentPass ($Configuration)" -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
 
 # 1. 还原 NuGet 依赖
-$solutionPath = "$PSScriptRoot\KeePassFluentUI.sln"
+$solutionPath = "$PSScriptRoot\FluentPass.sln"
 Write-Host "Restoring NuGet packages..." -ForegroundColor Gray
 dotnet restore $solutionPath
 
 # 2. 编译项目
-$projectPath = "$PSScriptRoot\src\KeePassFluentUI\KeePassFluentUI.csproj"
+$projectPath = "$PSScriptRoot\src\FluentPass\FluentPass.csproj"
 Write-Host "Compiling project..." -ForegroundColor Gray
 dotnet build $projectPath -c $Configuration
 
-$outputDll = "$PSScriptRoot\src\KeePassFluentUI\bin\$Configuration\net48\KeePassFluentUI.dll"
+$outputDll = "$PSScriptRoot\src\FluentPass\bin\$Configuration\net48\FluentPass.dll"
 if (-not (Test-Path $outputDll)) {
     Write-Error "Build output not found at: $outputDll"
     exit 1
@@ -45,8 +45,8 @@ if ($Install -or $Run) {
     }
 
     try {
-        Copy-Item -Path $outputDll -Destination "$userPluginsDir\KeePassFluentUI.dll" -Force
-        Write-Host "Successfully installed to User Plugins directory: $userPluginsDir\KeePassFluentUI.dll" -ForegroundColor Green
+        Copy-Item -Path $outputDll -Destination "$userPluginsDir\FluentPass.dll" -Force
+        Write-Host "Successfully installed to User Plugins directory: $userPluginsDir\FluentPass.dll" -ForegroundColor Green
     } catch {
         Write-Warning "Failed to copy to User Plugins directory: $_"
     }
@@ -55,8 +55,8 @@ if ($Install -or $Run) {
     $globalDir = "C:\Program Files\KeePass Password Safe 2\Plugins"
     if (Test-Path $globalDir) {
         try {
-            Copy-Item -Path $outputDll -Destination "$globalDir\KeePassFluentUI.dll" -Force -ErrorAction Stop
-            Write-Host "Also deployed to Global Plugins directory: $globalDir\KeePassFluentUI.dll" -ForegroundColor Green
+            Copy-Item -Path $outputDll -Destination "$globalDir\FluentPass.dll" -Force -ErrorAction Stop
+            Write-Host "Also deployed to Global Plugins directory: $globalDir\FluentPass.dll" -ForegroundColor Green
         } catch {
             # 静默忽略权限限制
         }

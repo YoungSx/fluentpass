@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 
 echo ========================================================
-echo   KeePass Fluent UI - One-Click Build ^& Deploy (Windows)
+echo   Fluent Pass - One-Click Build ^& Deploy (Windows)
 echo ========================================================
 echo.
 

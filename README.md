@@ -1,4 +1,4 @@
-# KeePass Fluent UI (In-Process WPF-UI Plugin)
+# Fluent Pass (In-Process WPF-UI Plugin)
 
 现代化 KeePass 2.x 官方同进程 Fluent Design (Mica/Acrylic) 桌面用户界面插件。
 
@@ -9,7 +9,7 @@
 1. **同进程零 IPC 损耗**：以官方插件 (`.dll`) 形式直接驻留 `KeePass.exe` 进程内（.NET Framework 4.8 STA 线程），共享内存引用，绝不引入跨进程通信或明文数据序列化传输。
 2. **核心业务 100% 复用**：KDBX 加解密、文件持久化与云同步、剪贴板保护、自动输入（Auto-Type）全部直接调用原生 `KeePassLib` / `IPluginHost`。
 3. **敏感内存物理级防御**：直接持有 `PwEntry` 原生指针，未展开查看的密码在 ViewModel 中绝不解密为 CLR `System.String`，杜绝托管堆残留。
-4. **单文件即插即用分发**：使用 SDK-style 项目与 `Costura.Fody` 将 `WPF-UI` (4.x)、`CommunityToolkit.Mvvm` 等资源全部嵌入单一 `KeePassFluentUI.dll`，放入官方 `Plugins` 目录即可开箱即用。
+4. **单文件即插即用分发**：使用 SDK-style 项目与 `Costura.Fody` 将 `WPF-UI` (4.x)、`CommunityToolkit.Mvvm` 等资源全部嵌入单一 `FluentPass.dll`，放入官方 `Plugins` 目录即可开箱即用。
 
 ---
 
@@ -27,7 +27,7 @@
 fluentpass/
 ├── ARCHITECTURE.md                           # 架构设计、铁律与功能边界白皮书 (必读)
 ├── src/
-│   └── KeePassFluentUI/
+│   └── FluentPass/
 │       ├── Common/
 │       │   ├── IdleNotificationThrottle.cs   # 原生闲置计时器节流同步机制
 │       │   ├── IconConverterHelper.cs        # 官方图标与 WPF ImageSource 转换器
@@ -44,10 +44,10 @@ fluentpass/
 │       ├── Resources/
 │       │   └── AppIcon.ico                   # 从 KeePass 提取的高清矢量图标
 │       ├── FodyWeavers.xml                   # Costura 依赖嵌入配置 (排除宿主 KeePass)
-│       ├── KeePassFluentUI.csproj            # SDK-Style net48 项目文件 (ProductName: KeePass Plugin)
-│       └── PluginEntry.cs                    # KeePass 插件主入口 (KeePassFluentUIExt)
+│       ├── FluentPass.csproj            # SDK-Style net48 项目文件 (ProductName: KeePass Plugin)
+│       └── PluginEntry.cs                    # KeePass 插件主入口 (FluentPassExt)
 ├── tests/
-│   └── KeePassFluentUI.Tests/                # 自动化测试与 STA 宿主测试工程 (14 个用例全部通过)
+│   └── FluentPass.Tests/                # 自动化测试与 STA 宿主测试工程 (14 个用例全部通过)
 ├── build.ps1                                 # 一键本地构建、部署与调试脚本
 └── README.md
 ```
@@ -104,11 +104,11 @@ fluentpass/
 
 ## 自动化测试与质量保障
 
-项目包含专属的 NUnit 自动化测试工程 `tests/KeePassFluentUI.Tests`，覆盖全链路核心逻辑：
+项目包含专属的 NUnit 自动化测试工程 `tests/FluentPass.Tests`，覆盖全链路核心逻辑：
 
 ```powershell
 # 运行完整单元测试与 Smoke 测试
-dotnet test tests\KeePassFluentUI.Tests\KeePassFluentUI.Tests.csproj --test-adapter-path "tests\KeePassFluentUI.Tests\bin\Debug\net48"
+dotnet test tests\FluentPass.Tests\FluentPass.Tests.csproj --test-adapter-path "tests\FluentPass.Tests\bin\Debug\net48"
 ```
 
 ### 测试用例覆盖明细：
