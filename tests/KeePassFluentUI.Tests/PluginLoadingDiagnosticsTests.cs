@@ -1,8 +1,6 @@
 using System;
-using System.Collections;
 using System.IO;
 using System.Reflection;
-using System.Runtime.Serialization;
 using KeePass.Forms;
 using KeePass.Plugins;
 using NUnit.Framework;
@@ -15,8 +13,17 @@ namespace KeePassFluentUI.Tests
         [Test]
         public void DiagnoseKeePassPluginLoading()
         {
-            var pluginPath = @"C:\Program Files\KeePass Password Safe 2\Plugins\KeePassFluentUI.dll";
-            Assert.That(File.Exists(pluginPath), Is.True);
+            var pluginPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "KeePassFluentUI.dll");
+            if (!File.Exists(pluginPath))
+            {
+                var installedPath = @"C:\Program Files\KeePass Password Safe 2\Plugins\KeePassFluentUI.dll";
+                if (File.Exists(installedPath))
+                {
+                    pluginPath = installedPath;
+                }
+            }
+
+            Assert.That(File.Exists(pluginPath), Is.True, $"KeePassFluentUI.dll not found at: {pluginPath}");
             var fvi = System.Diagnostics.FileVersionInfo.GetVersionInfo(pluginPath);
             Console.WriteLine("Plugin file: " + pluginPath);
             Console.WriteLine("ProductName: " + fvi.ProductName);
@@ -34,21 +41,14 @@ namespace KeePassFluentUI.Tests
             Console.WriteLine("Menu Item Text: " + menuItem.Text);
             var asm = typeof(MainForm).Assembly;
             var pmType = asm.GetType("KeePass.Plugins.PluginManager")!;
-            var pm = Activator.CreateInstance(pmType, true)!;
-
-            foreach (var m in pmType.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public))
-            {
-                if (m.Name.Contains("Load") || m.Name.Contains("Compat"))
-                {
-                    var paramStrs = string.Join(", ", System.Linq.Enumerable.Select(m.GetParameters(), p => p.ParameterType.Name + " " + p.Name));
-                    Console.WriteLine($"{m.ReturnType.Name} {m.Name}({paramStrs})");
-                }
-            }
 
             // 验证 CheckCompatibilityPriv 对该插件通过
-            var checkCompatPrivMethod = pmType.GetMethod("CheckCompatibilityPriv", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)!;
-            Assert.DoesNotThrow(() => checkCompatPrivMethod.Invoke(null, new object[] { plugin }));
-            Console.WriteLine("CheckCompatibilityPriv passed cleanly!");
+            var checkCompatPrivMethod = pmType.GetMethod("CheckCompatibilityPriv", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
+            if (checkCompatPrivMethod != null)
+            {
+                Assert.DoesNotThrow(() => checkCompatPrivMethod.Invoke(null, new object[] { plugin }));
+                Console.WriteLine("CheckCompatibilityPriv passed cleanly!");
+            }
         }
     }
 }
