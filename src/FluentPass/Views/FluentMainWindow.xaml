@@ -149,15 +149,15 @@
                         <ui:DropDownButton.Flyout>
                             <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                                 <ui:MenuItem Header="深色主题 (Dark)"
-                                             Icon="WeatherMoon24"
+                                             Icon="{ui:SymbolIcon WeatherMoon24}"
                                              Command="{Binding SwitchThemeCommand}"
                                              CommandParameter="Dark" />
                                 <ui:MenuItem Header="浅色主题 (Light)"
-                                             Icon="WeatherSunny24"
+                                             Icon="{ui:SymbolIcon WeatherSunny24}"
                                              Command="{Binding SwitchThemeCommand}"
                                              CommandParameter="Light" />
                                 <ui:MenuItem Header="跟随系统 (System)"
-                                             Icon="Desktop24"
+                                             Icon="{ui:SymbolIcon Desktop24}"
                                              Command="{Binding SwitchThemeCommand}"
                                              CommandParameter="System" />
                             </ContextMenu>
@@ -384,42 +384,42 @@
                                     <ContextMenu>
                                         <ui:MenuItem Header="复制密码"
                                                      InputGestureText="Ctrl+C"
-                                                     Icon="Copy20"
+                                                     Icon="{ui:SymbolIcon Copy20}"
                                                      Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.CopySelectedPasswordCommand}"
                                                      CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
                                         <ui:MenuItem Header="复制用户名"
                                                      InputGestureText="Ctrl+B"
-                                                     Icon="Person20"
+                                                     Icon="{ui:SymbolIcon Person20}"
                                                      Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.CopySelectedUsernameCommand}"
                                                      CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
                                         <ui:MenuItem Header="复制网址"
-                                                     Icon="Link20"
+                                                     Icon="{ui:SymbolIcon Link20}"
                                                      Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.CopySelectedUrlCommand}"
                                                      CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
                                         <ui:MenuItem Header="在浏览器中打开"
                                                      InputGestureText="Ctrl+U"
-                                                     Icon="Open20"
+                                                     Icon="{ui:SymbolIcon Open20}"
                                                      Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.OpenSelectedUrlCommand}"
                                                      CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
                                         <ui:MenuItem Header="执行自动输入 (Auto-Type)"
                                                      InputGestureText="Ctrl+V"
-                                                     Icon="Keyboard20"
+                                                     Icon="{ui:SymbolIcon Keyboard20}"
                                                      Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.AutoTypeSelectedCommand}"
                                                      CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
                                         <Separator />
                                         <ui:MenuItem Header="编辑条目"
                                                      InputGestureText="Enter"
-                                                     Icon="Edit20"
+                                                     Icon="{ui:SymbolIcon Edit20}"
                                                      Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.EditSelectedEntryCommand}"
                                                      CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
                                         <ui:MenuItem Header="删除条目"
                                                      InputGestureText="Del"
-                                                     Icon="Delete20"
+                                                     Icon="{ui:SymbolIcon Delete20}"
                                                      Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.DeleteEntryCommand}"
                                                      CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
                                         <Separator />
                                         <ui:MenuItem Header="调起原版 KeePass 编辑窗口"
-                                                     Icon="WindowDevTools24"
+                                                     Icon="{ui:SymbolIcon WindowDevTools24}"
                                                      Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.OpenOriginalSelectedEntryCommand}"
                                                      CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
                                     </ContextMenu>
@@ -749,7 +749,7 @@
 
                                 <!-- ================= 字段 4: 备注 (Notes) 原生 CardExpander ================= -->
                                 <ui:CardExpander Header="备注 (Notes)"
-                                                 Icon="Document24"
+                                                 Icon="{ui:SymbolIcon Document24}"
                                                  IsExpanded="True"
                                                  Margin="0,0,0,10">
                                     <Grid Margin="0,4,0,0">
@@ -778,7 +778,7 @@
 
                                 <!-- ================= 字段 5: 自定义附加字段 原生 CardExpander ================= -->
                                 <ui:CardExpander Header="自定义附加字段"
-                                                 Icon="Tag24"
+                                                 Icon="{ui:SymbolIcon Tag24}"
                                                  IsExpanded="True"
                                                  Margin="0,0,0,10"
                                                  Visibility="{Binding CustomFields.Count, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -808,7 +808,7 @@
 
                                 <!-- ================= 字段 6: 二进制附件 原生 CardExpander ================= -->
                                 <ui:CardExpander Header="二进制附件"
-                                                 Icon="Attach24"
+                                                 Icon="{ui:SymbolIcon Attach24}"
                                                  IsExpanded="True"
                                                  Margin="0,0,0,10"
                                                  Visibility="{Binding Attachments.Count, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -834,7 +834,7 @@
 
                                 <!-- ================= 字段 7: 历史修改版本 原生 CardExpander ================= -->
                                 <ui:CardExpander Header="{Binding HistoryRevisions.Count, StringFormat='{}历史版本快照 ({0})'}"
-                                                 Icon="History24"
+                                                 Icon="{ui:SymbolIcon History24}"
                                                  IsExpanded="False"
                                                  Margin="0,0,0,10"
                                                  Visibility="{Binding HistoryRevisions.Count, Converter={StaticResource BooleanToVisibilityConverter}}">
