@@ -29,6 +29,13 @@ namespace KeePassFluentUI.Views
             _host = host ?? throw new ArgumentNullException(nameof(host));
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
 
+            FluentWindowManager.EnsureWpfApplication();
+            if (System.Windows.Application.Current != null)
+            {
+                System.Windows.Application.Current.MainWindow = this;
+            }
+            Wpf.Ui.UiApplication.Current.MainWindow = this;
+
             InitializeComponent();
 
             DataContext = _viewModel;
@@ -51,6 +58,16 @@ namespace KeePassFluentUI.Views
             }
 
             EnsureThemeWatcher();
+
+            try
+            {
+                var theme = ApplicationThemeManager.GetAppTheme();
+                WindowBackgroundManager.UpdateBackground(this, theme, WindowBackdropType.Mica);
+            }
+            catch
+            {
+                // 安全降级
+            }
         }
 
         public void EnsureThemeWatcher()
@@ -62,7 +79,7 @@ namespace KeePassFluentUI.Views
 
                 try
                 {
-                    SystemThemeWatcher.Watch(this);
+                    SystemThemeWatcher.Watch(this, WindowBackdropType.Mica, true);
                     _isThemeWatcherAttached = true;
                 }
                 catch
