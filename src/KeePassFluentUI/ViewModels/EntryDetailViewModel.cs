@@ -25,6 +25,22 @@ namespace KeePassFluentUI.ViewModels
         private readonly IPluginHost _host;
         private readonly Window? _ownerWindow;
         private readonly Action _onEntryModified;
+        private void SafeInvokeOnHost(Action action)
+        {
+            if (_host.MainWindow == null) return;
+            var mw = _host.MainWindow;
+            if (mw.IsDisposed || !mw.IsHandleCreated) return;
+
+            if (mw.InvokeRequired)
+            {
+                mw.Invoke(action);
+            }
+            else
+            {
+                action();
+            }
+        }
+
         private readonly DispatcherTimer _passwordHideTimer;
 
         public PwEntry Model { get; }
@@ -251,7 +267,7 @@ namespace KeePassFluentUI.ViewModels
                 Model.Touch(true, false);
 
                 _host.Database.Modified = true;
-                _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true);
+                SafeInvokeOnHost(() => _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true));
 
                 RefreshData();
                 _onEntryModified?.Invoke();
@@ -330,7 +346,7 @@ namespace KeePassFluentUI.ViewModels
                     _host.MainWindow,
                     Model,
                     _host.Database);
-                _host.MainWindow?.StartClipboardCountdown();
+                SafeInvokeOnHost(() => _host.MainWindow?.StartClipboardCountdown());
                 CheckMinimizeAfterCopy();
                 NotificationService.ShowSuccess("已复制用户名", $"条目「{Title}」的用户名已复制到剪贴板。");
             }
@@ -351,7 +367,7 @@ namespace KeePassFluentUI.ViewModels
                     _host.MainWindow,
                     Model,
                     _host.Database);
-                _host.MainWindow?.StartClipboardCountdown();
+                SafeInvokeOnHost(() => _host.MainWindow?.StartClipboardCountdown());
                 CheckMinimizeAfterCopy();
                 NotificationService.ShowSuccess("已复制密码", $"条目「{Title}」的密码已复制到剪贴板，原版倒计时保护已生效。");
             }
@@ -372,7 +388,7 @@ namespace KeePassFluentUI.ViewModels
                     _host.MainWindow,
                     Model,
                     _host.Database);
-                _host.MainWindow?.StartClipboardCountdown();
+                SafeInvokeOnHost(() => _host.MainWindow?.StartClipboardCountdown());
                 CheckMinimizeAfterCopy();
                 NotificationService.ShowSuccess("已复制网址", $"条目「{Title}」的网址已复制到剪贴板。");
             }
@@ -446,6 +462,11 @@ namespace KeePassFluentUI.ViewModels
         [RelayCommand]
         public void SaveEdit()
         {
+            SaveEditInternal(true);
+        }
+
+        public void SaveEditInternal(bool notify = true)
+        {
             try
             {
                 // 规范 4: 先行创建历史备份
@@ -468,10 +489,14 @@ namespace KeePassFluentUI.ViewModels
                 IsEditing = false;
 
                 // 通知宿主和外部刷新
-                _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true);
+                SafeInvokeOnHost(() => _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true));
                 RefreshData();
                 _onEntryModified?.Invoke();
-                NotificationService.ShowSuccess("保存成功", $"条目「{Title}」的修改已保存。");
+
+                if (notify)
+                {
+                    NotificationService.ShowSuccess("保存成功", $"条目「{Title}」的修改已保存。");
+                }
             }
             catch (Exception ex)
             {
@@ -508,7 +533,7 @@ namespace KeePassFluentUI.ViewModels
                                 Model.Strings.Set(PwDefs.PasswordField, psOut);
                                 Model.Touch(true, false);
                                 _host.Database.Modified = true;
-                                _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true);
+                                SafeInvokeOnHost(() => _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true));
                                 RefreshData();
                                 _onEntryModified?.Invoke();
                             }
@@ -533,7 +558,7 @@ namespace KeePassFluentUI.ViewModels
                 IWin32Window? owner = _ownerWindow != null ? new Wpf32Window(_ownerWindow) : null;
                 if (form.ShowDialog(owner) == DialogResult.OK)
                 {
-                    _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true);
+                    SafeInvokeOnHost(() => _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true));
                     RefreshData();
                     _onEntryModified?.Invoke();
                 }
