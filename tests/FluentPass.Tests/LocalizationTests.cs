@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using FluentPass.Common;
 using FluentPass.Tests.Mocks;
 using NUnit.Framework;
@@ -27,6 +30,31 @@ namespace FluentPass.Tests
             Loc.Instance.SetLanguagePreference(SettingsService.DefaultLanguage);
         }
 
+        private static string FindRepositoryRoot()
+        {
+            var dir = new DirectoryInfo(TestContext.CurrentContext.TestDirectory);
+            while (dir != null)
+            {
+                if (File.Exists(Path.Combine(dir.FullName, "FluentPass.sln")))
+                {
+                    return dir.FullName;
+                }
+                dir = dir.Parent;
+            }
+
+            dir = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
+            while (dir != null)
+            {
+                if (File.Exists(Path.Combine(dir.FullName, "FluentPass.sln")))
+                {
+                    return dir.FullName;
+                }
+                dir = dir.Parent;
+            }
+
+            return Directory.GetCurrentDirectory();
+        }
+
         [Test]
         public void TranslationStore_AllSevenLanguages_ShouldHaveIdenticalKeys()
         {
@@ -34,7 +62,7 @@ namespace FluentPass.Tests
 
             var referenceLang = "zh-CN";
             var referenceDict = dictionaries[referenceLang];
-            Assert.That(referenceDict.Count, Is.GreaterThan(190), "Expected at least 190 localized keys in reference language");
+            Assert.That(referenceDict.Count, Is.GreaterThan(250), "Expected at least 250 localized keys in reference language");
 
             foreach (var lang in AllLanguages)
             {
@@ -60,6 +88,115 @@ namespace FluentPass.Tests
                 {
                     Assert.That(kvp.Value, Is.Not.Null.And.Not.Empty, $"{lang} key '{kvp.Key}' has empty or null value");
                 }
+            }
+        }
+
+        [Test]
+        public void TranslationStore_AllReferencedXamlKeys_MustExistInAllLanguageDictionaries()
+        {
+            var repoRoot = FindRepositoryRoot();
+            var srcDir = Path.Combine(repoRoot, "src");
+            Assert.That(Directory.Exists(srcDir), Is.True, $"Source directory not found at {srcDir}");
+
+            var xamlFiles = Directory.GetFiles(srcDir, "*.xaml", SearchOption.AllDirectories);
+            Assert.That(xamlFiles.Length, Is.GreaterThan(0), "No XAML files found to validate");
+
+            var locKeyRegex = new Regex(@"\{common:Loc\s+([^},]+)", RegexOptions.Compiled);
+
+            var referencedKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var keySources = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var xamlFile in xamlFiles)
+            {
+                var content = File.ReadAllText(xamlFile);
+                var matches = locKeyRegex.Matches(content);
+                foreach (Match match in matches)
+                {
+                    var key = match.Groups[1].Value.Trim();
+                    if (key.StartsWith("Key=", StringComparison.OrdinalIgnoreCase))
+                    {
+                        key = key.Substring(4).Trim();
+                    }
+                    if (!string.IsNullOrEmpty(key))
+                    {
+                        referencedKeys.Add(key);
+                        if (!keySources.ContainsKey(key))
+                        {
+                            keySources[key] = Path.GetFileName(xamlFile);
+                        }
+                    }
+                }
+            }
+
+            Assert.That(referencedKeys.Count, Is.GreaterThan(50), "Expected to find at least 50 XAML localization keys");
+
+            foreach (var lang in AllLanguages)
+            {
+                var dict = TranslationStore.GetDictionary(lang);
+                var missingKeys = referencedKeys.Where(k => !dict.ContainsKey(k)).ToList();
+
+                Assert.That(missingKeys, Is.Empty,
+                    $"Language '{lang}' is missing {missingKeys.Count} keys referenced in XAML:\n" +
+                    string.Join("\n", missingKeys.Select(k => $"  - {k} (in {keySources[k]})")));
+            }
+        }
+
+        [Test]
+        public void TranslationStore_AllReferencedCsKeys_MustExistInAllLanguageDictionaries()
+        {
+            var repoRoot = FindRepositoryRoot();
+            var srcDir = Path.Combine(repoRoot, "src");
+            Assert.That(Directory.Exists(srcDir), Is.True, $"Source directory not found at {srcDir}");
+
+            var csFiles = Directory.GetFiles(srcDir, "*.cs", SearchOption.AllDirectories)
+                .Where(f => !Path.GetFileName(f).Equals("TranslationStore.cs", StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+
+            var getRegex = new Regex(@"Loc\.Get\(\s*""([^""]+)""", RegexOptions.Compiled);
+            var indexerRegex = new Regex(@"Loc\.Instance\[\s*""([^""]+)""\]", RegexOptions.Compiled);
+
+            var referencedKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var keySources = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var csFile in csFiles)
+            {
+                var content = File.ReadAllText(csFile);
+                foreach (Match match in getRegex.Matches(content))
+                {
+                    var key = match.Groups[1].Value.Trim();
+                    if (!string.IsNullOrEmpty(key))
+                    {
+                        referencedKeys.Add(key);
+                        if (!keySources.ContainsKey(key))
+                        {
+                            keySources[key] = Path.GetFileName(csFile);
+                        }
+                    }
+                }
+                foreach (Match match in indexerRegex.Matches(content))
+                {
+                    var key = match.Groups[1].Value.Trim();
+                    if (!string.IsNullOrEmpty(key))
+                    {
+                        referencedKeys.Add(key);
+                        if (!keySources.ContainsKey(key))
+                        {
+                            keySources[key] = Path.GetFileName(csFile);
+                        }
+                    }
+                }
+            }
+
+            Assert.That(referencedKeys.Count, Is.GreaterThan(50), "Expected to find at least 50 C# localization keys");
+
+            foreach (var lang in AllLanguages)
+            {
+                var dict = TranslationStore.GetDictionary(lang);
+                var missingKeys = referencedKeys.Where(k => !dict.ContainsKey(k)).ToList();
+
+                Assert.That(missingKeys, Is.Empty,
+                    $"Language '{lang}' is missing {missingKeys.Count} keys referenced in C#:\n" +
+                    string.Join("\n", missingKeys.Select(k => $"  - {k} (in {keySources[k]})")));
             }
         }
 
