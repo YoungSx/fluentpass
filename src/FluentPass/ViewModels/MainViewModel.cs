@@ -345,9 +345,25 @@ namespace FluentPass.ViewModels
                 return;
             }
 
+            var db = _host.Database;
+            PwGroup? recycleBin = null;
+            if (db != null && db.RecycleBinEnabled && !db.RecycleBinUuid.Equals(PwUuid.Zero) && db.RootGroup != null)
+            {
+                recycleBin = db.RootGroup.FindGroup(db.RecycleBinUuid, true);
+            }
+
+            bool isViewingRecycleBin = recycleBin != null &&
+                (groupVm.Model.Equals(recycleBin) || groupVm.Model.IsContainedIn(recycleBin));
+
             var entries = groupVm.Model.GetEntries(ShowSubgroupEntries);
             foreach (var entry in entries)
             {
+                if (!isViewingRecycleBin && recycleBin != null &&
+                    (entry.ParentGroup.Equals(recycleBin) || entry.ParentGroup.IsContainedIn(recycleBin)))
+                {
+                    continue;
+                }
+
                 Entries.Add(new EntryItemViewModel(entry, _host.MainWindow, _host.Database));
             }
 
