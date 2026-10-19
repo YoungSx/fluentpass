@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using Wpf.Ui;
@@ -8,7 +9,7 @@ using Wpf.Ui.Controls;
 namespace KeePassFluentUI.Common
 {
     /// <summary>
-    /// 记录 Toast 通知内容的数据契约，专供测试验证与历史回溯
+    /// 承载通知记录的数据对象
     /// </summary>
     public sealed class NotificationRecord
     {
@@ -17,97 +18,89 @@ namespace KeePassFluentUI.Common
         public ControlAppearance Appearance { get; }
         public IconElement? Icon { get; }
         public TimeSpan Timeout { get; }
-        public DateTime Timestamp { get; }
+        public DateTime TimestampUtc { get; }
 
         public NotificationRecord(string title, string message, ControlAppearance appearance, IconElement? icon, TimeSpan timeout)
         {
-            Title = title ?? string.Empty;
-            Message = message ?? string.Empty;
+            Title = title;
+            Message = message;
             Appearance = appearance;
             Icon = icon;
             Timeout = timeout;
-            Timestamp = DateTime.UtcNow;
+            TimestampUtc = DateTime.UtcNow;
         }
     }
 
     /// <summary>
-    /// 符合 WPF-UI v4.0.0 规范的跨线程安全 Toast 通知服务。
-    /// 严格对标 ISnackbarService.Show(title, message, appearance, icon, timeout) 官方契约，
-    /// 内置 Dispatcher.CheckAccess 调度，保证在后台线程及无 UI 单元测试环境下的绝对健壮性。
+    /// 全局 Fluent UI 消息通知与 Toast 广播服务。
+    /// 严格对齐官方 Wpf.Ui.ISnackbarService 规范，统一管理视窗全局 ui:SnackbarPresenter 与 ui:Snackbar。
     /// </summary>
-    public class NotificationService : ISnackbarService
+    public sealed class NotificationService : ISnackbarService
     {
-        private static readonly Lazy<NotificationService> _lazyInstance = new Lazy<NotificationService>(() => new NotificationService());
+        private static readonly Lazy<NotificationService> _lazyInstance =
+            new Lazy<NotificationService>(() => new NotificationService());
+
         public static NotificationService Instance => _lazyInstance.Value;
 
         private readonly object _syncLock = new object();
         private readonly List<NotificationRecord> _history = new List<NotificationRecord>();
-
         private SnackbarPresenter? _presenter;
         private Snackbar? _snackbar;
 
         public TimeSpan DefaultTimeOut { get; set; } = TimeSpan.FromSeconds(3);
 
-        public IReadOnlyList<NotificationRecord> Notifications
+        public static IReadOnlyList<NotificationRecord> History
         {
             get
             {
-                lock (_syncLock)
+                lock (Instance._syncLock)
                 {
-                    return _history.ToArray();
+                    return Instance._history.ToArray();
                 }
             }
         }
 
-        public NotificationRecord? LastNotificationRecord
+        public static NotificationRecord? LastNotification
         {
             get
             {
-                lock (_syncLock)
+                lock (Instance._syncLock)
                 {
-                    return _history.Count > 0 ? _history[_history.Count - 1] : null;
+                    return Instance._history.Count > 0 ? Instance._history[Instance._history.Count - 1] : null;
                 }
             }
         }
-
-        public static IReadOnlyList<NotificationRecord> History => Instance.Notifications;
-
-        public static NotificationRecord? LastNotification => Instance.LastNotificationRecord;
 
         public static void ClearHistory()
         {
-            Instance.Clear();
-        }
-
-        public void Clear()
-        {
-            lock (_syncLock)
+            lock (Instance._syncLock)
             {
-                _history.Clear();
+                Instance._history.Clear();
             }
         }
+
+        // ================= ISnackbarService 规范实现 =================
 
         public void SetSnackbarPresenter(SnackbarPresenter contentPresenter)
         {
             _presenter = contentPresenter;
-            _snackbar = null;
+            _snackbar = null; // 重置绑定的 Snackbar 实例以适配新宿主
         }
 
-        public SnackbarPresenter? GetSnackbarPresenter()
+        public SnackbarPresenter GetSnackbarPresenter()
         {
-            return _presenter;
+            return _presenter!;
         }
 
-        /// <summary>
-        /// 显式实现 ISnackbarService.Show 官方契约接口。
-        /// </summary>
         void ISnackbarService.Show(string title, string message, ControlAppearance appearance, IconElement? icon, TimeSpan timeout)
         {
             ShowInternal(title, message, appearance, icon, timeout);
         }
 
+        // ================= 内部调度与安全防护 =================
+
         /// <summary>
-        /// 实例级通知投递方法
+        /// 实例级通知传递方法
         /// </summary>
         public void ShowNotification(string title, string message, ControlAppearance appearance = ControlAppearance.Secondary, IconElement? icon = null, TimeSpan duration = default)
         {
@@ -166,6 +159,25 @@ namespace KeePassFluentUI.Common
             }
         }
 
+        // ================= 跨线程安全创建 UI 控件 =================
+
+        private static IconElement? SafeCreateSymbolIcon(SymbolRegular symbol)
+        {
+            // 仅在 STA 线程中创建 UI 元素，杜绝在 MTA 背景线程抛出 InvalidOperationException
+            if (Thread.CurrentThread.GetApartmentState() == ApartmentState.STA)
+            {
+                try
+                {
+                    return new SymbolIcon(symbol);
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+            return null;
+        }
+
         // ================= 静态便利调用门面 =================
 
         public static void Show(string title, string message, ControlAppearance appearance = ControlAppearance.Secondary, IconElement? icon = null, TimeSpan duration = default)
@@ -175,42 +187,42 @@ namespace KeePassFluentUI.Common
 
         public static void ShowSuccess(string title, string message, int durationSeconds = 3)
         {
-            Show(title, message, ControlAppearance.Success, new SymbolIcon(SymbolRegular.CheckmarkCircle24), TimeSpan.FromSeconds(durationSeconds));
+            Show(title, message, ControlAppearance.Success, SafeCreateSymbolIcon(SymbolRegular.CheckmarkCircle24), TimeSpan.FromSeconds(durationSeconds));
         }
 
         public static void ShowSuccess(string title, string message, TimeSpan duration)
         {
-            Show(title, message, ControlAppearance.Success, new SymbolIcon(SymbolRegular.CheckmarkCircle24), duration);
+            Show(title, message, ControlAppearance.Success, SafeCreateSymbolIcon(SymbolRegular.CheckmarkCircle24), duration);
         }
 
         public static void ShowInformation(string title, string message, int durationSeconds = 3)
         {
-            Show(title, message, ControlAppearance.Info, new SymbolIcon(SymbolRegular.Info24), TimeSpan.FromSeconds(durationSeconds));
+            Show(title, message, ControlAppearance.Info, SafeCreateSymbolIcon(SymbolRegular.Info24), TimeSpan.FromSeconds(durationSeconds));
         }
 
         public static void ShowInformation(string title, string message, TimeSpan duration)
         {
-            Show(title, message, ControlAppearance.Info, new SymbolIcon(SymbolRegular.Info24), duration);
+            Show(title, message, ControlAppearance.Info, SafeCreateSymbolIcon(SymbolRegular.Info24), duration);
         }
 
         public static void ShowWarning(string title, string message, int durationSeconds = 3)
         {
-            Show(title, message, ControlAppearance.Caution, new SymbolIcon(SymbolRegular.Warning24), TimeSpan.FromSeconds(durationSeconds));
+            Show(title, message, ControlAppearance.Caution, SafeCreateSymbolIcon(SymbolRegular.Warning24), TimeSpan.FromSeconds(durationSeconds));
         }
 
         public static void ShowWarning(string title, string message, TimeSpan duration)
         {
-            Show(title, message, ControlAppearance.Caution, new SymbolIcon(SymbolRegular.Warning24), duration);
+            Show(title, message, ControlAppearance.Caution, SafeCreateSymbolIcon(SymbolRegular.Warning24), duration);
         }
 
         public static void ShowError(string title, string message, int durationSeconds = 5)
         {
-            Show(title, message, ControlAppearance.Danger, new SymbolIcon(SymbolRegular.DismissCircle24), TimeSpan.FromSeconds(durationSeconds));
+            Show(title, message, ControlAppearance.Danger, SafeCreateSymbolIcon(SymbolRegular.DismissCircle24), TimeSpan.FromSeconds(durationSeconds));
         }
 
         public static void ShowError(string title, string message, TimeSpan duration)
         {
-            Show(title, message, ControlAppearance.Danger, new SymbolIcon(SymbolRegular.DismissCircle24), duration);
+            Show(title, message, ControlAppearance.Danger, SafeCreateSymbolIcon(SymbolRegular.DismissCircle24), duration);
         }
 
         public static void SetPresenter(SnackbarPresenter? presenter)

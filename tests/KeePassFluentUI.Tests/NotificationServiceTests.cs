@@ -7,7 +7,7 @@ using Wpf.Ui.Controls;
 
 namespace KeePassFluentUI.Tests
 {
-    [TestFixture]
+    [TestFixture, Apartment(ApartmentState.STA)]
     public class NotificationServiceTests
     {
         [SetUp]

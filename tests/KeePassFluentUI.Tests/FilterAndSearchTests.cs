@@ -36,6 +36,7 @@ namespace KeePassFluentUI.Tests
         public void Filter_WithEmptySearch_ShouldReturnAllEntries()
         {
             _mainVm.SearchText = string.Empty;
+            _mainVm.ApplyFilter();
             Assert.That(_mainVm.FilteredEntries.Count, Is.EqualTo(4));
         }
 
@@ -43,6 +44,7 @@ namespace KeePassFluentUI.Tests
         public void Filter_ByTitleKeyword_ShouldReturnMatchingEntries()
         {
             _mainVm.SearchText = "git";
+            _mainVm.ApplyFilter();
             Assert.That(_mainVm.FilteredEntries.Count, Is.EqualTo(1));
             Assert.That(_mainVm.FilteredEntries[0].Title, Is.EqualTo("GitHub Account"));
         }
@@ -51,6 +53,7 @@ namespace KeePassFluentUI.Tests
         public void Filter_ByUserName_ShouldReturnMatchingEntries()
         {
             _mainVm.SearchText = "john.doe";
+            _mainVm.ApplyFilter();
             Assert.That(_mainVm.FilteredEntries.Count, Is.EqualTo(1));
             Assert.That(_mainVm.FilteredEntries[0].Title, Is.EqualTo("Google Mail"));
         }
@@ -59,6 +62,7 @@ namespace KeePassFluentUI.Tests
         public void Filter_ByUrl_ShouldReturnMatchingEntries()
         {
             _mainVm.SearchText = "azure.com";
+            _mainVm.ApplyFilter();
             Assert.That(_mainVm.FilteredEntries.Count, Is.EqualTo(1));
             Assert.That(_mainVm.FilteredEntries[0].Title, Is.EqualTo("Microsoft Azure"));
         }
@@ -67,6 +71,7 @@ namespace KeePassFluentUI.Tests
         public void Filter_ByNotes_ShouldReturnMatchingEntries()
         {
             _mainVm.SearchText = "linux host";
+            _mainVm.ApplyFilter();
             Assert.That(_mainVm.FilteredEntries.Count, Is.EqualTo(1));
             Assert.That(_mainVm.FilteredEntries[0].Title, Is.EqualTo("Server SSH Key"));
         }

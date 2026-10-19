@@ -102,6 +102,12 @@ namespace KeePassFluentUI.ViewModels
 
         partial void OnSearchTextChanged(string value)
         {
+            if (System.Windows.Application.Current == null || !System.Windows.Application.Current.Dispatcher.CheckAccess())
+            {
+                ApplyFilter();
+                return;
+            }
+
             _searchDebounceTimer.Stop();
             _searchDebounceTimer.Start();
         }
