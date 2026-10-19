@@ -26,17 +26,47 @@ jobs:
       - name: Download and Setup KeePass 2.x
         shell: pwsh
         run: |
-          Invoke-WebRequest -Uri "https://downloads.sourceforge.net/project/keepass/KeePass%202.x/2.57.1/KeePass-2.57.1.zip" -OutFile "keepass.zip"
-          Expand-Archive -Path "keepass.zip" -DestinationPath "C:\Program Files\KeePass Password Safe 2" -Force
+          $keepassDir = "C:\Program Files\KeePass Password Safe 2"
+          New-Item -ItemType Directory -Path $keepassDir -Force | Out-Null
+
+          $downloadUrl = "https://downloads.sourceforge.net/project/keepass/KeePass%202.x/2.57.1/KeePass-2.57.1.zip"
+          $zipPath = "$env:TEMP\keepass.zip"
+
+          Write-Host "Downloading KeePass 2.x from SourceForge..."
+          try {
+            curl.exe -fSL "$downloadUrl" -o "$zipPath"
+            tar.exe -xf "$zipPath" -C "$keepassDir"
+          } catch {
+            Write-Warning "Direct curl/tar extraction failed: $_. Falling back to Chocolatey..."
+            choco install keepass -y --no-progress
+          }
+
+          if (-not (Test-Path "$keepassDir\KeePass.exe")) {
+            Write-Host "KeePass.exe not found at $keepassDir, installing via Chocolatey..."
+            choco install keepass -y --no-progress
+          }
+
+          if (-not (Test-Path "$keepassDir\KeePass.exe")) {
+            throw "Failed to locate KeePass.exe at $keepassDir"
+          }
+          Write-Host "KeePass 2.x is ready at $keepassDir"
 
       - name: Restore NuGet Packages
         run: dotnet restore KeePassFluentUI.sln
 
       - name: Build KeePassFluentUI (Release)
-        run: msbuild KeePassFluentUI.sln /p:Configuration=Release /p:Platform="Any CPU"
+        run: msbuild KeePassFluentUI.sln /p:Configuration=Release /p:Platform="Any CPU" /p:KeePassDir="C:\Program Files\KeePass Password Safe 2"
+
+      - name: Deploy Built Plugin for Diagnostic Tests
+        shell: pwsh
+        run: |
+          $pluginDir = "C:\Program Files\KeePass Password Safe 2\Plugins"
+          New-Item -ItemType Directory -Path $pluginDir -Force | Out-Null
+          Copy-Item "src\KeePassFluentUI\bin\Release\net48\KeePassFluentUI.dll" -Destination "$pluginDir\KeePassFluentUI.dll" -Force
+          Write-Host "Deployed KeePassFluentUI.dll to $pluginDir"
 
       - name: Run Unit Tests
-        run: dotnet test tests/KeePassFluentUI.Tests/KeePassFluentUI.Tests.csproj --configuration Release --no-build --verbosity normal
+        run: dotnet test tests/KeePassFluentUI.Tests/KeePassFluentUI.Tests.csproj --configuration Release --no-build --verbosity normal /p:KeePassDir="C:\Program Files\KeePass Password Safe 2"
 
       - name: Archive Build Artifact
         uses: actions/upload-artifact@v4
@@ -66,11 +96,17 @@ jobs:
 
       - name: Deploy Plugin to KeePass Directories
         run: |
+          DLL_PATH=$(find artifacts -name "KeePassFluentUI.dll" | head -n 1)
+          if [ -z "$DLL_PATH" ]; then
+            echo "ERROR: KeePassFluentUI.dll not found in artifacts directory!"
+            exit 1
+          fi
+          echo "Found plugin at: $DLL_PATH"
           sudo mkdir -p /usr/lib/keepass2/Plugins
-          sudo cp artifacts/KeePassFluentUI.dll /usr/lib/keepass2/Plugins/
+          sudo cp "$DLL_PATH" /usr/lib/keepass2/Plugins/
           sudo chmod 644 /usr/lib/keepass2/Plugins/KeePassFluentUI.dll
           mkdir -p ~/.config/KeePass/Plugins
-          cp artifacts/KeePassFluentUI.dll ~/.config/KeePass/Plugins/
+          cp "$DLL_PATH" ~/.config/KeePass/Plugins/
 
       - name: Configure KeePass to Bypass Setup Wizard
         run: |
