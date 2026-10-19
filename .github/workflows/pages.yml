@@ -2,9 +2,14 @@ name: Deploy GitHub Pages
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v*'
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release Tag to deploy (e.g. v1.2.0, leave empty to auto-detect)'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -21,6 +26,31 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve Version Information
+        id: version_step
+        shell: bash
+        run: |
+          VERSION="${{ inputs.tag_name }}"
+          if [ -z "$VERSION" ]; then
+            if [[ "${{ github.ref_type }}" == "tag" ]]; then
+              VERSION="${{ github.ref_name }}"
+            else
+              TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+              if [ -n "$TAG" ]; then
+                VERSION="$TAG"
+              else
+                VERSION="v1.2.0"
+              fi
+            fi
+          fi
+          if [[ ! "$VERSION" =~ ^v ]]; then
+            VERSION="v$VERSION"
+          fi
+          echo "RESOLVED_VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Building FluentPass Pages with version: $VERSION"
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -38,6 +68,8 @@ jobs:
         run: pnpm --dir docs install --frozen-lockfile
 
       - name: Build Next.js Static Export
+        env:
+          NEXT_PUBLIC_APP_VERSION: ${{ steps.version_step.outputs.RESOLVED_VERSION }}
         run: pnpm --dir docs build
 
       - name: Upload Pages Artifact

@@ -6,6 +6,8 @@ export default function InstallSection() {
   const [copied, setCopied] = useState(false);
   const [tab, setTab] = useState<"ps" | "manual">("ps");
 
+  const appVersion = process.env.NEXT_PUBLIC_APP_VERSION || "v1.2.0";
+
   const psCmd =
     "irm https://raw.githubusercontent.com/YoungSx/fluentpass/main/scripts/install.ps1 | iex";
   const psMirrorCmd =
@@ -92,7 +94,7 @@ export default function InstallSection() {
             <div className="flex items-start gap-3">
               <span className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold shrink-0">1</span>
               <div>
-                前往 <a href="https://github.com/YoungSx/fluentpass/releases" target="_blank" rel="noopener noreferrer" className="text-blue-600 font-semibold hover:underline">GitHub Releases</a> 发布页，下载最新版本的 <code>FluentPass.dll</code>。
+                前往 <a href={`https://github.com/YoungSx/fluentpass/releases/tag/${appVersion}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-semibold hover:underline">GitHub Releases ({appVersion})</a> 发布页，下载最新版本的 <code>FluentPass.dll</code>。
               </div>
             </div>
             <div className="flex items-start gap-3">
