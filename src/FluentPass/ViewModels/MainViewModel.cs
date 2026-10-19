@@ -12,6 +12,7 @@ using KeePass.Forms;
 using KeePass.Plugins;
 using KeePass.Util;
 using FluentPass.Common;
+using FluentPass.Services;
 using KeePassLib;
 using KeePassLib.Security;
 using Wpf.Ui.Appearance;
@@ -690,6 +691,73 @@ namespace FluentPass.ViewModels
             {
                 StatusMessage = Loc.Get("Status_EntryDeleteFailedFormat", ex.Message);
             }
+        }
+
+        /// <summary>
+        /// Moves one or more entries to a specified destination group.
+        /// </summary>
+        /// <param name="entryVms">The entry viewmodels to move.</param>
+        /// <param name="targetGroupVm">The destination group viewmodel.</param>
+        /// <returns>True if at least one entry was moved; otherwise false.</returns>
+        public bool MoveEntriesToGroup(IEnumerable<EntryItemViewModel>? entryVms, GroupItemViewModel? targetGroupVm)
+        {
+            if (entryVms == null || targetGroupVm == null || _host.Database == null)
+            {
+                return false;
+            }
+
+            var targetGroup = targetGroupVm.Model;
+            if (targetGroup == null)
+            {
+                return false;
+            }
+
+            var entryList = entryVms.ToList();
+            if (entryList.Count == 0)
+            {
+                return false;
+            }
+
+            var pwEntries = entryList.Select(e => e.Model).Where(e => e != null).ToList();
+            int movedCount = EntryMovementService.MoveEntries(
+                pwEntries,
+                targetGroup,
+                _host.Database,
+                onDatabaseModified: () =>
+                {
+                    SafeInvokeOnHost(() => _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true));
+                });
+
+            if (movedCount > 0)
+            {
+                foreach (var root in RootGroups)
+                {
+                    root.RefreshState();
+                }
+
+                LoadGroupEntries(SelectedGroup);
+                RefreshDatabaseState();
+                RefreshGroupActionStates();
+
+                if (movedCount == 1)
+                {
+                    StatusMessage = Loc.Get("Status_EntryMovedFormat", targetGroup.Name);
+                    NotificationService.ShowSuccess(
+                        Loc.Get("Common_Prompt"),
+                        Loc.Get("Status_EntryMovedFormat", targetGroup.Name));
+                }
+                else
+                {
+                    StatusMessage = Loc.Get("Status_EntriesMovedFormat", movedCount, targetGroup.Name);
+                    NotificationService.ShowSuccess(
+                        Loc.Get("Common_Prompt"),
+                        Loc.Get("Status_EntriesMovedFormat", movedCount, targetGroup.Name));
+                }
+
+                return true;
+            }
+
+            return false;
         }
 
         [RelayCommand]

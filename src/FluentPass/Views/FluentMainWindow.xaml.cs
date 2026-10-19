@@ -1,5 +1,7 @@
 using System.Windows.Media;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -191,11 +193,138 @@ namespace FluentPass.Views
             return null;
         }
 
+        private const string DragDropFormatEntryList = "FluentPass.EntryItems";
+        private Point _dragStartPoint;
+        private bool _isPotentialDrag;
+        private EntryItemViewModel? _draggedCandidate;
+
+        private void OnListViewItemPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _dragStartPoint = e.GetPosition(this);
+            _isPotentialDrag = true;
+            if (sender is FrameworkElement fe && fe.DataContext is EntryItemViewModel vm)
+            {
+                _draggedCandidate = vm;
+            }
+        }
+
+        private void OnListViewItemPreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (!_isPotentialDrag || e.LeftButton != MouseButtonState.Pressed)
+            {
+                _isPotentialDrag = false;
+                return;
+            }
+
+            Point currentPoint = e.GetPosition(this);
+            Vector diff = _dragStartPoint - currentPoint;
+
+            if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
+                Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
+            {
+                _isPotentialDrag = false;
+
+                var selected = EntriesListView.SelectedItems.OfType<EntryItemViewModel>().ToList();
+                List<EntryItemViewModel> toDrag;
+
+                if (_draggedCandidate != null && selected.Contains(_draggedCandidate))
+                {
+                    toDrag = selected;
+                }
+                else if (_draggedCandidate != null)
+                {
+                    toDrag = new List<EntryItemViewModel> { _draggedCandidate };
+                }
+                else
+                {
+                    toDrag = selected;
+                }
+
+                if (toDrag.Count == 0) return;
+
+                var data = new DataObject(DragDropFormatEntryList, toDrag);
+                try
+                {
+                    DragDrop.DoDragDrop(EntriesListView, data, DragDropEffects.Move);
+                }
+                catch
+                {
+                    // Drag-drop aborted or interop issue
+                }
+                finally
+                {
+                    _isPotentialDrag = false;
+                    _draggedCandidate = null;
+                }
+            }
+        }
+
+        private void OnListViewItemPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            _isPotentialDrag = false;
+            _draggedCandidate = null;
+        }
+
+        private void OnTreeViewItemDragOver(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DragDropFormatEntryList))
+            {
+                var treeViewItem = FindVisualAncestor<System.Windows.Controls.TreeViewItem>(e.OriginalSource as DependencyObject)
+                                   ?? sender as System.Windows.Controls.TreeViewItem;
+
+                if (treeViewItem?.DataContext is GroupItemViewModel targetGroupVm && targetGroupVm.Model != null)
+                {
+                    var draggedEntries = e.Data.GetData(DragDropFormatEntryList) as List<EntryItemViewModel>;
+                    if (draggedEntries != null && draggedEntries.Count > 0)
+                    {
+                        bool allAlreadyInTarget = draggedEntries.All(entry => entry.Model.ParentGroup == targetGroupVm.Model);
+                        if (allAlreadyInTarget)
+                        {
+                            e.Effects = DragDropEffects.None;
+                        }
+                        else
+                        {
+                            e.Effects = DragDropEffects.Move;
+                        }
+
+                        e.Handled = true;
+                        return;
+                    }
+                }
+            }
+
+            e.Effects = DragDropEffects.None;
+            e.Handled = true;
+        }
+
+        private void OnTreeViewItemDrop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DragDropFormatEntryList))
+            {
+                var treeViewItem = FindVisualAncestor<System.Windows.Controls.TreeViewItem>(e.OriginalSource as DependencyObject)
+                                   ?? sender as System.Windows.Controls.TreeViewItem;
+
+                if (treeViewItem?.DataContext is GroupItemViewModel targetGroupVm)
+                {
+                    var draggedEntries = e.Data.GetData(DragDropFormatEntryList) as List<EntryItemViewModel>;
+                    if (draggedEntries != null && draggedEntries.Count > 0)
+                    {
+                        _viewModel.MoveEntriesToGroup(draggedEntries, targetGroupVm);
+                        e.Handled = true;
+                        return;
+                    }
+                }
+            }
+        }
+
         private void OnListViewItemPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (sender is System.Windows.Controls.ListViewItem item)
             {
-                item.IsSelected = true;
+                if (!item.IsSelected)
+                {
+                    item.IsSelected = true;
+                }
                 item.Focus();
             }
         }
