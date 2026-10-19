@@ -5,7 +5,7 @@ using NUnit.Framework;
 
 namespace FluentPass.Tests
 {
-    [TestFixture, Apartment(System.Threading.ApartmentState.STA)]
+    [TestFixture, Apartment(System.Threading.ApartmentState.STA), Category("Integration")]
     public class EntryTransactionBackupTests
     {
         [SetUp]
@@ -13,7 +13,8 @@ namespace FluentPass.Tests
         {
             Common.MessageService.EnableDialogs = false;
         }
-        [Test]
+
+        [Test, Category("Integration")]
         public void SaveEdit_MustCreateHistoryBackup_AndSetDatabaseModified()
         {
             // 规范 4: 数据修改、历史记录与状态回写标准流程

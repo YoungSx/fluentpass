@@ -6,7 +6,7 @@ using NUnit.Framework;
 
 namespace FluentPass.Tests
 {
-    [TestFixture, Apartment(System.Threading.ApartmentState.STA)]
+    [TestFixture, Apartment(System.Threading.ApartmentState.STA), Category("Integration")]
     public class FilterAndSearchTests
     {
         private TestPluginHost _host = null!;
@@ -32,7 +32,7 @@ namespace FluentPass.Tests
             _mainVm.LoadGroups();
         }
 
-        [Test]
+        [Test, Category("Integration")]
         public void Filter_WithEmptySearch_ShouldReturnAllEntries()
         {
             _mainVm.SearchText = string.Empty;
@@ -40,7 +40,7 @@ namespace FluentPass.Tests
             Assert.That(_mainVm.FilteredEntries.Count, Is.EqualTo(4));
         }
 
-        [Test]
+        [Test, Category("Integration")]
         public void Filter_ByTitleKeyword_ShouldReturnMatchingEntries()
         {
             _mainVm.SearchText = "git";
@@ -49,7 +49,7 @@ namespace FluentPass.Tests
             Assert.That(_mainVm.FilteredEntries[0].Title, Is.EqualTo("GitHub Account"));
         }
 
-        [Test]
+        [Test, Category("Integration")]
         public void Filter_ByUserName_ShouldReturnMatchingEntries()
         {
             _mainVm.SearchText = "john.doe";
@@ -58,7 +58,7 @@ namespace FluentPass.Tests
             Assert.That(_mainVm.FilteredEntries[0].Title, Is.EqualTo("Google Mail"));
         }
 
-        [Test]
+        [Test, Category("Integration")]
         public void Filter_ByUrl_ShouldReturnMatchingEntries()
         {
             _mainVm.SearchText = "azure.com";
@@ -67,7 +67,7 @@ namespace FluentPass.Tests
             Assert.That(_mainVm.FilteredEntries[0].Title, Is.EqualTo("Microsoft Azure"));
         }
 
-        [Test]
+        [Test, Category("Integration")]
         public void Filter_ByNotes_ShouldReturnMatchingEntries()
         {
             _mainVm.SearchText = "linux host";
@@ -76,7 +76,7 @@ namespace FluentPass.Tests
             Assert.That(_mainVm.FilteredEntries[0].Title, Is.EqualTo("Server SSH Key"));
         }
 
-        [Test]
+        [Test, Category("Integration")]
         public void ShowSubgroupEntries_DefaultsToTrue_ShouldIncludeNestedEntries_ExcludingRecycleBin()
         {
             var subGroup = new PwGroup(true, true, "Work Subgroup", PwIcon.Folder);
@@ -106,7 +106,7 @@ namespace FluentPass.Tests
             Assert.That(_mainVm.Entries.Any(e => e.Title == "Nested Entry"), Is.False);
         }
 
-        [Test]
+        [Test, Category("Integration")]
         public void Search_DefaultsToDatabaseWide_WhenChildGroupSelected()
         {
             var childGroup = new PwGroup(true, true, "Child Group", PwIcon.Folder);
@@ -128,7 +128,7 @@ namespace FluentPass.Tests
             Assert.That(_mainVm.FilteredEntries[0].Title, Is.EqualTo("GitHub Account"));
         }
 
-        [Test]
+        [Test, Category("Integration")]
         public void InlineEdit_PasswordMask_ToggleShouldWorkSafely()
         {
             var entry = _host.Database.RootGroup.Entries.GetAt(0);

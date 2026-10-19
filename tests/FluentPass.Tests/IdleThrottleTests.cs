@@ -1,13 +1,14 @@
+using System;
 using System.Threading;
 using FluentPass.Common;
 using NUnit.Framework;
 
 namespace FluentPass.Tests
 {
-    [TestFixture]
+    [TestFixture, Category("Unit")]
     public class IdleThrottleTests
     {
-        [Test]
+        [Test, Category("Unit")]
         public void IdleThrottle_ShouldThrottleFrequentCalls()
         {
             int callCount = 0;
@@ -30,6 +31,26 @@ namespace FluentPass.Tests
             // 再次调用应该能够触发第 2 次
             throttle.RecordActivity();
             Assert.That(callCount, Is.EqualTo(2), "Call after throttle duration must succeed");
+        }
+
+        [Test, Category("Unit")]
+        public void IdleThrottle_NullAction_ExecutesSafelyWithoutException()
+        {
+            var throttle = new IdleNotificationThrottle((Action?)null, throttleSeconds: 1.0);
+            Assert.DoesNotThrow(() => throttle.RecordActivity());
+        }
+
+        [Test, Category("Unit")]
+        public void IdleThrottle_ZeroThrottleSeconds_TriggersOnEachCall()
+        {
+            int callCount = 0;
+            var throttle = new IdleNotificationThrottle(() => { callCount++; }, throttleSeconds: 0.0);
+
+            throttle.RecordActivity();
+            throttle.RecordActivity();
+            throttle.RecordActivity();
+
+            Assert.That(callCount, Is.EqualTo(3), "Zero throttle seconds should allow every invocation");
         }
     }
 }

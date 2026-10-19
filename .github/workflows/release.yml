@@ -1,0 +1,235 @@
+name: Release Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release Tag (e.g. v1.0.0)'
+        required: true
+        type: string
+        default: 'v1.0.0'
+      prerelease:
+        description: 'Mark as Pre-release'
+        required: false
+        type: boolean
+        default: false
+      draft:
+        description: 'Create as Draft Release'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build, Test & Publish Release
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve Version Information
+        id: version_step
+        shell: pwsh
+        run: |
+          $rawTag = "${{ github.event.inputs.tag_name }}"
+          if ([string]::IsNullOrWhiteSpace($rawTag)) {
+            $rawTag = "${{ github.ref_name }}"
+          }
+          if (-not $rawTag.StartsWith("v")) {
+            $rawTag = "v$rawTag"
+          }
+
+          $semVer = $rawTag.TrimStart("v")
+          # Validate semver prefix (X.Y.Z)
+          if ($semVer -notmatch '^\d+\.\d+\.\d+') {
+            throw "Invalid semantic version format: $rawTag. Must follow SemVer (e.g. v1.0.0 or 1.0.0)."
+          }
+
+          # For AssemblyVersion/FileVersion, MSBuild requires exactly 4 numbers (e.g. 1.0.0.0)
+          $cleanVersion = ($semVer -split '[-+]')[0]
+          $versionParts = $cleanVersion.Split('.')
+          while ($versionParts.Count -lt 4) {
+            $versionParts += "0"
+          }
+          $assemblyVer = ($versionParts[0..3] -join '.')
+
+          Write-Host "Release Tag: $rawTag"
+          Write-Host "SemVer: $semVer"
+          Write-Host "AssemblyVersion: $assemblyVer"
+
+          "TAG_NAME=$rawTag" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "SEMVER=$semVer" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "ASSEMBLY_VER=$assemblyVer" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Cache KeePass 2.x
+        id: cache-keepass
+        uses: actions/cache@v4
+        with:
+          path: C:\Program Files\KeePass Password Safe 2
+          key: keepass-2.57.1-win
+
+      - name: Download and Setup KeePass 2.x
+        if: steps.cache-keepass.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $keepassDir = "C:\Program Files\KeePass Password Safe 2"
+          New-Item -ItemType Directory -Path $keepassDir -Force | Out-Null
+
+          $downloadUrl = "https://downloads.sourceforge.net/project/keepass/KeePass%202.x/2.57.1/KeePass-2.57.1.zip"
+          $zipPath = "$env:TEMP\keepass.zip"
+
+          Write-Host "Downloading KeePass 2.x..."
+          try {
+            curl.exe -fSL "$downloadUrl" -o "$zipPath"
+            tar.exe -xf "$zipPath" -C "$keepassDir"
+          } catch {
+            choco install keepass -y --no-progress
+          }
+
+          if (-not (Test-Path "$keepassDir\KeePass.exe")) {
+            choco install keepass -y --no-progress
+          }
+
+      - name: Restore NuGet Packages
+        run: dotnet restore FluentPass.sln
+
+      - name: Build FluentPass for Release
+        run: |
+          msbuild FluentPass.sln /p:Configuration=Release /p:Platform="Any CPU" /p:Version=${{ env.SEMVER }} /p:AssemblyVersion=${{ env.ASSEMBLY_VER }} /p:FileVersion=${{ env.ASSEMBLY_VER }} /p:InformationalVersion=${{ env.TAG_NAME }} /p:KeePassDir="C:\Program Files\KeePass Password Safe 2"
+
+      - name: Deploy Built Plugin for Diagnostics
+        shell: pwsh
+        run: |
+          $pluginDir = "C:\Program Files\KeePass Password Safe 2\Plugins"
+          New-Item -ItemType Directory -Path $pluginDir -Force | Out-Null
+          Copy-Item "src\FluentPass\bin\Release\net48\FluentPass.dll" -Destination "$pluginDir\FluentPass.dll" -Force
+          Write-Host "Deployed to $pluginDir"
+
+      - name: Run Full Quality Gate Tests (Unit, Integration & Smoke)
+        run: |
+          dotnet test tests/FluentPass.Tests/FluentPass.Tests.csproj --configuration Release --no-build --verbosity normal /p:KeePassDir="C:\Program Files\KeePass Password Safe 2"
+
+      - name: Assemble Release Package
+        shell: pwsh
+        run: |
+          $stagingDir = "staging\FluentPass"
+          $assetsDir = "release-assets"
+          New-Item -ItemType Directory -Path $stagingDir -Force | Out-Null
+          New-Item -ItemType Directory -Path $assetsDir -Force | Out-Null
+
+          $dllSource = "src\FluentPass\bin\Release\net48\FluentPass.dll"
+          if (-not (Test-Path $dllSource)) {
+            throw "Release binary not found at $dllSource"
+          }
+
+          # Copy plugin DLL and Documentation
+          Copy-Item $dllSource -Destination "$stagingDir\FluentPass.dll" -Force
+          if (Test-Path "README.md") {
+            Copy-Item "README.md" -Destination "$stagingDir\README.md" -Force
+          }
+
+          # Create installation instructions file
+          $installGuide = @"
+  Fluent Pass - Installation Instructions ($env:TAG_NAME)
+============================================================
+
+1. Manual Installation:
+   - Make sure KeePass 2.x is closed.
+   - Copy 'FluentPass.dll' to your KeePass Plugins directory:
+     * Standard Installation: C:\Program Files\KeePass Password Safe 2\Plugins\
+     * 32-bit Installation:   C:\Program Files (x86)\KeePass Password Safe 2\Plugins\
+     * Portable / AppData:    %APPDATA%\KeePass\Plugins\
+
+2. Launch KeePass 2.x:
+   - Navigate to 'Tools' -> 'Fluent Pass' in the menu bar.
+   - Enjoy the modern Fluent Design System interface!
+
+For troubleshooting or feedback, visit:
+https://github.com/YoungSx/fluentpass
+"@
+          Set-Content -Path "$stagingDir\INSTALL.txt" -Value $installGuide -Encoding UTF8
+
+          # Create Zip Archive
+          $zipName = "FluentPass-$env:TAG_NAME.zip"
+          $zipPath = "$assetsDir\$zipName"
+          Compress-Archive -Path "$stagingDir\*" -DestinationPath $zipPath -Force
+          Write-Host "Created archive: $zipPath"
+
+          # Copy standalone DLL directly to release-assets
+          Copy-Item $dllSource -Destination "$assetsDir\FluentPass.dll" -Force
+
+          # Calculate SHA256 checksums
+          $filesToHash = Get-ChildItem -Path $assetsDir -File
+          $hashReport = @()
+          foreach ($f in $filesToHash) {
+            $h = Get-FileHash -Path $f.FullName -Algorithm SHA256
+            $hashReport += "$($h.Hash)  $($f.Name)"
+          }
+          $hashContent = $hashReport -join "`r`n"
+          Set-Content -Path "$assetsDir\SHA256SUMS.txt" -Value $hashContent -Encoding UTF8
+          Write-Host "Generated SHA256SUMS.txt:`n$hashContent"
+
+      - name: Generate Release Notes Body
+        id: notes
+        shell: pwsh
+        run: |
+          $body = @"
+## 🚀 Fluent Pass $env:TAG_NAME
+
+Fluent Pass 是专为 KeePass 2.x 打造的同进程现代化 Fluent Design (WPF-UI / Windows 11 Mica) 外壳插件。
+
+### 📦 资产下载与安装 (Downloads)
+- **[FluentPass-$env:TAG_NAME.zip](https://github.com/YoungSx/fluentpass/releases/download/$env:TAG_NAME/FluentPass-$env:TAG_NAME.zip)**: 完整安装包（含使用说明与说明文档）。
+- **[FluentPass.dll](https://github.com/YoungSx/fluentpass/releases/download/$env:TAG_NAME/FluentPass.dll)**: 单文件即插即用插件（直接丢入 KeePass 的 `Plugins\` 目录即可）。
+
+### 🔐 完整性校验 (SHA256 Checksums)
+```text
+$((Get-Content release-assets\SHA256SUMS.txt) -join "`n")
+```
+
+### ⚡ 核心特性
+- **同进程零 IPC**：保留官方 KeePass 原生 DPAPI 内存防护与极速本地响应。
+- **现代化视觉**：Windows 11 Mica / Acrylic 材质，深浅主题自适应。
+- **内存安全零妥协**：敏感字段按需临时解密并在 10 秒后自动清除。
+"@
+          $body | Out-File -FilePath release-notes.md -Encoding UTF8
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          name: Fluent Pass ${{ env.TAG_NAME }}
+          body_path: release-notes.md
+          draft: ${{ github.event.inputs.draft || false }}
+          prerelease: ${{ github.event.inputs.prerelease || false }}
+          generate_release_notes: true
+          files: |
+            release-assets/FluentPass-${{ env.TAG_NAME }}.zip
+            release-assets/FluentPass.dll
+            release-assets/SHA256SUMS.txt
+
+      - name: Upload Release Assets to Workflow Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: FluentPass-Release-Assets-${{ env.TAG_NAME }}
+          path: release-assets/

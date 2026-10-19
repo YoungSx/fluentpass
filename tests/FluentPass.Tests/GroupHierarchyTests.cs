@@ -5,7 +5,7 @@ using NUnit.Framework;
 
 namespace FluentPass.Tests
 {
-    [TestFixture, Apartment(System.Threading.ApartmentState.STA)]
+    [TestFixture, Apartment(System.Threading.ApartmentState.STA), Category("Integration")]
     public class GroupHierarchyTests
     {
         [SetUp]
@@ -14,7 +14,7 @@ namespace FluentPass.Tests
             Common.MessageService.EnableDialogs = false;
         }
 
-        [Test]
+        [Test, Category("Integration")]
         public void GroupItemViewModel_ShouldRecursivelyLoadChildren_AndCountEntries()
         {
             var host = new TestPluginHost();
@@ -43,7 +43,7 @@ namespace FluentPass.Tests
             Assert.That(workVm.Children[0].Name, Is.EqualTo("Servers"));
         }
 
-        [Test]
+        [Test, Category("Integration")]
         public void GroupItemViewModel_RefreshSelfAndAncestors_ShouldUpdateCountsUpTheTree()
         {
             var host = new TestPluginHost();
