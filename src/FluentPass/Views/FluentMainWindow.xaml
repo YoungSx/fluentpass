@@ -144,20 +144,19 @@
                 </StackPanel>
             </ui:TitleBar.Header>
 
-            <!-- 原生 TitleBar 搜索框 (TrailingContent) -->
-            <ui:TitleBar.TrailingContent>
+            <!-- 原生 TitleBar 搜索框 (CenterContent 居中槽位) -->
+            <ui:TitleBar.CenterContent>
                 <ui:TextBox x:Name="SearchBox"
-                            Width="320"
+                            Width="360"
                             Height="32"
                             VerticalAlignment="Center"
-                            Margin="0,0,12,0"
                             WindowChrome.IsHitTestVisibleInChrome="True"
                             Visibility="{Binding IsDatabaseOpen, Converter={StaticResource BooleanToVisibilityConverter}}"
                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                             PlaceholderText="实时搜索条目 (Ctrl+F)..."
                             Icon="{ui:SymbolIcon Search20}"
                             ClearButtonEnabled="True" />
-            </ui:TitleBar.TrailingContent>
+            </ui:TitleBar.CenterContent>
         </ui:TitleBar>
 
         <!-- 主内容区域 -->
