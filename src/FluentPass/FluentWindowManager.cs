@@ -26,9 +26,12 @@ namespace FluentPass
             EnsureWpfApplication();
             _viewModel = new MainViewModel(_host);
 
-            _host.MainWindow.FileOpened += OnHostFileOpened;
-            _host.MainWindow.FileClosed += OnHostFileClosed;
-            _host.MainWindow.UIStateUpdated += OnHostUIStateUpdated;
+            if (_host?.MainWindow != null)
+            {
+                _host.MainWindow.FileOpened += OnHostFileOpened;
+                _host.MainWindow.FileClosed += OnHostFileClosed;
+                _host.MainWindow.UIStateUpdated += OnHostUIStateUpdated;
+            }
         }
 
         public static void EnsureWpfApplication()
@@ -78,11 +81,24 @@ namespace FluentPass
             if (_fluentWindow == null || !_fluentWindow.IsLoaded)
             {
                 _fluentWindow = new FluentMainWindow(_host, _viewModel);
-                if (System.Windows.Application.Current != null)
+                try
                 {
-                    System.Windows.Application.Current.MainWindow = _fluentWindow;
+                    if (System.Windows.Application.Current != null && System.Windows.Application.Current.Dispatcher.CheckAccess())
+                    {
+                        System.Windows.Application.Current.MainWindow = _fluentWindow;
+                    }
                 }
-                UiApplication.Current.MainWindow = _fluentWindow;
+                catch { }
+
+                try
+                {
+                    if (UiApplication.Current != null && UiApplication.Current.Dispatcher.CheckAccess())
+                    {
+                        UiApplication.Current.MainWindow = _fluentWindow;
+                    }
+                }
+                catch { }
+
                 ElementHost.EnableModelessKeyboardInterop(_fluentWindow);
             }
 

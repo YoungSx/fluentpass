@@ -12,7 +12,7 @@ using Wpf.Ui.Markup;
 
 namespace FluentPass.Tests
 {
-    [TestFixture, Category("Smoke")]
+    [TestFixture, Apartment(ApartmentState.STA), Category("Smoke")]
     public class SmokeTests
     {
         [SetUp]
@@ -42,15 +42,7 @@ namespace FluentPass.Tests
             {
                 try
                 {
-                    if (Application.Current == null)
-                    {
-                        var app = new Application
-                        {
-                            ShutdownMode = ShutdownMode.OnExplicitShutdown
-                        };
-                        app.Resources.MergedDictionaries.Add(new ThemesDictionary());
-                        app.Resources.MergedDictionaries.Add(new ControlsDictionary());
-                    }
+                    FluentWindowManager.EnsureWpfApplication();
 
                     var host = new TestPluginHost();
                     var vm = new MainViewModel(host);

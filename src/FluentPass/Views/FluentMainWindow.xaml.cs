@@ -30,11 +30,23 @@ namespace FluentPass.Views
             _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
 
             FluentWindowManager.EnsureWpfApplication();
-            if (System.Windows.Application.Current != null)
+            try
             {
-                System.Windows.Application.Current.MainWindow = this;
+                if (System.Windows.Application.Current != null && System.Windows.Application.Current.Dispatcher.CheckAccess())
+                {
+                    System.Windows.Application.Current.MainWindow = this;
+                }
             }
-            Wpf.Ui.UiApplication.Current.MainWindow = this;
+            catch { }
+
+            try
+            {
+                if (Wpf.Ui.UiApplication.Current != null && Wpf.Ui.UiApplication.Current.Dispatcher.CheckAccess())
+                {
+                    Wpf.Ui.UiApplication.Current.MainWindow = this;
+                }
+            }
+            catch { }
 
             InitializeComponent();
 

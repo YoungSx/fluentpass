@@ -173,11 +173,11 @@ jobs:
 
       # --- 集成测试分层 (~20% 黄金金字塔分层) ---
       - name: Run Integration Tests
-        run: dotnet test tests/FluentPass.Tests/FluentPass.Tests.csproj --configuration Release --no-build --verbosity normal --filter "Category=Integration" /p:KeePassDir="C:\Program Files\KeePass Password Safe 2"
+        run: dotnet test tests/FluentPass.Tests/bin/Release/net48/FluentPass.Tests.dll --verbosity normal --filter "Category=Integration"
 
       # --- Windows 冒烟与诊断测试分层 (~10% 黄金金字塔分层) ---
       - name: Run Windows Smoke Tests
-        run: dotnet test tests/FluentPass.Tests/FluentPass.Tests.csproj --configuration Release --no-build --verbosity normal --filter "Category=Smoke" /p:KeePassDir="C:\Program Files\KeePass Password Safe 2"
+        run: dotnet test tests/FluentPass.Tests/bin/Release/net48/FluentPass.Tests.dll --verbosity normal --filter "Category=Smoke"
 
   # =========================================================================
   # Layer 2 (Parallel B): Cross-Platform Linux Headless Smoke Test (Ubuntu)
