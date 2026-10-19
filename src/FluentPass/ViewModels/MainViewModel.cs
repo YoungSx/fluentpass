@@ -67,10 +67,10 @@ namespace FluentPass.ViewModels
         private string _searchText = string.Empty;
 
         [ObservableProperty]
-        private bool _showSubgroupEntries = false;
+        private bool _showSubgroupEntries = true;
 
         [ObservableProperty]
-        private bool _isDatabaseWideSearch = false;
+        private bool _isDatabaseWideSearch = true;
 
         [ObservableProperty]
         private bool _isRecycleBinSelected = false;
@@ -300,19 +300,25 @@ namespace FluentPass.ViewModels
             string query = (SearchText ?? string.Empty).Trim().ToLowerInvariant();
             var db = _host.Database;
 
+            PwGroup? recycleBin = (db != null && db.RecycleBinEnabled && !db.RecycleBinUuid.Equals(PwUuid.Zero))
+                ? db.RootGroup.FindGroup(db.RecycleBinUuid, true) : null;
+
+            bool isViewingRecycleBin = recycleBin != null && SelectedGroup != null &&
+                (SelectedGroup.Model.Equals(recycleBin) || SelectedGroup.Model.IsContainedIn(recycleBin));
+
             IEnumerable<EntryItemViewModel> candidateEntries;
 
-            if (IsDatabaseWideSearch && !string.IsNullOrEmpty(query) && db?.RootGroup != null)
+            if (!isViewingRecycleBin && IsDatabaseWideSearch && !string.IsNullOrEmpty(query) && db?.RootGroup != null)
             {
-                PwGroup? recycleBin = (db.RecycleBinEnabled && !db.RecycleBinUuid.Equals(PwUuid.Zero))
-                    ? db.RootGroup.FindGroup(db.RecycleBinUuid, true) : null;
-
-                candidateEntries = db.RootGroup.GetEntries(true)
+                var allEntries = db.RootGroup.GetEntries(true)
                     .Where(entry => recycleBin == null || (!entry.ParentGroup.Equals(recycleBin) && !entry.ParentGroup.IsContainedIn(recycleBin)))
-                    .Select(entry => new EntryItemViewModel(entry, _host.MainWindow, db));
+                    .ToList();
+                TotalEntriesCount = allEntries.Count;
+                candidateEntries = allEntries.Select(entry => new EntryItemViewModel(entry, _host.MainWindow, db));
             }
             else
             {
+                TotalEntriesCount = Entries.Count;
                 candidateEntries = Entries;
             }
 
