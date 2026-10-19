@@ -92,7 +92,7 @@ namespace FluentPass
 
                 try
                 {
-                    if (UiApplication.Current != null && UiApplication.Current.Dispatcher.CheckAccess())
+                    if (UiApplication.Current != null)
                     {
                         UiApplication.Current.MainWindow = _fluentWindow;
                     }
