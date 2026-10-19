@@ -4,6 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 
 export default function Header() {
+  const appVersion = process.env.NEXT_PUBLIC_APP_VERSION || "v1.2.0";
+
   return (
     <header className="fixed top-2 z-40 w-full md:top-5">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
@@ -22,8 +24,8 @@ export default function Header() {
                 FluentPass
               </span>
             </Link>
-            <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200/60">
-              v1.0.0
+            <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200/60 font-mono">
+              {appVersion}
             </span>
           </div>
 

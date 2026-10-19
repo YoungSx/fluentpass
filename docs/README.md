@@ -6,7 +6,8 @@ FluentPass 官方落地页与使用说明站点，基于 [Next.js 15](https://ne
 
 - 🎨 **Windows 11 Fluent 2 视觉**：浅色纯净设计，搭配 Mica 毛玻璃顶栏与 Fluent 渐变徽章。
 - ⚡ **Next.js 静态导出 (SSG)**：使用 `output: 'export'`，完全脱离服务端依赖，极速加载且安全可靠。
-- 📦 **自动化 CI/CD**：通过 GitHub Actions 自动构建与部署到 GitHub Pages。
+- 🏷️ **构建期版本自动注入**：构建时自动读取并注入最新 Release 版本标签（支持 `NEXT_PUBLIC_APP_VERSION` 环境变量与本地 Git 标签自动推导）。
+- 📦 **自动化 CI/CD**：与主干发版一致，通过推送 Tag（`v*`）自动触发构建并部署至 GitHub Pages。
 - 🛠️ **互动组件**：
   - PowerShell 一键静默安装命令与国内镜像加速命令（支持一键复制）。
   - Zero-IPC 与传统架构深度对比卡片。
@@ -32,13 +33,16 @@ pnpm dev
 ## 静态构建
 
 ```bash
-# 生成静态输出文件至 docs/out
+# 生成静态输出文件至 docs/out（自动探测 git tag 作为版本号）
 pnpm build
+
+# 或者指定版本号构建
+NEXT_PUBLIC_APP_VERSION=v1.2.0 pnpm build
 ```
 
 ## GitHub Pages 部署
 
 本项目配置了自动化工作流 `.github/workflows/pages.yml`：
-1. **自动触发**：当代码合并至 `main` 分支时自动触发构建并部署。
-2. **手动触发**：在 GitHub 仓库 Actions 页面选择 `Deploy GitHub Pages` 手动执行 `workflow_dispatch`。
+1. **发版 Tag 触发**：当向仓库推送发版 Tag（如 `git push origin v1.2.0`）时，自动触发构建并将对应版本号注入部署到 GitHub Pages。
+2. **手动触发**：在 GitHub 仓库 Actions 页面选择 `Deploy GitHub Pages` 手动执行 `workflow_dispatch`（支持手动指定目标版本号或自动检测最新 Tag）。
 3. **部署目标**：`https://<owner>.github.io/fluentpass/`
