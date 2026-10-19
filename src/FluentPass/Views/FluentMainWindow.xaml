@@ -289,7 +289,72 @@
                                   BorderThickness="0"
                                   Background="Transparent"
                                   VerticalAlignment="Stretch"
-                                  SelectedItemChanged="OnTreeViewSelectedItemChanged">
+                                  SelectedItemChanged="OnTreeViewSelectedItemChanged"
+                                  PreviewMouseRightButtonDown="OnTreeViewPreviewMouseRightButtonDown"
+                                  ContextMenuOpening="OnTreeViewContextMenuOpening">
+                            <TreeView.Resources>
+                                <common:BindingProxy x:Key="MainVmProxy" Data="{Binding}" />
+                            </TreeView.Resources>
+                            <TreeView.ContextMenu>
+                                <ContextMenu>
+                                    <ui:MenuItem Header="{common:Loc Groups_ContextMenu_NewSubgroup}"
+                                                 Icon="{ui:SymbolIcon FolderAdd20}"
+                                                 Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.NewGroupCommand}"
+                                                 CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedGroup}" />
+                                    <ui:MenuItem Header="{common:Loc Groups_ContextMenu_NewEntry}"
+                                                 Icon="{ui:SymbolIcon Add20}"
+                                                 Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.NewEntryInGroupCommand}"
+                                                 CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedGroup}" />
+                                    <Separator />
+                                    <ui:MenuItem Header="{common:Loc Groups_ContextMenu_EditGroup}"
+                                                 Icon="{ui:SymbolIcon Edit20}"
+                                                 Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.EditGroupCommand}"
+                                                 CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedGroup}" />
+                                    <ui:MenuItem Header="{common:Loc Groups_ContextMenu_DuplicateGroup}"
+                                                 Icon="{ui:SymbolIcon Copy20}"
+                                                 IsEnabled="{Binding Source={StaticResource MainVmProxy}, Path=Data.CanDuplicateSelectedGroup}"
+                                                 Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.DuplicateGroupCommand}"
+                                                 CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedGroup}" />
+                                    <Separator />
+                                    <ui:MenuItem Header="{common:Loc Groups_ContextMenu_SortSubgroups}"
+                                                 Icon="{ui:SymbolIcon ArrowSort20}"
+                                                 IsEnabled="{Binding Source={StaticResource MainVmProxy}, Path=Data.CanSortSelectedSubgroups}"
+                                                 Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.SortSubgroupsCommand}"
+                                                 CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedGroup}" />
+                                    <ui:MenuItem Header="{common:Loc Groups_ContextMenu_MoveUp}"
+                                                 Icon="{ui:SymbolIcon ArrowUp20}"
+                                                 IsEnabled="{Binding Source={StaticResource MainVmProxy}, Path=Data.CanMoveSelectedGroupUp}"
+                                                 Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.MoveGroupUpCommand}"
+                                                 CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedGroup}" />
+                                    <ui:MenuItem Header="{common:Loc Groups_ContextMenu_MoveDown}"
+                                                 Icon="{ui:SymbolIcon ArrowDown20}"
+                                                 IsEnabled="{Binding Source={StaticResource MainVmProxy}, Path=Data.CanMoveSelectedGroupDown}"
+                                                 Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.MoveGroupDownCommand}"
+                                                 CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedGroup}" />
+                                    <Separator />
+                                    <ui:MenuItem Header="{common:Loc Groups_ContextMenu_ExpandAll}"
+                                                 Icon="{ui:SymbolIcon ArrowExpandAll20}"
+                                                 IsEnabled="{Binding Source={StaticResource MainVmProxy}, Path=Data.CanExpandOrCollapseSelectedGroup}"
+                                                 Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.ExpandAllGroupsCommand}"
+                                                 CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedGroup}" />
+                                    <ui:MenuItem Header="{common:Loc Groups_ContextMenu_CollapseAll}"
+                                                 Icon="{ui:SymbolIcon ArrowCollapseAll20}"
+                                                 IsEnabled="{Binding Source={StaticResource MainVmProxy}, Path=Data.CanExpandOrCollapseSelectedGroup}"
+                                                 Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.CollapseAllGroupsCommand}"
+                                                 CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedGroup}" />
+                                    <Separator Visibility="{Binding Source={StaticResource MainVmProxy}, Path=Data.IsRecycleBinSelected, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                    <ui:MenuItem Header="{common:Loc Groups_ContextMenu_EmptyRecycleBin}"
+                                                 Icon="{ui:SymbolIcon Dismiss20}"
+                                                 Visibility="{Binding Source={StaticResource MainVmProxy}, Path=Data.IsRecycleBinSelected, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                 Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.EmptyRecycleBinCommand}" />
+                                    <Separator />
+                                    <ui:MenuItem Header="{common:Loc Groups_ContextMenu_DeleteGroup}"
+                                                 Icon="{ui:SymbolIcon Delete20}"
+                                                 IsEnabled="{Binding Source={StaticResource MainVmProxy}, Path=Data.CanDeleteSelectedGroup}"
+                                                 Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.DeleteGroupCommand}"
+                                                 CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedGroup}" />
+                                </ContextMenu>
+                            </TreeView.ContextMenu>
                             <TreeView.ItemTemplate>
                                 <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                                     <Grid Margin="2,3">
