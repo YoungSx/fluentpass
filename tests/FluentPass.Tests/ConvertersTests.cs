@@ -46,10 +46,26 @@ namespace FluentPass.Tests
         }
 
         [Test, Category("Unit")]
-        public void BooleanToVisibilityConverter_ConvertBack_NotSupportedException()
+        public void BooleanToVisibilityConverter_ConvertBack_ShouldConvertVisibilityToBoolean()
         {
             var conv = new BooleanToVisibilityConverter();
-            Assert.Throws<NotSupportedException>(() => conv.ConvertBack(Visibility.Visible, typeof(bool), null!, CultureInfo.InvariantCulture));
+            var culture = CultureInfo.InvariantCulture;
+
+            Assert.That(conv.ConvertBack(Visibility.Visible, typeof(bool), null!, culture), Is.EqualTo(true));
+            Assert.That(conv.ConvertBack(Visibility.Collapsed, typeof(bool), null!, culture), Is.EqualTo(false));
+            Assert.That(conv.ConvertBack(Visibility.Hidden, typeof(bool), null!, culture), Is.EqualTo(false));
+
+            // With inverse parameter
+            Assert.That(conv.ConvertBack(Visibility.Visible, typeof(bool), "Inverse", culture), Is.EqualTo(false));
+            Assert.That(conv.ConvertBack(Visibility.Collapsed, typeof(bool), "Inverse", culture), Is.EqualTo(true));
+
+            // With Invert property
+            conv.Invert = true;
+            Assert.That(conv.ConvertBack(Visibility.Visible, typeof(bool), null!, culture), Is.EqualTo(false));
+            Assert.That(conv.ConvertBack(Visibility.Collapsed, typeof(bool), null!, culture), Is.EqualTo(true));
+
+            // Invalid non-visibility input returns false
+            Assert.That(conv.ConvertBack("not a visibility", typeof(bool), null!, culture), Is.EqualTo(false));
         }
 
         [Test, Category("Unit")]
