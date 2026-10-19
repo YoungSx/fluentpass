@@ -43,7 +43,7 @@ jobs:
         id: version_step
         shell: pwsh
         run: |
-          $rawTag = "${{ github.event.inputs.tag_name }}"
+          $rawTag = "${{ inputs.tag_name }}"
           if ([string]::IsNullOrWhiteSpace($rawTag)) {
             $rawTag = "${{ github.ref_name }}"
           }
@@ -149,24 +149,24 @@ jobs:
           }
 
           # Create installation instructions file
-          $installGuide = @"
-  Fluent Pass - Installation Instructions ($env:TAG_NAME)
-============================================================
-
-1. Manual Installation:
-   - Make sure KeePass 2.x is closed.
-   - Copy 'FluentPass.dll' to your KeePass Plugins directory:
-     * Standard Installation: C:\Program Files\KeePass Password Safe 2\Plugins\
-     * 32-bit Installation:   C:\Program Files (x86)\KeePass Password Safe 2\Plugins\
-     * Portable / AppData:    %APPDATA%\KeePass\Plugins\
-
-2. Launch KeePass 2.x:
-   - Navigate to 'Tools' -> 'Fluent Pass' in the menu bar.
-   - Enjoy the modern Fluent Design System interface!
-
-For troubleshooting or feedback, visit:
-https://github.com/YoungSx/fluentpass
-"@
+          $installGuide = @(
+              "  Fluent Pass - Installation Instructions ($env:TAG_NAME)",
+              "============================================================",
+              "",
+              "1. Manual Installation:",
+              "   - Make sure KeePass 2.x is closed.",
+              "   - Copy 'FluentPass.dll' to your KeePass Plugins directory:",
+              "     * Standard Installation: C:\Program Files\KeePass Password Safe 2\Plugins\",
+              "     * 32-bit Installation:   C:\Program Files (x86)\KeePass Password Safe 2\Plugins\",
+              "     * Portable / AppData:    %APPDATA%\KeePass\Plugins\",
+              "",
+              "2. Launch KeePass 2.x:",
+              "   - Navigate to 'Tools' -> 'Fluent Pass' in the menu bar.",
+              "   - Enjoy the modern Fluent Design System interface!",
+              "",
+              "For troubleshooting or feedback, visit:",
+              "https://github.com/YoungSx/fluentpass"
+          ) -join "`r`n"
           Set-Content -Path "$stagingDir\INSTALL.txt" -Value $installGuide -Encoding UTF8
 
           # Create Zip Archive
@@ -193,25 +193,26 @@ https://github.com/YoungSx/fluentpass
         id: notes
         shell: pwsh
         run: |
-          $body = @"
-## 🚀 Fluent Pass $env:TAG_NAME
-
-Fluent Pass 是专为 KeePass 2.x 打造的同进程现代化 Fluent Design (WPF-UI / Windows 11 Mica) 外壳插件。
-
-### 📦 资产下载与安装 (Downloads)
-- **[FluentPass-$env:TAG_NAME.zip](https://github.com/YoungSx/fluentpass/releases/download/$env:TAG_NAME/FluentPass-$env:TAG_NAME.zip)**: 完整安装包（含使用说明与说明文档）。
-- **[FluentPass.dll](https://github.com/YoungSx/fluentpass/releases/download/$env:TAG_NAME/FluentPass.dll)**: 单文件即插即用插件（直接丢入 KeePass 的 `Plugins\` 目录即可）。
-
-### 🔐 完整性校验 (SHA256 Checksums)
-```text
-$((Get-Content release-assets\SHA256SUMS.txt) -join "`n")
-```
-
-### ⚡ 核心特性
-- **同进程零 IPC**：保留官方 KeePass 原生 DPAPI 内存防护与极速本地响应。
-- **现代化视觉**：Windows 11 Mica / Acrylic 材质，深浅主题自适应。
-- **内存安全零妥协**：敏感字段按需临时解密并在 10 秒后自动清除。
-"@
+          $shaContent = (Get-Content release-assets\SHA256SUMS.txt) -join "`n"
+          $body = @(
+              "## 🚀 Fluent Pass $env:TAG_NAME",
+              "",
+              "Fluent Pass 是专为 KeePass 2.x 打造的同进程现代化 Fluent Design (WPF-UI / Windows 11 Mica) 外壳插件。",
+              "",
+              "### 📦 资产下载与安装 (Downloads)",
+              "- **[FluentPass-$env:TAG_NAME.zip](https://github.com/YoungSx/fluentpass/releases/download/$env:TAG_NAME/FluentPass-$env:TAG_NAME.zip)**: 完整安装包（含使用说明与说明文档）。",
+              "- **[FluentPass.dll](https://github.com/YoungSx/fluentpass/releases/download/$env:TAG_NAME/FluentPass.dll)**: 单文件即插即用插件（直接丢入 KeePass 的 `Plugins\` 目录即可）。",
+              "",
+              "### 🔐 完整性校验 (SHA256 Checksums)",
+              "```text",
+              $shaContent,
+              "```",
+              "",
+              "### ⚡ 核心特性",
+              "- **同进程零 IPC**：保留官方 KeePass 原生 DPAPI 内存防护与极速本地响应。",
+              "- **现代化视觉**：Windows 11 Mica / Acrylic 材质，深浅主题自适应。",
+              "- **内存安全零妥协**：敏感字段按需临时解密并在 10 秒后自动清除。"
+          ) -join "`r`n"
           $body | Out-File -FilePath release-notes.md -Encoding UTF8
 
       - name: Create GitHub Release
@@ -220,8 +221,8 @@ $((Get-Content release-assets\SHA256SUMS.txt) -join "`n")
           tag_name: ${{ env.TAG_NAME }}
           name: Fluent Pass ${{ env.TAG_NAME }}
           body_path: release-notes.md
-          draft: ${{ github.event.inputs.draft || false }}
-          prerelease: ${{ github.event.inputs.prerelease || false }}
+          draft: ${{ inputs.draft || false }}
+          prerelease: ${{ inputs.prerelease || false }}
           generate_release_notes: true
           files: |
             release-assets/FluentPass-${{ env.TAG_NAME }}.zip

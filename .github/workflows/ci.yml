@@ -2,11 +2,11 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [ master, main, 'chore/**', 'feature/**', 'fix/**' ]
+    branches: [ master, main, 'chore/**', 'feature/**', 'fix/**', 'ci/**' ]
     paths:
       - 'src/**'
       - 'tests/**'
-      - '.github/workflows/ci.yml'
+      - '.github/workflows/**'
       - '*.sln'
       - '*.slnx'
       - 'build.*'
@@ -15,7 +15,7 @@ on:
     paths:
       - 'src/**'
       - 'tests/**'
-      - '.github/workflows/ci.yml'
+      - '.github/workflows/**'
       - '*.sln'
       - '*.slnx'
       - 'build.*'
