@@ -1,4 +1,5 @@
 using System;
+using FluentPass.Common;
 using FluentPass.Tests.Mocks;
 using FluentPass.ViewModels;
 using KeePassLib;
@@ -9,6 +10,18 @@ namespace FluentPass.Tests
     [TestFixture, Category("Unit")]
     public class EntryItemViewModelUnitTests
     {
+        [SetUp]
+        public void Setup()
+        {
+            Loc.Instance.SetLanguagePreference("zh-CN");
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            Loc.Instance.SetLanguagePreference(SettingsService.DefaultLanguage);
+        }
+
         [Test, Category("Unit")]
         public void Constructor_ValidEntry_MapsPropertiesCorrectly()
         {
@@ -29,7 +42,7 @@ namespace FluentPass.Tests
             var entry = TestPluginHost.CreateTestEntry("", "admin", "pass");
             var vm = new EntryItemViewModel(entry, null, null);
 
-            Assert.That(vm.Title, Is.EqualTo("(无标题)"));
+            Assert.That(vm.Title, Is.EqualTo(Loc.Get("Common_Untitled")));
         }
 
         [Test, Category("Unit")]
@@ -38,7 +51,7 @@ namespace FluentPass.Tests
             var entry = TestPluginHost.CreateTestEntry("   \t", "admin", "pass");
             var vm = new EntryItemViewModel(entry, null, null);
 
-            Assert.That(vm.Title, Is.EqualTo("(无标题)"));
+            Assert.That(vm.Title, Is.EqualTo(Loc.Get("Common_Untitled")));
         }
 
         [Test, Category("Unit")]
