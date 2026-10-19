@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -79,6 +80,51 @@ namespace FluentPass.ViewModels
             foreach (var subGroup in Model.Groups)
             {
                 Children.Add(new GroupItemViewModel(subGroup, this, _mainForm, _database));
+            }
+        }
+
+        public void ReloadChildren()
+        {
+            var currentVms = new Dictionary<PwUuid, GroupItemViewModel>();
+            foreach (var child in Children)
+            {
+                currentVms[child.Model.Uuid] = child;
+            }
+
+            Children.Clear();
+            foreach (var subGroup in Model.Groups)
+            {
+                if (currentVms.TryGetValue(subGroup.Uuid, out var existing))
+                {
+                    existing.RefreshState();
+                    Children.Add(existing);
+                }
+                else
+                {
+                    Children.Add(new GroupItemViewModel(subGroup, this, _mainForm, _database));
+                }
+            }
+        }
+
+        public void ExpandAll()
+        {
+            IsExpanded = true;
+            foreach (var child in Children)
+            {
+                child.ExpandAll();
+            }
+        }
+
+        public void CollapseAll()
+        {
+            foreach (var child in Children)
+            {
+                child.CollapseAll();
+            }
+
+            if (Parent != null)
+            {
+                IsExpanded = false;
             }
         }
 

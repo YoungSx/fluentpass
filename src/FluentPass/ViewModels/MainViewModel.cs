@@ -78,6 +78,24 @@ namespace FluentPass.ViewModels
         private bool _isRecycleBinSelected = false;
 
         [ObservableProperty]
+        private bool _canDuplicateSelectedGroup = false;
+
+        [ObservableProperty]
+        private bool _canDeleteSelectedGroup = false;
+
+        [ObservableProperty]
+        private bool _canSortSelectedSubgroups = false;
+
+        [ObservableProperty]
+        private bool _canMoveSelectedGroupUp = false;
+
+        [ObservableProperty]
+        private bool _canMoveSelectedGroupDown = false;
+
+        [ObservableProperty]
+        private bool _canExpandOrCollapseSelectedGroup = false;
+
+        [ObservableProperty]
         private bool _isSettingsOpen = false;
 
         public SettingsViewModel Settings { get; }
@@ -181,7 +199,19 @@ namespace FluentPass.ViewModels
             IsRecycleBinSelected = db != null && db.RecycleBinEnabled && value != null &&
                 !db.RecycleBinUuid.Equals(PwUuid.Zero) && value.Model.Uuid.Equals(db.RecycleBinUuid);
 
+            RefreshGroupActionStates();
             LoadGroupEntries(value);
+        }
+
+        public void RefreshGroupActionStates()
+        {
+            var g = SelectedGroup;
+            CanDuplicateSelectedGroup = g?.Parent != null && !IsRecycleBinSelected;
+            CanDeleteSelectedGroup = g?.Parent != null && !IsRecycleBinSelected;
+            CanSortSelectedSubgroups = g != null && g.Children.Count > 1;
+            CanMoveSelectedGroupUp = g?.Parent != null && g.Parent.Children.IndexOf(g) > 0;
+            CanMoveSelectedGroupDown = g?.Parent != null && g.Parent.Children.IndexOf(g) >= 0 && g.Parent.Children.IndexOf(g) < g.Parent.Children.Count - 1;
+            CanExpandOrCollapseSelectedGroup = g != null && g.Children.Count > 0;
         }
 
         partial void OnSelectedEntryChanged(EntryItemViewModel? value)
@@ -702,20 +732,22 @@ namespace FluentPass.ViewModels
         }
 
         [RelayCommand]
-        public void NewGroup()
+        public void NewGroup(GroupItemViewModel? groupVm = null)
         {
-            if (SelectedGroup == null || _host.Database == null) return;
+            var target = groupVm ?? SelectedGroup;
+            if (target == null || _host.Database == null) return;
 
             try
             {
                 var newSubGroup = new PwGroup(true, true, Loc.Get("Groups_NewGroupName"), PwIcon.Folder);
-                SelectedGroup.Model.AddGroup(newSubGroup, true);
-                SelectedGroup.AddChildGroup(newSubGroup);
+                target.Model.AddGroup(newSubGroup, true);
+                target.AddChildGroup(newSubGroup);
 
                 _host.Database.Modified = true;
                 SafeInvokeOnHost(() => _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true));
                 StatusMessage = Loc.Get("Status_GroupCreated");
                 RefreshDatabaseState();
+                RefreshGroupActionStates();
             }
             catch (Exception ex)
             {
@@ -724,16 +756,145 @@ namespace FluentPass.ViewModels
         }
 
         [RelayCommand]
-        public void DeleteGroup()
+        public void NewEntryInGroup(GroupItemViewModel? groupVm = null)
         {
-            if (SelectedGroup == null || SelectedGroup.Parent == null || _host.Database == null)
+            var target = groupVm ?? SelectedGroup;
+            if (target == null || _host.Database == null) return;
+
+            if (SelectedGroup != target)
+            {
+                SelectedGroup = target;
+            }
+
+            NewEntry();
+        }
+
+        [RelayCommand]
+        public void EditGroup(GroupItemViewModel? groupVm = null)
+        {
+            var target = groupVm ?? SelectedGroup;
+            if (target == null || _host.Database == null) return;
+
+            try
+            {
+                var form = new GroupForm();
+                form.InitEx(target.Model, false, _host.MainWindow?.ClientIcons, _host.Database);
+                IWin32Window? owner = _window != null ? new Wpf32Window(_window) : null;
+                if (form.ShowDialog(owner) == DialogResult.OK)
+                {
+                    _host.Database.Modified = true;
+                    SafeInvokeOnHost(() => _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true));
+                    target.RefreshState();
+                    target.RefreshSelfAndAncestors();
+                    RefreshDatabaseState();
+                    RefreshGroupActionStates();
+                    StatusMessage = Loc.Get("Status_GroupEdited");
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = Loc.Get("Status_GroupEditFailedFormat", ex.Message);
+            }
+        }
+
+        [RelayCommand]
+        public void DuplicateGroup(GroupItemViewModel? groupVm = null)
+        {
+            var target = groupVm ?? SelectedGroup;
+            if (target == null || target.Parent == null || _host.Database == null)
             {
                 MessageService.Show(Loc.Get("Dialog_CannotDeleteRootGroup"), Loc.Get("Common_Prompt"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
+            var db = _host.Database;
+            if (db.RecycleBinEnabled && !db.RecycleBinUuid.Equals(PwUuid.Zero) && target.Model.Uuid.Equals(db.RecycleBinUuid))
+            {
+                MessageService.Show(Loc.Get("Dialog_CannotDuplicateRecycleBin"), Loc.Get("Common_Prompt"), MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                bool confirmed = true;
+                DuplicationForm? form = null;
+                if (MessageService.EnableDialogs)
+                {
+                    form = new DuplicationForm();
+                    IWin32Window? owner = _window != null ? new Wpf32Window(_window) : null;
+                    confirmed = form.ShowDialog(owner) == DialogResult.OK;
+                }
+
+                if (!confirmed) return;
+
+                var parent = target.Parent;
+                var dup = target.Model.Duplicate();
+                parent.Model.AddGroup(dup, true);
+                int targetIndex = parent.Model.Groups.IndexOf(target.Model);
+                int curIndex = parent.Model.Groups.IndexOf(dup);
+                if (targetIndex >= 0 && curIndex >= 0 && curIndex != targetIndex + 1)
+                {
+                    parent.Model.Groups.Remove(dup);
+                    parent.Model.Groups.Insert((uint)(targetIndex + 1), dup);
+                }
+
+                if (form != null)
+                {
+                    var srcEntries = target.Model.GetEntries(true);
+                    var dupEntries = dup.GetEntries(true);
+                    if (srcEntries != null && dupEntries != null && srcEntries.UCount == dupEntries.UCount)
+                    {
+                        for (uint i = 0; i < srcEntries.UCount; ++i)
+                        {
+                            form.ApplyTo(dupEntries.GetAt(i), srcEntries.GetAt(i), db);
+                        }
+                    }
+                }
+
+                db.Modified = true;
+                SafeInvokeOnHost(() => _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true));
+
+                var dupVm = new GroupItemViewModel(dup, parent, _host.MainWindow, db);
+                int vmIndex = parent.Children.IndexOf(target);
+                if (vmIndex >= 0 && vmIndex + 1 <= parent.Children.Count)
+                {
+                    parent.Children.Insert(vmIndex + 1, dupVm);
+                }
+                else
+                {
+                    parent.Children.Add(dupVm);
+                }
+
+                parent.RefreshSelfAndAncestors();
+                RefreshDatabaseState();
+                RefreshGroupActionStates();
+                StatusMessage = Loc.Get("Status_GroupDuplicated");
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = Loc.Get("Status_GroupDuplicateFailedFormat", ex.Message);
+            }
+        }
+
+        [RelayCommand]
+        public void DeleteGroup(GroupItemViewModel? groupVm = null)
+        {
+            var target = groupVm ?? SelectedGroup;
+            if (target == null || target.Parent == null || _host.Database == null)
+            {
+                MessageService.Show(Loc.Get("Dialog_CannotDeleteRootGroup"), Loc.Get("Common_Prompt"), MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var db = _host.Database;
+            if (db.RecycleBinEnabled && !db.RecycleBinUuid.Equals(PwUuid.Zero) && target.Model.Uuid.Equals(db.RecycleBinUuid))
+            {
+                MessageService.Show(Loc.Get("Dialog_CannotDeleteRecycleBin"), Loc.Get("Common_Prompt"), MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
             var result = MessageService.Show(
-                Loc.Get("Dialog_DeleteGroup_ConfirmFormat", SelectedGroup.Name),
+                Loc.Get("Dialog_DeleteGroup_ConfirmFormat", target.Name),
                 Loc.Get("Dialog_DeleteGroup_Title"),
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
@@ -742,8 +903,7 @@ namespace FluentPass.ViewModels
 
             try
             {
-                var group = SelectedGroup.Model;
-                var db = _host.Database;
+                var group = target.Model;
 
                 PwGroup? recycleBin = null;
                 if (db.RecycleBinEnabled && !db.RecycleBinUuid.Equals(PwUuid.Zero))
@@ -765,17 +925,114 @@ namespace FluentPass.ViewModels
                 db.Modified = true;
                 SafeInvokeOnHost(() => _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true));
 
-                var parent = SelectedGroup.Parent;
-                parent.RemoveChildGroup(SelectedGroup);
-                SelectedGroup = parent;
+                var parent = target.Parent;
+                parent.RemoveChildGroup(target);
+                if (SelectedGroup == target)
+                {
+                    SelectedGroup = parent;
+                }
 
                 StatusMessage = Loc.Get("Status_GroupDeleted");
                 RefreshDatabaseState();
+                RefreshGroupActionStates();
             }
             catch (Exception ex)
             {
                 StatusMessage = Loc.Get("Status_GroupDeleteFailedFormat", ex.Message);
             }
+        }
+
+        [RelayCommand]
+        public void SortSubgroups(GroupItemViewModel? groupVm = null)
+        {
+            var target = groupVm ?? SelectedGroup;
+            if (target == null || _host.Database == null || target.Children.Count <= 1) return;
+
+            try
+            {
+                target.Model.SortSubGroups(false);
+                target.ReloadChildren();
+
+                _host.Database.Modified = true;
+                SafeInvokeOnHost(() => _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true));
+                RefreshDatabaseState();
+                RefreshGroupActionStates();
+                StatusMessage = Loc.Get("Status_GroupsSorted");
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = Loc.Get("Common_Unknown") + ": " + ex.Message;
+            }
+        }
+
+        [RelayCommand]
+        public void MoveGroupUp(GroupItemViewModel? groupVm = null)
+        {
+            var target = groupVm ?? SelectedGroup;
+            if (target?.Parent == null || _host.Database == null) return;
+
+            var parent = target.Parent;
+            int index = parent.Children.IndexOf(target);
+            if (index <= 0) return;
+
+            try
+            {
+                parent.Model.Groups.Remove(target.Model);
+                parent.Model.Groups.Insert((uint)(index - 1), target.Model);
+                parent.Children.Move(index, index - 1);
+
+                _host.Database.Modified = true;
+                SafeInvokeOnHost(() => _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true));
+                RefreshDatabaseState();
+                RefreshGroupActionStates();
+                StatusMessage = Loc.Get("Status_GroupMoved");
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = Loc.Get("Common_Unknown") + ": " + ex.Message;
+            }
+        }
+
+        [RelayCommand]
+        public void MoveGroupDown(GroupItemViewModel? groupVm = null)
+        {
+            var target = groupVm ?? SelectedGroup;
+            if (target?.Parent == null || _host.Database == null) return;
+
+            var parent = target.Parent;
+            int index = parent.Children.IndexOf(target);
+            if (index < 0 || index >= parent.Children.Count - 1) return;
+
+            try
+            {
+                parent.Model.Groups.Remove(target.Model);
+                parent.Model.Groups.Insert((uint)(index + 1), target.Model);
+                parent.Children.Move(index, index + 1);
+
+                _host.Database.Modified = true;
+                SafeInvokeOnHost(() => _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true));
+                RefreshDatabaseState();
+                RefreshGroupActionStates();
+                StatusMessage = Loc.Get("Status_GroupMoved");
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = Loc.Get("Common_Unknown") + ": " + ex.Message;
+            }
+        }
+
+        [RelayCommand]
+        public void ExpandAllGroups(GroupItemViewModel? groupVm = null)
+        {
+            var target = groupVm ?? SelectedGroup;
+            target?.ExpandAll();
+        }
+
+        [RelayCommand]
+        public void CollapseAllGroups(GroupItemViewModel? groupVm = null)
+        {
+            var target = groupVm ?? SelectedGroup;
+            target?.CollapseAll();
         }
 
         [RelayCommand]

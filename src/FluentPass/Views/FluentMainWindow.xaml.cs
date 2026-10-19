@@ -1,3 +1,4 @@
+using System.Windows.Media;
 using System;
 using System.ComponentModel;
 using System.Windows;
@@ -150,6 +151,44 @@ namespace FluentPass.Views
             {
                 _viewModel.SelectedGroup = groupVm;
             }
+        }
+
+        private void OnTreeViewPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            var treeViewItem = FindVisualAncestor<System.Windows.Controls.TreeViewItem>(e.OriginalSource as DependencyObject);
+            if (treeViewItem != null)
+            {
+                treeViewItem.IsSelected = true;
+                treeViewItem.Focus();
+            }
+        }
+
+        private void OnTreeViewContextMenuOpening(object sender, ContextMenuEventArgs e)
+        {
+            _viewModel.RefreshGroupActionStates();
+        }
+
+        private static T? FindVisualAncestor<T>(DependencyObject? current) where T : DependencyObject
+        {
+            while (current != null)
+            {
+                if (current is T match)
+                    return match;
+
+                if (current is Visual or System.Windows.Media.Media3D.Visual3D)
+                {
+                    current = VisualTreeHelper.GetParent(current);
+                }
+                else if (current is FrameworkContentElement fce)
+                {
+                    current = fce.Parent;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            return null;
         }
 
         private void OnListViewItemPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
