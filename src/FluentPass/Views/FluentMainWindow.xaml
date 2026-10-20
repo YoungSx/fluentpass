@@ -285,13 +285,18 @@
 
                         <!-- 现代 Fluent 递归分组树 -->
                         <TreeView Grid.Row="1"
+                                  x:Name="GroupsTreeView"
                                   ItemsSource="{Binding RootGroups}"
                                   BorderThickness="0"
                                   Background="Transparent"
                                   VerticalAlignment="Stretch"
+                                  AllowDrop="True"
                                   SelectedItemChanged="OnTreeViewSelectedItemChanged"
                                   PreviewMouseRightButtonDown="OnTreeViewPreviewMouseRightButtonDown"
-                                  ContextMenuOpening="OnTreeViewContextMenuOpening">
+                                  ContextMenuOpening="OnTreeViewContextMenuOpening"
+                                  DragOver="OnGroupsTreeViewDragOver"
+                                  DragLeave="OnGroupsTreeViewDragLeave"
+                                  Drop="OnGroupsTreeViewDrop">
                             <TreeView.Resources>
                                 <common:BindingProxy x:Key="MainVmProxy" Data="{Binding}" />
                             </TreeView.Resources>
@@ -380,6 +385,7 @@
                                     <Setter Property="Padding" Value="4,3" />
                                     <Setter Property="AllowDrop" Value="True" />
                                     <EventSetter Event="DragOver" Handler="OnTreeViewItemDragOver" />
+                                    <EventSetter Event="DragLeave" Handler="OnTreeViewItemDragLeave" />
                                     <EventSetter Event="Drop" Handler="OnTreeViewItemDrop" />
                                 </Style>
                             </TreeView.ItemContainerStyle>

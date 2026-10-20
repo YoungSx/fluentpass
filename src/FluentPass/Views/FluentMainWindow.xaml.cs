@@ -197,6 +197,28 @@ namespace FluentPass.Views
         private Point _dragStartPoint;
         private bool _isPotentialDrag;
         private EntryItemViewModel? _draggedCandidate;
+        private System.Windows.Controls.TreeViewItem? _currentDragOverItem;
+
+        private void SetDragHighlight(System.Windows.Controls.TreeViewItem? item)
+        {
+            if (_currentDragOverItem == item) return;
+
+            ClearDragHighlight();
+            if (item != null)
+            {
+                _currentDragOverItem = item;
+                DragDropHelper.SetIsDropTarget(item, true);
+            }
+        }
+
+        private void ClearDragHighlight()
+        {
+            if (_currentDragOverItem != null)
+            {
+                DragDropHelper.SetIsDropTarget(_currentDragOverItem, false);
+                _currentDragOverItem = null;
+            }
+        }
 
         private void OnListViewItemPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
@@ -253,6 +275,7 @@ namespace FluentPass.Views
                 }
                 finally
                 {
+                    ClearDragHighlight();
                     _isPotentialDrag = false;
                     _draggedCandidate = null;
                 }
@@ -280,10 +303,12 @@ namespace FluentPass.Views
                         bool allAlreadyInTarget = draggedEntries.All(entry => entry.Model.ParentGroup == targetGroupVm.Model);
                         if (allAlreadyInTarget)
                         {
+                            ClearDragHighlight();
                             e.Effects = DragDropEffects.None;
                         }
                         else
                         {
+                            SetDragHighlight(treeViewItem);
                             e.Effects = DragDropEffects.Move;
                         }
 
@@ -293,12 +318,26 @@ namespace FluentPass.Views
                 }
             }
 
+            ClearDragHighlight();
             e.Effects = DragDropEffects.None;
             e.Handled = true;
         }
 
+        private void OnTreeViewItemDragLeave(object sender, DragEventArgs e)
+        {
+            if (sender is System.Windows.Controls.TreeViewItem item && item == _currentDragOverItem)
+            {
+                var ancestor = FindVisualAncestor<System.Windows.Controls.TreeViewItem>(e.OriginalSource as DependencyObject);
+                if (ancestor != item)
+                {
+                    ClearDragHighlight();
+                }
+            }
+        }
+
         private void OnTreeViewItemDrop(object sender, DragEventArgs e)
         {
+            ClearDragHighlight();
             if (e.Data.GetDataPresent(DragDropFormatEntryList))
             {
                 var treeViewItem = FindVisualAncestor<System.Windows.Controls.TreeViewItem>(e.OriginalSource as DependencyObject)
@@ -315,6 +354,42 @@ namespace FluentPass.Views
                     }
                 }
             }
+        }
+
+        private void OnGroupsTreeViewDragOver(object sender, DragEventArgs e)
+        {
+            if (!e.Data.GetDataPresent(DragDropFormatEntryList))
+            {
+                ClearDragHighlight();
+                e.Effects = DragDropEffects.None;
+                e.Handled = true;
+                return;
+            }
+
+            var treeViewItem = FindVisualAncestor<System.Windows.Controls.TreeViewItem>(e.OriginalSource as DependencyObject);
+            if (treeViewItem == null)
+            {
+                ClearDragHighlight();
+                e.Effects = DragDropEffects.None;
+                e.Handled = true;
+            }
+        }
+
+        private void OnGroupsTreeViewDragLeave(object sender, DragEventArgs e)
+        {
+            if (sender is FrameworkElement fe)
+            {
+                Point pos = e.GetPosition(fe);
+                if (pos.X < 0 || pos.Y < 0 || pos.X >= fe.ActualWidth || pos.Y >= fe.ActualHeight)
+                {
+                    ClearDragHighlight();
+                }
+            }
+        }
+
+        private void OnGroupsTreeViewDrop(object sender, DragEventArgs e)
+        {
+            ClearDragHighlight();
         }
 
         private void OnListViewItemPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
