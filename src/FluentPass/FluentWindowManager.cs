@@ -35,6 +35,7 @@ namespace FluentPass
                 _host.MainWindow.FileOpened += OnHostFileOpened;
                 _host.MainWindow.FileClosed += OnHostFileClosed;
                 _host.MainWindow.UIStateUpdated += OnHostUIStateUpdated;
+                _host.MainWindow.FileSaved += OnHostFileSaved;
 
                 if (SettingsService.GetAutoTakeoverUI(_host))
                 {
@@ -224,6 +225,14 @@ namespace FluentPass
             }
         }
 
+        private static void OnHostFileSaved(object sender, FileSavedEventArgs e)
+        {
+            _fluentWindow?.Dispatcher.InvokeAsync(() =>
+            {
+                _viewModel?.RefreshDatabaseState();
+            });
+        }
+
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void Shutdown()
         {
@@ -237,6 +246,7 @@ namespace FluentPass
                 _host.MainWindow.FileOpened -= OnHostFileOpened;
                 _host.MainWindow.FileClosed -= OnHostFileClosed;
                 _host.MainWindow.UIStateUpdated -= OnHostUIStateUpdated;
+                _host.MainWindow.FileSaved -= OnHostFileSaved;
             }
 
             _hasAutoTakenOver = false;

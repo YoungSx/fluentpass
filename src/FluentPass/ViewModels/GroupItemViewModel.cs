@@ -85,6 +85,10 @@ namespace FluentPass.ViewModels
 
         public void ReloadChildren()
         {
+            Name = Model.Name;
+            EntryCount = (int)Model.Entries.UCount;
+            RefreshIcon();
+
             var currentVms = new Dictionary<PwUuid, GroupItemViewModel>();
             foreach (var child in Children)
             {
@@ -96,7 +100,7 @@ namespace FluentPass.ViewModels
             {
                 if (currentVms.TryGetValue(subGroup.Uuid, out var existing))
                 {
-                    existing.RefreshState();
+                    existing.ReloadChildren();
                     Children.Add(existing);
                 }
                 else

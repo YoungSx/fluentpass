@@ -296,10 +296,131 @@ namespace FluentPass.ViewModels
             }
             else
             {
-                // 更新各组计数
+                // 1. 同步群组树结构及属性（递归重载子群组，响应原生群组的增删改与排序）
                 foreach (var g in RootGroups)
                 {
-                    g.RefreshState();
+                    g.ReloadChildren();
+                }
+
+                // 2. 检查当前选中的群组是否仍然有效（未在 KeePass 原生端被删除）
+                bool isSelectedGroupValid = false;
+                if (SelectedGroup != null && db.RootGroup != null)
+                {
+                    if (SelectedGroup.Model == db.RootGroup || db.RootGroup.FindGroup(SelectedGroup.Model.Uuid, true) != null)
+                    {
+                        isSelectedGroupValid = true;
+                    }
+                }
+
+                if (!isSelectedGroupValid)
+                {
+                    SelectedGroup = RootGroups.FirstOrDefault();
+                }
+                else
+                {
+                    SyncCurrentGroupEntries();
+                }
+            }
+        }
+
+        private void SyncCurrentGroupEntries()
+        {
+            if (SelectedGroup == null)
+            {
+                if (Entries.Count > 0)
+                {
+                    Entries.Clear();
+                    ApplyFilter();
+                }
+                return;
+            }
+
+            var db = _host.Database;
+            PwGroup? recycleBin = null;
+            if (db != null && db.RecycleBinEnabled && !db.RecycleBinUuid.Equals(PwUuid.Zero) && db.RootGroup != null)
+            {
+                recycleBin = db.RootGroup.FindGroup(db.RecycleBinUuid, true);
+            }
+
+            bool isViewingRecycleBin = recycleBin != null &&
+                (SelectedGroup.Model.Equals(recycleBin) || SelectedGroup.Model.IsContainedIn(recycleBin));
+
+            var rawEntries = SelectedGroup.Model.GetEntries(ShowSubgroupEntries);
+            var activeEntries = new List<PwEntry>();
+            foreach (var entry in rawEntries)
+            {
+                if (!isViewingRecycleBin && recycleBin != null &&
+                    (entry.ParentGroup.Equals(recycleBin) || entry.ParentGroup.IsContainedIn(recycleBin)))
+                {
+                    continue;
+                }
+                activeEntries.Add(entry);
+            }
+
+            // 构建现有 ViewModel 映射以供重用并就地更新状态
+            var existingVms = Entries.ToDictionary(e => e.Model.Uuid);
+
+            // 无论集合是否增删，先就地刷新仍存在条目的属性（包括 Title, UserName, Url, Notes, Icon 等）
+            foreach (var entry in activeEntries)
+            {
+                if (existingVms.TryGetValue(entry.Uuid, out var existingVm))
+                {
+                    existingVm.RefreshState();
+                }
+            }
+
+            // 检查集合成员数量或顺序是否有变动
+            bool listChanged = Entries.Count != activeEntries.Count;
+            if (!listChanged)
+            {
+                for (int i = 0; i < Entries.Count; i++)
+                {
+                    if (!Entries[i].Model.Uuid.Equals(activeEntries[i].Uuid))
+                    {
+                        listChanged = true;
+                        break;
+                    }
+                }
+            }
+
+            if (listChanged)
+            {
+                Entries.Clear();
+                foreach (var entry in activeEntries)
+                {
+                    if (existingVms.TryGetValue(entry.Uuid, out var existingVm))
+                    {
+                        Entries.Add(existingVm);
+                    }
+                    else
+                    {
+                        Entries.Add(new EntryItemViewModel(entry, _host.MainWindow, _host.Database));
+                    }
+                }
+                ApplyFilter();
+            }
+            else
+            {
+                // 如果当前正在搜索或过滤，可能因为条目字段改动导致匹配状态改变，重新执行过滤
+                if (!string.IsNullOrEmpty(SearchText))
+                {
+                    ApplyFilter();
+                }
+            }
+
+            // 右侧详情面板数据同步
+            if (CurrentDetail != null)
+            {
+                bool stillExists = db != null && db.RootGroup != null && db.RootGroup.FindEntry(CurrentDetail.Model.Uuid, true) != null;
+                if (!stillExists)
+                {
+                    CurrentDetail.HidePassword();
+                    CurrentDetail = null;
+                    SelectedEntry = null;
+                }
+                else if (!CurrentDetail.IsEditing)
+                {
+                    CurrentDetail.RefreshData();
                 }
             }
         }
