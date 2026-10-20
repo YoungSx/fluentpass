@@ -1,0 +1,165 @@
+using System;
+using System.Linq;
+using FluentPass.Common;
+using FluentPass.Tests.Mocks;
+using FluentPass.ViewModels;
+using KeePassLib;
+using KeePassLib.Security;
+using NUnit.Framework;
+
+namespace FluentPass.Tests
+{
+    [TestFixture, Apartment(System.Threading.ApartmentState.STA), Category("Integration")]
+    public class ExternalSyncTests
+    {
+        private TestPluginHost _host = null!;
+        private MainViewModel _mainVm = null!;
+
+        [SetUp]
+        public void Setup()
+        {
+            Common.MessageService.EnableDialogs = false;
+            Loc.Instance.SetLanguagePreference("zh-CN");
+            _host = new TestPluginHost();
+            _mainVm = new MainViewModel(_host);
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            Loc.Instance.SetLanguagePreference(SettingsService.DefaultLanguage);
+        }
+
+        [Test]
+        public void ExternalChange_UrlUpdatedInNativeKeePass_ReflectsInEntryItemAndDetail()
+        {
+            var entry = TestPluginHost.CreateTestEntry("My Service", "user1", "pass1", "https://old.example.com", "my notes");
+            _host.Database.RootGroup.AddEntry(entry, true);
+            _mainVm.LoadGroups();
+
+            _mainVm.SelectedEntry = _mainVm.FilteredEntries.First(e => e.Title == "My Service");
+            Assert.That(_mainVm.CurrentDetail, Is.Not.Null);
+            Assert.That(_mainVm.SelectedEntry.Url, Is.EqualTo("https://old.example.com"));
+            Assert.That(_mainVm.CurrentDetail!.Url, Is.EqualTo("https://old.example.com"));
+
+            // Simulate user editing entry URL in KeePass native window
+            entry.Strings.Set(PwDefs.UrlField, new ProtectedString(false, "https://new.example.com"));
+
+            // Native KeePass triggers UIStateUpdated -> RefreshDatabaseState()
+            _mainVm.RefreshDatabaseState();
+
+            // Verify both list item and detail view model are updated in real time
+            Assert.That(_mainVm.SelectedEntry.Url, Is.EqualTo("https://new.example.com"));
+            Assert.That(_mainVm.CurrentDetail.Url, Is.EqualTo("https://new.example.com"));
+        }
+
+        [Test]
+        public void ExternalChange_TitleAndUsernameUpdated_ReflectsInEntryItemAndDetail()
+        {
+            var entry = TestPluginHost.CreateTestEntry("Original Title", "orig_user", "pass");
+            _host.Database.RootGroup.AddEntry(entry, true);
+            _mainVm.LoadGroups();
+
+            _mainVm.SelectedEntry = _mainVm.FilteredEntries.First(e => e.Title == "Original Title");
+            Assert.That(_mainVm.CurrentDetail, Is.Not.Null);
+
+            // Simulate KeePass native edit
+            entry.Strings.Set(PwDefs.TitleField, new ProtectedString(false, "Updated Native Title"));
+            entry.Strings.Set(PwDefs.UserNameField, new ProtectedString(false, "updated_user"));
+
+            _mainVm.RefreshDatabaseState();
+
+            Assert.That(_mainVm.SelectedEntry.Title, Is.EqualTo("Updated Native Title"));
+            Assert.That(_mainVm.SelectedEntry.UserName, Is.EqualTo("updated_user"));
+            Assert.That(_mainVm.CurrentDetail!.Title, Is.EqualTo("Updated Native Title"));
+            Assert.That(_mainVm.CurrentDetail.UserName, Is.EqualTo("updated_user"));
+        }
+
+        [Test]
+        public void ExternalChange_EntryAddedInNativeKeePass_ReflectsInEntriesList()
+        {
+            _mainVm.LoadGroups();
+            Assert.That(_mainVm.FilteredEntries.Count, Is.EqualTo(0));
+
+            // Add entry in native KeePass
+            var entry = TestPluginHost.CreateTestEntry("Added In KeePass", "admin", "12345");
+            _host.Database.RootGroup.AddEntry(entry, true);
+
+            _mainVm.RefreshDatabaseState();
+
+            Assert.That(_mainVm.FilteredEntries.Count, Is.EqualTo(1));
+            Assert.That(_mainVm.FilteredEntries[0].Title, Is.EqualTo("Added In KeePass"));
+        }
+
+        [Test]
+        public void ExternalChange_EntryDeletedInNativeKeePass_RemovesFromListAndClearsDetail()
+        {
+            var entry = TestPluginHost.CreateTestEntry("To Be Deleted", "user", "pwd");
+            _host.Database.RootGroup.AddEntry(entry, true);
+            _mainVm.LoadGroups();
+
+            _mainVm.SelectedEntry = _mainVm.FilteredEntries.First(e => e.Title == "To Be Deleted");
+            Assert.That(_mainVm.CurrentDetail, Is.Not.Null);
+
+            // Delete entry in native KeePass
+            _host.Database.RootGroup.Entries.Remove(entry);
+
+            _mainVm.RefreshDatabaseState();
+
+            Assert.That(_mainVm.FilteredEntries.Count, Is.EqualTo(0));
+            Assert.That(_mainVm.SelectedEntry, Is.Null);
+            Assert.That(_mainVm.CurrentDetail, Is.Null);
+        }
+
+        [Test]
+        public void ExternalChange_SelectedGroupDeletedInNativeKeePass_FallsBackToRoot()
+        {
+            var childGroup = new PwGroup(true, true, "SubGroupToDelete", PwIcon.Folder);
+            _host.Database.RootGroup.AddGroup(childGroup, true);
+            _mainVm.LoadGroups();
+
+            // Select child group
+            var rootVm = _mainVm.RootGroups.First();
+            var childVm = rootVm.Children.First(c => c.Name == "SubGroupToDelete");
+            _mainVm.SelectedGroup = childVm;
+            Assert.That(_mainVm.SelectedGroup.Name, Is.EqualTo("SubGroupToDelete"));
+
+            // Delete child group from native KeePass
+            _host.Database.RootGroup.Groups.Remove(childGroup);
+
+            _mainVm.RefreshDatabaseState();
+
+            // Selected group should safely fall back to root group
+            Assert.That(_mainVm.SelectedGroup, Is.Not.Null);
+            Assert.That(_mainVm.SelectedGroup.Model, Is.EqualTo(_host.Database.RootGroup));
+        }
+
+        [Test]
+        public void ExternalChange_WhileEditingDetail_DoesNotOverwriteUnsavedDraft()
+        {
+            var entry = TestPluginHost.CreateTestEntry("Draft Title", "draft_user", "pwd", "https://site.com");
+            _host.Database.RootGroup.AddEntry(entry, true);
+            _mainVm.LoadGroups();
+
+            _mainVm.SelectedEntry = _mainVm.FilteredEntries.First(e => e.Title == "Draft Title");
+            Assert.That(_mainVm.CurrentDetail, Is.Not.Null);
+
+            // Start editing in FluentPass UI
+            _mainVm.CurrentDetail!.BeginEdit();
+            _mainVm.CurrentDetail.EditTitle = "User Is Typing Something New";
+            _mainVm.CurrentDetail.EditUrl = "https://custom-typing.com";
+            Assert.That(_mainVm.CurrentDetail.IsEditing, Is.True);
+
+            // Native KeePass changes background data
+            entry.Strings.Set(PwDefs.NotesField, new ProtectedString(false, "New notes from native"));
+
+            // Background event triggers RefreshDatabaseState()
+            _mainVm.RefreshDatabaseState();
+
+            // Should remain in editing mode without destroying the user's active inputs
+            Assert.That(_mainVm.CurrentDetail.IsEditing, Is.True);
+            Assert.That(_mainVm.CurrentDetail.EditTitle, Is.EqualTo("User Is Typing Something New"));
+            Assert.That(_mainVm.CurrentDetail.EditUrl, Is.EqualTo("https://custom-typing.com"));
+        }
+    }
+}
