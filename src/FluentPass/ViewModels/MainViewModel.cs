@@ -14,6 +14,7 @@ using KeePass.Util;
 using FluentPass.Common;
 using FluentPass.Services;
 using KeePassLib;
+using KeePassLib.Collections;
 using KeePassLib.Security;
 using Wpf.Ui.Appearance;
 using MessageService = FluentPass.Common.MessageService;
@@ -28,6 +29,7 @@ namespace FluentPass.ViewModels
 
         private PwDatabase? _currentLoadedDb;
         private string? _currentLoadedPath;
+        private bool _isSynchronizingEntrySelection;
 
         private void SafeInvokeOnHost(Action action)
         {
@@ -158,6 +160,7 @@ namespace FluentPass.ViewModels
             {
                 string savedTheme = SettingsService.GetAppTheme(_host);
                 SwitchTheme(savedTheme);
+                SynchronizeHostEntrySelection(SelectedEntry?.Model);
             }
             catch { }
         }
@@ -226,6 +229,11 @@ namespace FluentPass.ViewModels
             else
             {
                 CurrentDetail = null;
+            }
+
+            if (!_isSynchronizingEntrySelection && _window != null)
+            {
+                SynchronizeHostEntrySelection(value?.Model);
             }
         }
 
@@ -320,6 +328,59 @@ namespace FluentPass.ViewModels
                 {
                     SyncCurrentGroupEntries();
                 }
+            }
+        }
+
+        private void SynchronizeHostEntrySelection(PwEntry? target)
+        {
+            if (_isSynchronizingEntrySelection)
+            {
+                return;
+            }
+
+            var db = _host.Database;
+            var mw = _host.MainWindow;
+            if (db == null || !db.IsOpen || mw == null || mw.IsDisposed || !mw.IsHandleCreated)
+            {
+                return;
+            }
+
+            if (target != null && (target.ParentGroup == null || db.RootGroup?.FindEntry(target.Uuid, true) == null))
+            {
+                return;
+            }
+
+            _isSynchronizingEntrySelection = true;
+            try
+            {
+                SafeInvokeOnHost(() =>
+                {
+                    if (target != null)
+                    {
+                        var selected = mw.GetSelectedEntry(true);
+                        if (selected != null && selected.Uuid.Equals(target.Uuid))
+                        {
+                            return;
+                        }
+
+                        // SelectEntries only affects entries already present in KeePass' list. Refresh
+                        // the native list first so entries chosen from a database-wide search work too.
+                        mw.UpdateUI(false, null, true, target.ParentGroup, true, target.ParentGroup, false);
+
+                        var entries = new PwObjectList<PwEntry>();
+                        entries.Add(target);
+                        mw.SelectEntries(entries, bDeselectOthers: true, bFocusFirst: true);
+                        mw.EnsureVisibleEntry(target.Uuid);
+                    }
+                    else
+                    {
+                        mw.SelectEntries(new PwObjectList<PwEntry>(), bDeselectOthers: true, bFocusFirst: false);
+                    }
+                });
+            }
+            finally
+            {
+                _isSynchronizingEntrySelection = false;
             }
         }
 
