@@ -355,6 +355,14 @@ namespace FluentPass.ViewModels
             {
                 SafeInvokeOnHost(() =>
                 {
+                    // The projection only exists so the native global Auto-Type hotkey finds a
+                    // target. When the original window is visible, the user drives its
+                    // selection directly and we must not fight it.
+                    if (mw.Visible)
+                    {
+                        return;
+                    }
+
                     if (target != null)
                     {
                         var selected = mw.GetSelectedEntry(true);
@@ -363,13 +371,20 @@ namespace FluentPass.ViewModels
                             return;
                         }
 
-                        // SelectEntries only affects entries already present in KeePass' list. Refresh
-                        // the native list first so entries chosen from a database-wide search work too.
-                        mw.UpdateUI(false, null, true, target.ParentGroup, true, target.ParentGroup, false);
-
+                        // KeePass-idiomatic cheap path first: SelectEntries scans the list
+                        // without rebuilding it. Only escalate to a full UpdateUI refresh
+                        // (list + group tree rebuild) when the entry is not in the list
+                        // currently shown, e.g. entries picked from a database-wide search.
                         var entries = new PwObjectList<PwEntry>();
                         entries.Add(target);
                         mw.SelectEntries(entries, bDeselectOthers: true, bFocusFirst: true);
+
+                        if (mw.GetSelectedEntry(false)?.Uuid?.Equals(target.Uuid) != true)
+                        {
+                            mw.UpdateUI(false, null, true, target.ParentGroup, true, target.ParentGroup, false);
+                            mw.SelectEntries(entries, bDeselectOthers: true, bFocusFirst: true);
+                        }
+
                         mw.EnsureVisibleEntry(target.Uuid);
                     }
                     else
@@ -377,6 +392,11 @@ namespace FluentPass.ViewModels
                         mw.SelectEntries(new PwObjectList<PwEntry>(), bDeselectOthers: true, bFocusFirst: false);
                     }
                 });
+            }
+            catch
+            {
+                // The host window may be torn down concurrently; a stale projection
+                // is harmless, an exception escaping the selection setter is not.
             }
             finally
             {
