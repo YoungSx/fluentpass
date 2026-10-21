@@ -86,6 +86,22 @@ namespace FluentPass.Tests
         }
 
         [Test]
+        public void SwitchingGroups_ClearsDraftInDetachedDetail()
+        {
+            _host.Database.RootGroup.AddEntry(TestPluginHost.CreateTestEntry("Fixture", "user", "fixture"), true);
+            _host.Database.RootGroup.AddGroup(new PwGroup(true, true, "Empty", PwIcon.Folder), true);
+            _mainVm.LoadGroups();
+            var detail = _mainVm.CurrentDetail!;
+            detail.BeginEdit();
+            detail.EditPassword = "unsaved fixture";
+
+            _mainVm.SelectedGroup = _mainVm.RootGroups[0].Children[0];
+
+            Assert.That(detail.EditPassword, Is.Empty);
+            Assert.That(detail.IsEditing, Is.False);
+        }
+
+        [Test]
         public void ClearData_ClearsHeldEditingAndRevealedSecrets()
         {
             var entry = TestPluginHost.CreateTestEntry("Fixture", "user", "fixture");
