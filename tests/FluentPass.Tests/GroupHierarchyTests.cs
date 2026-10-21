@@ -2,6 +2,7 @@ using FluentPass.Tests.Mocks;
 using FluentPass.ViewModels;
 using KeePassLib;
 using NUnit.Framework;
+using System.Collections.Specialized;
 
 namespace FluentPass.Tests
 {
@@ -127,6 +128,39 @@ namespace FluentPass.Tests
             Assert.That(rootVm.Children[1].Name, Is.EqualTo("Beta"));
             Assert.That(rootVm.Children[0], Is.SameAs(origAlphaVm));
             Assert.That(rootVm.Children[1], Is.SameAs(origBetaVm));
+        }
+
+        [Test, Category("Integration")]
+        public void ReloadUnchangedGroups_DoesNotInvalidateTreeSelection()
+        {
+            var host = new TestPluginHost();
+            host.Database.RootGroup.AddGroup(new PwGroup(true, true, "Child", PwIcon.Folder), true);
+            var root = new GroupItemViewModel(host.Database.RootGroup, null, null, host.Database);
+            int changes = 0;
+            root.Children.CollectionChanged += (_, __) => changes++;
+
+            root.ReloadChildren();
+            root.ReloadChildren();
+
+            Assert.That(changes, Is.Zero, "An unchanged tree must not reset WPF's selected child container.");
+        }
+
+        [Test, Category("Integration")]
+        public void ReorderGroups_UsesMoveWithoutResettingSelectedContainer()
+        {
+            var host = new TestPluginHost();
+            host.Database.RootGroup.AddGroup(new PwGroup(true, true, "Beta", PwIcon.Folder), true);
+            host.Database.RootGroup.AddGroup(new PwGroup(true, true, "Alpha", PwIcon.Folder), true);
+            var root = new GroupItemViewModel(host.Database.RootGroup, null, null, host.Database);
+            var selected = root.Children[0];
+            var actions = new System.Collections.Generic.List<NotifyCollectionChangedAction>();
+            root.Children.CollectionChanged += (_, e) => actions.Add(e.Action);
+
+            host.Database.RootGroup.SortSubGroups(false);
+            root.ReloadChildren();
+
+            Assert.That(root.Children[1], Is.SameAs(selected));
+            Assert.That(actions, Is.EqualTo(new[] { NotifyCollectionChangedAction.Move }));
         }
 
         [Test, Category("Integration")]
