@@ -460,6 +460,10 @@ namespace FluentPass.ViewModels
         [RelayCommand]
         public void PerformAutoType()
         {
+            // Same re-entrancy guard as MainViewModel.AutoTypeSelected: never start a
+            // second AutoType pipeline while SendInputEx is still sending keystrokes.
+            if (KeePass.Util.SendInputEx.IsSending) return;
+
             try
             {
                 if (_ownerWindow != null)

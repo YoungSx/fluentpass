@@ -338,6 +338,17 @@ namespace FluentPass.ViewModels
                 return;
             }
 
+            // The projection runs on the UI thread, which AutoType also uses for its
+            // DoEvents pumps. While SendInputEx.IsSending, any UpdateUI escalation here
+            // would rebuild the native list once per keystroke (it fires UIStateUpdated
+            // synchronously, re-entering this path). Skip it while a sequence is being
+            // sent; the post-send UpdateUI in AutoType.Execute converges the state and
+            // its UIStateUpdated still reaches us with IsSending already false.
+            if (KeePass.Util.SendInputEx.IsSending)
+            {
+                return;
+            }
+
             var db = _host.Database;
             var mw = _host.MainWindow;
             if (db == null || !db.IsOpen || mw == null || mw.IsDisposed || !mw.IsHandleCreated)
@@ -754,6 +765,12 @@ namespace FluentPass.ViewModels
         {
             var target = entryVm ?? SelectedEntry;
             if (target == null || _host.Database == null) return;
+
+            // The native hotkey path (MainForm.ExecuteEntryAutoType) is serialized by
+            // MainForm.m_bIsAutoTyping. Our two in-Fluent entry points have no such guard;
+            // a second trigger while SendInputEx is still sending would interleave a new
+            // LoseFocus/EnsureForegroundWindow with the in-flight keystroke sequence.
+            if (KeePass.Util.SendInputEx.IsSending) return;
 
             try
             {
