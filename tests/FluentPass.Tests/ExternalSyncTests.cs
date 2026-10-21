@@ -66,6 +66,47 @@ namespace FluentPass.Tests
             _mainVm = new MainViewModel(_host);
         }
 
+        [Test]
+        public void ReplacedEntryWithSameUuid_UsesLiveModelAndDetail()
+        {
+            var original = TestPluginHost.CreateTestEntry("Original", "user", "fixture");
+            _host.Database.RootGroup.AddEntry(original, true);
+            _mainVm.LoadGroups();
+            var replacement = original.CloneDeep();
+            replacement.Strings.Set(PwDefs.TitleField, new ProtectedString(false, "Replacement"));
+            _host.Database.RootGroup.Entries.Remove(original);
+            _host.Database.RootGroup.AddEntry(replacement, true);
+
+            _mainVm.RefreshDatabaseState();
+
+            Assert.That(_mainVm.Entries[0].Model, Is.SameAs(replacement));
+            Assert.That(_mainVm.FilteredEntries[0].Model, Is.SameAs(replacement));
+            Assert.That(_mainVm.SelectedEntry!.Model, Is.SameAs(replacement));
+            Assert.That(_mainVm.CurrentDetail!.Model, Is.SameAs(replacement));
+        }
+
+        [Test]
+        public void ClearData_ClearsHeldEditingAndRevealedSecrets()
+        {
+            var entry = TestPluginHost.CreateTestEntry("Fixture", "user", "fixture");
+            _host.Database.RootGroup.AddEntry(entry, true);
+            _mainVm.LoadGroups();
+            var detail = _mainVm.CurrentDetail!;
+            detail.BeginEdit();
+            detail.EditPassword = "unsaved fixture";
+            detail.IsEditPasswordRevealed = true;
+            detail.TogglePasswordVisibility();
+
+            _host.Database.Close();
+            _mainVm.ClearData();
+
+            Assert.That(detail.EditPassword, Is.Empty);
+            Assert.That(detail.IsEditing, Is.False);
+            Assert.That(detail.IsEditPasswordRevealed, Is.False);
+            Assert.That(detail.RevealedPassword, Is.Null);
+            Assert.That(_mainVm.CurrentDetail, Is.Null);
+        }
+
         [TearDown]
         public void TearDown()
         {

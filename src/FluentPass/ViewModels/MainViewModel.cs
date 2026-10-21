@@ -29,7 +29,7 @@ namespace FluentPass.ViewModels
 
         private PwDatabase? _currentLoadedDb;
         private string? _currentLoadedPath;
-        private bool _isSynchronizingEntrySelection;
+        public AutoTypeService AutoType { get; }
 
         private void SafeInvokeOnHost(Action action)
         {
@@ -128,6 +128,8 @@ namespace FluentPass.ViewModels
         {
             _host = host ?? throw new ArgumentNullException(nameof(host));
 
+            AutoType = new AutoTypeService(_host);
+
             Settings = new SettingsViewModel(_host, () => IsSettingsOpen = false, theme => SwitchTheme(theme));
             Settings.IsSettingsOpen = IsSettingsOpen;
 
@@ -160,7 +162,6 @@ namespace FluentPass.ViewModels
             {
                 string savedTheme = SettingsService.GetAppTheme(_host);
                 SwitchTheme(savedTheme);
-                SynchronizeHostEntrySelection(SelectedEntry?.Model);
             }
             catch { }
         }
@@ -220,21 +221,17 @@ namespace FluentPass.ViewModels
 
         partial void OnSelectedEntryChanged(EntryItemViewModel? value)
         {
-            CurrentDetail?.HidePassword();
+            CurrentDetail?.ClearSensitiveData();
 
             if (value != null)
             {
-                CurrentDetail = new EntryDetailViewModel(value.Model, _host, _window, OnEntryModifiedCallback);
+                CurrentDetail = new EntryDetailViewModel(value.Model, _host, _window, OnEntryModifiedCallback, AutoType);
             }
             else
             {
                 CurrentDetail = null;
             }
 
-            if (!_isSynchronizingEntrySelection && _window != null)
-            {
-                SynchronizeHostEntrySelection(value?.Model);
-            }
         }
 
         private void OnEntryModifiedCallback()
@@ -265,6 +262,9 @@ namespace FluentPass.ViewModels
             IsDatabaseOpen = true;
             IsLocked = false;
             IsModified = db.Modified;
+
+            if (SelectedEntry != null && !ReferenceEquals(db.RootGroup?.FindEntry(SelectedEntry.Model.Uuid, true), SelectedEntry.Model))
+                SelectedEntry = null;
 
             string name = string.IsNullOrEmpty(db.Name)
                 ? (string.IsNullOrEmpty(db.IOConnectionInfo.Path) ? Loc.Get("Status_UnnamedDb") : Path.GetFileName(db.IOConnectionInfo.Path))
@@ -314,7 +314,7 @@ namespace FluentPass.ViewModels
                 bool isSelectedGroupValid = false;
                 if (SelectedGroup != null && db.RootGroup != null)
                 {
-                    if (SelectedGroup.Model == db.RootGroup || db.RootGroup.FindGroup(SelectedGroup.Model.Uuid, true) != null)
+                    if (SelectedGroup.Model == db.RootGroup || ReferenceEquals(db.RootGroup.FindGroup(SelectedGroup.Model.Uuid, true), SelectedGroup.Model))
                     {
                         isSelectedGroupValid = true;
                     }
@@ -328,90 +328,6 @@ namespace FluentPass.ViewModels
                 {
                     SyncCurrentGroupEntries();
                 }
-            }
-        }
-
-        private void SynchronizeHostEntrySelection(PwEntry? target)
-        {
-            if (_isSynchronizingEntrySelection)
-            {
-                return;
-            }
-
-            // The projection runs on the UI thread, which AutoType also uses for its
-            // DoEvents pumps. While SendInputEx.IsSending, any UpdateUI escalation here
-            // would rebuild the native list once per keystroke (it fires UIStateUpdated
-            // synchronously, re-entering this path). Skip it while a sequence is being
-            // sent; the post-send UpdateUI in AutoType.Execute converges the state and
-            // its UIStateUpdated still reaches us with IsSending already false.
-            if (KeePass.Util.SendInputEx.IsSending)
-            {
-                return;
-            }
-
-            var db = _host.Database;
-            var mw = _host.MainWindow;
-            if (db == null || !db.IsOpen || mw == null || mw.IsDisposed || !mw.IsHandleCreated)
-            {
-                return;
-            }
-
-            if (target != null && (target.ParentGroup == null || db.RootGroup?.FindEntry(target.Uuid, true) == null))
-            {
-                return;
-            }
-
-            _isSynchronizingEntrySelection = true;
-            try
-            {
-                SafeInvokeOnHost(() =>
-                {
-                    // The projection only exists so the native global Auto-Type hotkey finds a
-                    // target. When the original window is visible, the user drives its
-                    // selection directly and we must not fight it.
-                    if (mw.Visible)
-                    {
-                        return;
-                    }
-
-                    if (target != null)
-                    {
-                        var selected = mw.GetSelectedEntry(true);
-                        if (selected != null && selected.Uuid.Equals(target.Uuid))
-                        {
-                            return;
-                        }
-
-                        // KeePass-idiomatic cheap path first: SelectEntries scans the list
-                        // without rebuilding it. Only escalate to a full UpdateUI refresh
-                        // (list + group tree rebuild) when the entry is not in the list
-                        // currently shown, e.g. entries picked from a database-wide search.
-                        var entries = new PwObjectList<PwEntry>();
-                        entries.Add(target);
-                        mw.SelectEntries(entries, bDeselectOthers: true, bFocusFirst: true);
-
-                        if (mw.GetSelectedEntry(false)?.Uuid?.Equals(target.Uuid) != true)
-                        {
-                            mw.UpdateUI(false, null, true, target.ParentGroup, true, target.ParentGroup, false);
-                            mw.SelectEntries(entries, bDeselectOthers: true, bFocusFirst: true);
-                        }
-
-                        mw.EnsureVisibleEntry(target.Uuid);
-                    }
-                    else
-                    {
-                        mw.SelectEntries(new PwObjectList<PwEntry>(), bDeselectOthers: true, bFocusFirst: false);
-                    }
-                });
-            }
-            catch
-            {
-                // The host window may be torn down concurrently; a stale projection
-                // is harmless, an exception escaping the selection setter is not.
-            }
-            finally
-            {
-                _isSynchronizingEntrySelection = false;
             }
         }
 
@@ -455,7 +371,7 @@ namespace FluentPass.ViewModels
             // 无论集合是否增删，先就地刷新仍存在条目的属性（包括 Title, UserName, Url, Notes, Icon 等）
             foreach (var entry in activeEntries)
             {
-                if (existingVms.TryGetValue(entry.Uuid, out var existingVm))
+                if (existingVms.TryGetValue(entry.Uuid, out var existingVm) && ReferenceEquals(existingVm.Model, entry))
                 {
                     existingVm.RefreshState();
                 }
@@ -467,7 +383,7 @@ namespace FluentPass.ViewModels
             {
                 for (int i = 0; i < Entries.Count; i++)
                 {
-                    if (!Entries[i].Model.Uuid.Equals(activeEntries[i].Uuid))
+                    if (!ReferenceEquals(Entries[i].Model, activeEntries[i]))
                     {
                         listChanged = true;
                         break;
@@ -480,7 +396,7 @@ namespace FluentPass.ViewModels
                 var entries = new List<EntryItemViewModel>();
                 foreach (var entry in activeEntries)
                 {
-                    if (existingVms.TryGetValue(entry.Uuid, out var existingVm))
+                    if (existingVms.TryGetValue(entry.Uuid, out var existingVm) && ReferenceEquals(existingVm.Model, entry))
                     {
                         entries.Add(existingVm);
                     }
@@ -522,7 +438,7 @@ namespace FluentPass.ViewModels
         {
             _currentLoadedDb = null;
             _currentLoadedPath = null;
-            CurrentDetail?.HidePassword();
+            CurrentDetail?.ClearSensitiveData();
             CurrentDetail = null;
             SelectedEntry = null;
             SelectedGroup = null;
@@ -778,30 +694,20 @@ namespace FluentPass.ViewModels
             var target = entryVm ?? SelectedEntry;
             if (target == null || _host.Database == null) return;
 
-            // The native hotkey path (ExecuteEntryAutoType) relies on SendInputEx's own
-            // g_csSending lock to reject overlapping sends; our in-Fluent entry points now
-            // guard explicitly, so a second trigger can never interleave a new
-            // LoseFocus/EnsureForegroundWindow with the in-flight keystroke sequence.
-            if (KeePass.Util.SendInputEx.IsSending) return;
-
             try
             {
-                if (_window != null)
-                {
-                    _window.WindowState = WindowState.Minimized;
-                }
-                AutoType.PerformIntoPreviousWindow(_host.MainWindow, target.Model, _host.Database);
-
-                // AutoType.Execute's epilogue UpdateUI does not rebuild the entry list,
-                // so if the Fluent selection changed while sending (pre-queued dispatcher
-                // work; BlockInput can fail without admin rights) the native projection
-                // may be stale. IsSending is false again here — re-project once.
-                SynchronizeHostEntrySelection(SelectedEntry?.Model);
+                AutoType.Perform(target.Model, _window);
             }
             catch (Exception ex)
             {
                 StatusMessage = Loc.Get("Status_AutoTypeFailedFormat", ex.Message);
             }
+        }
+
+        public void AutoTypeSelectedIntoCurrentWindow()
+        {
+            try { AutoType.Perform(SelectedEntry?.Model, null); }
+            catch (Exception ex) { StatusMessage = Loc.Get("Status_AutoTypeFailedFormat", ex.Message); }
         }
 
         [RelayCommand]

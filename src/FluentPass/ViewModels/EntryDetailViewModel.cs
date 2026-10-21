@@ -11,6 +11,7 @@ using KeePass.Forms;
 using KeePass.Plugins;
 using KeePass.Util;
 using FluentPass.Common;
+using FluentPass.Services;
 using KeePassLib;
 using KeePassLib.Cryptography;
 using KeePassLib.Cryptography.PasswordGenerator;
@@ -25,6 +26,7 @@ namespace FluentPass.ViewModels
         private readonly IPluginHost _host;
         private readonly Window? _ownerWindow;
         private readonly Action _onEntryModified;
+        private readonly AutoTypeService _autoType;
         private void SafeInvokeOnHost(Action action)
         {
             if (_host.MainWindow == null) return;
@@ -123,12 +125,13 @@ namespace FluentPass.ViewModels
         public ObservableCollection<AttachmentItemViewModel> Attachments { get; } = new ObservableCollection<AttachmentItemViewModel>();
         public ObservableCollection<EntryHistoryItemViewModel> HistoryRevisions { get; } = new ObservableCollection<EntryHistoryItemViewModel>();
 
-        public EntryDetailViewModel(PwEntry entry, IPluginHost host, Window? ownerWindow, Action onEntryModified)
+        public EntryDetailViewModel(PwEntry entry, IPluginHost host, Window? ownerWindow, Action onEntryModified, AutoTypeService? autoType = null)
         {
             Model = entry ?? throw new ArgumentNullException(nameof(entry));
             _host = host ?? throw new ArgumentNullException(nameof(host));
             _ownerWindow = ownerWindow;
             _onEntryModified = onEntryModified;
+            _autoType = autoType ?? new AutoTypeService(_host);
 
             _passwordQualityText = Loc.Get("PwQuality_NotSet");
 
@@ -362,6 +365,14 @@ namespace FluentPass.ViewModels
             }
         }
 
+        public void ClearSensitiveData()
+        {
+            HidePassword();
+            IsEditing = false;
+            IsEditPasswordRevealed = false;
+            EditPassword = string.Empty;
+        }
+
         private void CheckMinimizeAfterCopy()
         {
             try
@@ -460,17 +471,9 @@ namespace FluentPass.ViewModels
         [RelayCommand]
         public void PerformAutoType()
         {
-            // Same re-entrancy guard as MainViewModel.AutoTypeSelected: never start a
-            // second AutoType pipeline while SendInputEx is still sending keystrokes.
-            if (KeePass.Util.SendInputEx.IsSending) return;
-
             try
             {
-                if (_ownerWindow != null)
-                {
-                    _ownerWindow.WindowState = WindowState.Minimized;
-                }
-                AutoType.PerformIntoPreviousWindow(_host.MainWindow, Model, _host.Database);
+                _autoType.Perform(Model, _ownerWindow);
             }
             catch (Exception ex)
             {

@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Threading;
 using System.Windows.Forms.Integration;
 using KeePass.Forms;
 using KeePass.Plugins;
@@ -20,6 +21,9 @@ namespace FluentPass
         private static MainViewModel? _viewModel;
         private static bool _hasAutoTakenOver = false;
         private static EventHandler? _shownHandler = null;
+        private static HostAutoTypeWindow? _autoTypeWindow;
+        private static DispatcherTimer? _refreshTimer;
+        private static bool _refreshPending;
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void Initialize(IPluginHost host)
@@ -29,9 +33,16 @@ namespace FluentPass
             Loc.Instance.Initialize(_host);
             EnsureWpfApplication();
             _viewModel = new MainViewModel(_host);
+            _refreshTimer = new DispatcherTimer(DispatcherPriority.Background)
+            {
+                Interval = TimeSpan.FromMilliseconds(50)
+            };
+            _refreshTimer.Tick += OnRefreshTick;
 
             if (_host?.MainWindow != null)
             {
+                _autoTypeWindow = new HostAutoTypeWindow(_host.MainWindow, _viewModel.AutoType,
+                    () => _fluentWindow?.IsLoaded == true, _viewModel.AutoTypeSelectedIntoCurrentWindow);
                 _host.MainWindow.FileOpened += OnHostFileOpened;
                 _host.MainWindow.FileClosed += OnHostFileClosed;
                 _host.MainWindow.UIStateUpdated += OnHostUIStateUpdated;
@@ -67,11 +78,7 @@ namespace FluentPass
             var mw = _host.MainWindow;
             if (mw.IsDisposed) return;
 
-            // A takeover shows the Fluent window (Activate) and hides the native one;
-            // if a previously queued takeover runs inside a SendInputEx DoEvents pump
-            // it steals focus mid-sequence and aborts the in-flight AutoType. Skip it
-            // while sending — OnHostUIStateUpdated re-queues it after the send ends.
-            if (KeePass.Util.SendInputEx.IsSending) return;
+            if (_viewModel?.AutoType.IsBusy == true) { QueueHostRefresh(); return; }
 
             if (!SettingsService.GetAutoTakeoverUI(_host)) return;
 
@@ -154,7 +161,7 @@ namespace FluentPass
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void ShowFluentWindow()
         {
-            if (_host == null || _viewModel == null) return;
+            if (_host == null || _viewModel == null || _viewModel.AutoType.IsBusy) return;
 
             EnsureWpfApplication();
 
@@ -197,79 +204,48 @@ namespace FluentPass
             }
         }
 
-        private static void OnHostFileOpened(object sender, FileOpenedEventArgs e)
+        private static void QueueHostRefresh()
         {
-            // Defense-in-depth: same IsSending gate as OnHostUIStateUpdated — these can
-            // only fire mid-send via a user action during a pump (BlockInput may fail
-            // without admin rights), but if they do, skip the O(n) refresh in the pump.
-            if (KeePass.Util.SendInputEx.IsSending)
-            {
-                return;
-            }
-
-            _fluentWindow?.Dispatcher.InvokeAsync(() =>
-            {
-                _viewModel?.RefreshDatabaseState();
-            });
-
-            if (!_hasAutoTakenOver && _host != null && SettingsService.GetAutoTakeoverUI(_host))
-            {
-                _host.MainWindow?.BeginInvoke(new Action(TryPerformAutoTakeover));
-            }
+            _refreshPending = true;
+            _refreshTimer?.Start();
         }
+
+        private static void OnRefreshTick(object? sender, EventArgs e)
+        {
+            if (_host == null || _viewModel == null) { _refreshTimer?.Stop(); return; }
+            if (_viewModel.AutoType.IsBusy) return;
+
+            _refreshPending = false;
+            if (_fluentWindow != null) _viewModel.RefreshDatabaseState();
+            TryPerformAutoTakeover();
+            if (!_refreshPending) _refreshTimer?.Stop();
+        }
+
+        private static void OnHostFileOpened(object sender, FileOpenedEventArgs e) => QueueHostRefresh();
 
         private static void OnHostFileClosed(object sender, FileClosedEventArgs e)
         {
-            if (KeePass.Util.SendInputEx.IsSending)
-            {
-                return;
-            }
-
-            _fluentWindow?.Dispatcher.InvokeAsync(() =>
-            {
-                _viewModel?.RefreshDatabaseState();
-            });
+            // Never defer plaintext cleanup behind an Auto-Type message pump.
+            _viewModel?.ClearData();
+            QueueHostRefresh();
         }
 
-        private static void OnHostUIStateUpdated(object sender, EventArgs e)
-        {
-            // KeePass fires UIStateUpdated synchronously inside AutoType.Execute's epilogue and
-            // inside every SendInputEx DoEvents pump. Re-entrant RefreshDatabaseState/takeover
-            // work there multiplies the pump cost of every keystroke and freezes the Fluent
-            // window while the native one is hidden. The host guards the same situation with
-            // "if (SendInputEx.IsSending) return;" in MainForm.OnTimerMainTick; mirror that.
-            if (KeePass.Util.SendInputEx.IsSending)
-            {
-                return;
-            }
-
-            _fluentWindow?.Dispatcher.InvokeAsync(() =>
-            {
-                _viewModel?.RefreshDatabaseState();
-            });
-
-            if (!_hasAutoTakenOver && _host != null && SettingsService.GetAutoTakeoverUI(_host))
-            {
-                _host.MainWindow?.BeginInvoke(new Action(TryPerformAutoTakeover));
-            }
-        }
-
-        private static void OnHostFileSaved(object sender, FileSavedEventArgs e)
-        {
-            if (KeePass.Util.SendInputEx.IsSending)
-            {
-                return;
-            }
-
-            _fluentWindow?.Dispatcher.InvokeAsync(() =>
-            {
-                _viewModel?.RefreshDatabaseState();
-            });
-        }
+        private static void OnHostUIStateUpdated(object sender, EventArgs e) => QueueHostRefresh();
+        private static void OnHostFileSaved(object sender, FileSavedEventArgs e) => QueueHostRefresh();
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static void Shutdown()
         {
+            _autoTypeWindow?.Dispose();
+            _autoTypeWindow = null;
+            if (_refreshTimer != null)
+            {
+                _refreshTimer.Stop();
+                _refreshTimer.Tick -= OnRefreshTick;
+                _refreshTimer = null;
+            }
+            _refreshPending = false;
+            _viewModel?.ClearData();
             if (_host?.MainWindow != null)
             {
                 if (_shownHandler != null)
