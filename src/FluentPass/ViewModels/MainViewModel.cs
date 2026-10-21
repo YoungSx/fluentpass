@@ -766,9 +766,9 @@ namespace FluentPass.ViewModels
             var target = entryVm ?? SelectedEntry;
             if (target == null || _host.Database == null) return;
 
-            // The native hotkey path (MainForm.ExecuteEntryAutoType) is serialized by
-            // MainForm.m_bIsAutoTyping. Our two in-Fluent entry points have no such guard;
-            // a second trigger while SendInputEx is still sending would interleave a new
+            // The native hotkey path (ExecuteEntryAutoType) relies on SendInputEx's own
+            // g_csSending lock to reject overlapping sends; our in-Fluent entry points now
+            // guard explicitly, so a second trigger can never interleave a new
             // LoseFocus/EnsureForegroundWindow with the in-flight keystroke sequence.
             if (KeePass.Util.SendInputEx.IsSending) return;
 
@@ -779,6 +779,12 @@ namespace FluentPass.ViewModels
                     _window.WindowState = WindowState.Minimized;
                 }
                 AutoType.PerformIntoPreviousWindow(_host.MainWindow, target.Model, _host.Database);
+
+                // AutoType.Execute's epilogue UpdateUI does not rebuild the entry list,
+                // so if the Fluent selection changed while sending (pre-queued dispatcher
+                // work; BlockInput can fail without admin rights) the native projection
+                // may be stale. IsSending is false again here — re-project once.
+                SynchronizeHostEntrySelection(SelectedEntry?.Model);
             }
             catch (Exception ex)
             {
