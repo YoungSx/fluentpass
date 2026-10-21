@@ -67,6 +67,12 @@ namespace FluentPass
             var mw = _host.MainWindow;
             if (mw.IsDisposed) return;
 
+            // A takeover shows the Fluent window (Activate) and hides the native one;
+            // if a previously queued takeover runs inside a SendInputEx DoEvents pump
+            // it steals focus mid-sequence and aborts the in-flight AutoType. Skip it
+            // while sending — OnHostUIStateUpdated re-queues it after the send ends.
+            if (KeePass.Util.SendInputEx.IsSending) return;
+
             if (!SettingsService.GetAutoTakeoverUI(_host)) return;
 
             // 1. 模态窗口守卫：检测是否有模态窗体或密码输入框开启，或主窗口因系统/Win32模态对话框被禁用
@@ -193,6 +199,14 @@ namespace FluentPass
 
         private static void OnHostFileOpened(object sender, FileOpenedEventArgs e)
         {
+            // Defense-in-depth: same IsSending gate as OnHostUIStateUpdated — these can
+            // only fire mid-send via a user action during a pump (BlockInput may fail
+            // without admin rights), but if they do, skip the O(n) refresh in the pump.
+            if (KeePass.Util.SendInputEx.IsSending)
+            {
+                return;
+            }
+
             _fluentWindow?.Dispatcher.InvokeAsync(() =>
             {
                 _viewModel?.RefreshDatabaseState();
@@ -206,6 +220,11 @@ namespace FluentPass
 
         private static void OnHostFileClosed(object sender, FileClosedEventArgs e)
         {
+            if (KeePass.Util.SendInputEx.IsSending)
+            {
+                return;
+            }
+
             _fluentWindow?.Dispatcher.InvokeAsync(() =>
             {
                 _viewModel?.RefreshDatabaseState();
@@ -237,6 +256,11 @@ namespace FluentPass
 
         private static void OnHostFileSaved(object sender, FileSavedEventArgs e)
         {
+            if (KeePass.Util.SendInputEx.IsSending)
+            {
+                return;
+            }
+
             _fluentWindow?.Dispatcher.InvokeAsync(() =>
             {
                 _viewModel?.RefreshDatabaseState();
