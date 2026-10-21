@@ -86,6 +86,28 @@ namespace FluentPass.Tests
         }
 
         [Test]
+        public void ClearData_WithDatabaseWideSearch_DoesNotRecreateDetail()
+        {
+            _host.Database.RootGroup.AddEntry(TestPluginHost.CreateTestEntry("Fixture", "user", "fixture"), true);
+            _mainVm.LoadGroups();
+            _mainVm.SearchText = "Fixture";
+            _mainVm.ApplyFilter();
+
+            _mainVm.ClearData();
+
+            Assert.That(_mainVm.CurrentDetail, Is.Null);
+            Assert.That(_mainVm.SelectedEntry, Is.Null);
+            Assert.That(_mainVm.SelectedGroup, Is.Null);
+            Assert.That(_mainVm.FilteredEntries, Is.Empty);
+
+            _mainVm.Dispose();
+            _mainVm.ApplyFilter();
+            _mainVm.RefreshDatabaseState();
+            Assert.That(_mainVm.CurrentDetail, Is.Null);
+            Assert.That(_mainVm.FilteredEntries, Is.Empty);
+        }
+
+        [Test]
         public void SwitchingGroups_ClearsDraftInDetachedDetail()
         {
             _host.Database.RootGroup.AddEntry(TestPluginHost.CreateTestEntry("Fixture", "user", "fixture"), true);

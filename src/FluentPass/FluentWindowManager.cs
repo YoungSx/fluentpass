@@ -245,7 +245,7 @@ namespace FluentPass
                 _refreshTimer = null;
             }
             _refreshPending = false;
-            _viewModel?.ClearData();
+            _viewModel?.Dispose();
             if (_host?.MainWindow != null)
             {
                 if (_shownHandler != null)
