@@ -477,18 +477,19 @@ namespace FluentPass.ViewModels
 
             if (listChanged)
             {
-                Entries.Clear();
+                var entries = new List<EntryItemViewModel>();
                 foreach (var entry in activeEntries)
                 {
                     if (existingVms.TryGetValue(entry.Uuid, out var existingVm))
                     {
-                        Entries.Add(existingVm);
+                        entries.Add(existingVm);
                     }
                     else
                     {
-                        Entries.Add(new EntryItemViewModel(entry, _host.MainWindow, _host.Database));
+                        entries.Add(new EntryItemViewModel(entry, _host.MainWindow, _host.Database));
                     }
                 }
+                ObservableCollectionSync.Update(Entries, entries);
                 ApplyFilter();
             }
             else
@@ -588,7 +589,9 @@ namespace FluentPass.ViewModels
         {
             var preservedUuid = SelectedEntry?.Model.Uuid;
 
-            FilteredEntries.Clear();
+            var existingVms = Entries.ToDictionary(e => e.Model.Uuid);
+            foreach (var entry in FilteredEntries) existingVms[entry.Model.Uuid] = entry;
+            var filtered = new List<EntryItemViewModel>();
 
             string query = SearchText?.Trim().ToLowerInvariant() ?? string.Empty;
             var db = _host.Database;
@@ -610,7 +613,15 @@ namespace FluentPass.ViewModels
                     .Where(entry => recycleBin == null || (!entry.ParentGroup.Equals(recycleBin) && !entry.ParentGroup.IsContainedIn(recycleBin)))
                     .ToList();
                 TotalEntriesCount = allEntries.Count;
-                candidateEntries = allEntries.Select(entry => new EntryItemViewModel(entry, _host.MainWindow, db));
+                candidateEntries = allEntries.Select(entry =>
+                {
+                    if (existingVms.TryGetValue(entry.Uuid, out var existing) && ReferenceEquals(existing.Model, entry))
+                    {
+                        existing.RefreshState();
+                        return existing;
+                    }
+                    return new EntryItemViewModel(entry, _host.MainWindow, db);
+                });
             }
             else
             {
@@ -622,7 +633,7 @@ namespace FluentPass.ViewModels
             {
                 if (string.IsNullOrEmpty(query))
                 {
-                    FilteredEntries.Add(item);
+                    filtered.Add(item);
                 }
                 else
                 {
@@ -633,11 +644,12 @@ namespace FluentPass.ViewModels
 
                     if (match)
                     {
-                        FilteredEntries.Add(item);
+                        filtered.Add(item);
                     }
                 }
             }
 
+            ObservableCollectionSync.Update(FilteredEntries, filtered);
             FilteredEntriesCount = FilteredEntries.Count;
 
             if (preservedUuid != null)
