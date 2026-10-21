@@ -214,6 +214,16 @@ namespace FluentPass
 
         private static void OnHostUIStateUpdated(object sender, EventArgs e)
         {
+            // KeePass fires UIStateUpdated synchronously inside AutoType.Execute's epilogue and
+            // inside every SendInputEx DoEvents pump. Re-entrant RefreshDatabaseState/takeover
+            // work there multiplies the pump cost of every keystroke and freezes the Fluent
+            // window while the native one is hidden. The host guards the same situation with
+            // "if (SendInputEx.IsSending) return;" in MainForm.OnTimerMainTick; mirror that.
+            if (KeePass.Util.SendInputEx.IsSending)
+            {
+                return;
+            }
+
             _fluentWindow?.Dispatcher.InvokeAsync(() =>
             {
                 _viewModel?.RefreshDatabaseState();
