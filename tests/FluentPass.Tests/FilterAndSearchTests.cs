@@ -12,6 +12,30 @@ namespace FluentPass.Tests
         private TestPluginHost _host = null!;
         private MainViewModel _mainVm = null!;
 
+        [Test]
+        public void ReapplySearch_PreservesSelectedInstanceWithoutCollectionReset()
+        {
+            var first = TestPluginHost.CreateTestEntry("Match First", "first", "fixture");
+            var second = TestPluginHost.CreateTestEntry("Match Second", "second", "fixture");
+            _host.Database.RootGroup.AddEntry(first, true);
+            _host.Database.RootGroup.AddEntry(second, true);
+            _mainVm.LoadGroups();
+            _mainVm.SearchText = "Match";
+            _mainVm.ApplyFilter();
+            var selected = _mainVm.FilteredEntries.Single(e => e.Model == second);
+            _mainVm.SelectedEntry = selected;
+            int resets = 0;
+            _mainVm.FilteredEntries.CollectionChanged += (_, e) =>
+            {
+                if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Reset) resets++;
+            };
+
+            _mainVm.ApplyFilter();
+
+            Assert.That(_mainVm.SelectedEntry, Is.SameAs(selected));
+            Assert.That(resets, Is.Zero);
+        }
+
         [SetUp]
         public void Setup()
         {
