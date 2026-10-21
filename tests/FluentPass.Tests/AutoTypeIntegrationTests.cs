@@ -4,6 +4,7 @@ using System.Threading;
 using System.Windows.Forms;
 using FluentPass.Services;
 using FluentPass.Tests.Mocks;
+using FluentPass.ViewModels;
 using KeePass;
 using KeePass.App;
 using KeePass.Forms;
@@ -77,6 +78,47 @@ namespace FluentPass.Tests
                     Assert.That(selected, Is.Zero);
                 }
             }
+        }
+
+        [Test]
+        public void BrowsingWithHiddenHost_DoesNotTouchNativeEntrySelection()
+        {
+            using (var host = new MainForm())
+            {
+                var pluginHost = new TestPluginHost { MainWindow = host };
+                var entry = TestPluginHost.CreateTestEntry("Fixture", "user", "fixture");
+                pluginHost.Database.RootGroup.AddEntry(entry, true);
+                var vm = new MainViewModel(pluginHost);
+                var list = (ListView)typeof(MainForm).GetField("m_lvEntries", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(host)!;
+                var handle = host.Handle;
+                var window = new System.Windows.Window();
+                try
+                {
+                    vm.AttachWindow(window);
+                    vm.SelectedEntry = null;
+                    vm.SelectedEntry = vm.FilteredEntries[0];
+                    vm.RefreshDatabaseState();
+
+                    Assert.That(list.Items.Count, Is.Zero);
+                    Assert.That(host.Visible, Is.False);
+                    Assert.That(vm.SelectedEntry!.Model, Is.SameAs(entry));
+                }
+                finally { window.Close(); }
+            }
+        }
+
+        [Test]
+        public void ForegroundInKeePassProcess_IsRejectedAsAutoTypeTarget()
+        {
+            var check = typeof(AutoTypeService).GetMethod("IsExternalForeground", BindingFlags.Static | BindingFlags.NonPublic)!;
+            var window = new System.Windows.Window { Width = 200, Height = 200 };
+            try
+            {
+                window.Show();
+                window.Activate();
+                Assert.That(check.Invoke(null, null), Is.False);
+            }
+            finally { window.Close(); }
         }
 
         [Test]
