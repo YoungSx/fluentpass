@@ -95,19 +95,20 @@ namespace FluentPass.ViewModels
                 currentVms[child.Model.Uuid] = child;
             }
 
-            Children.Clear();
+            var children = new List<GroupItemViewModel>();
             foreach (var subGroup in Model.Groups)
             {
                 if (currentVms.TryGetValue(subGroup.Uuid, out var existing))
                 {
                     existing.ReloadChildren();
-                    Children.Add(existing);
+                    children.Add(existing);
                 }
                 else
                 {
-                    Children.Add(new GroupItemViewModel(subGroup, this, _mainForm, _database));
+                    children.Add(new GroupItemViewModel(subGroup, this, _mainForm, _database));
                 }
             }
+            ObservableCollectionSync.Update(Children, children);
         }
 
         public void ExpandAll()
