@@ -6,6 +6,9 @@ using FluentPass.ViewModels;
 using KeePassLib;
 using KeePassLib.Security;
 using NUnit.Framework;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
 
 namespace FluentPass.Tests
 {
@@ -14,6 +17,45 @@ namespace FluentPass.Tests
     {
         private TestPluginHost _host = null!;
         private MainViewModel _mainVm = null!;
+
+        [Test]
+        public void HostRefresh_PreservesSelectedChildInBoundWpfTree()
+        {
+            var child = new PwGroup(true, true, "Selected Child", PwIcon.Folder);
+            _host.Database.RootGroup.AddGroup(child, true);
+            _mainVm.LoadGroups();
+            var tree = new TreeView
+            {
+                ItemsSource = _mainVm.RootGroups,
+                ItemTemplate = new HierarchicalDataTemplate(typeof(GroupItemViewModel))
+                {
+                    ItemsSource = new Binding(nameof(GroupItemViewModel.Children))
+                }
+            };
+            tree.SelectedItemChanged += (_, e) => _mainVm.SelectedGroup = (GroupItemViewModel)e.NewValue;
+            var window = new Window { Content = tree, Width = 300, Height = 300, ShowInTaskbar = false };
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                var rootItem = (TreeViewItem)tree.ItemContainerGenerator.ContainerFromIndex(0);
+                rootItem.IsExpanded = true;
+                window.UpdateLayout();
+                var childItem = (TreeViewItem)rootItem.ItemContainerGenerator.ContainerFromIndex(0);
+                childItem.IsSelected = true;
+
+                _mainVm.RefreshDatabaseState();
+                window.UpdateLayout();
+
+                Assert.That(tree.SelectedItem, Is.SameAs(_mainVm.RootGroups[0].Children[0]));
+                Assert.That(_mainVm.SelectedGroup!.Model, Is.SameAs(child));
+                Assert.That(childItem.IsSelected, Is.True);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }
 
         [SetUp]
         public void Setup()
