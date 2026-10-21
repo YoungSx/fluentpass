@@ -465,7 +465,7 @@ namespace FluentPass.ViewModels
 
         public void LoadGroupEntries(GroupItemViewModel? groupVm)
         {
-            CurrentDetail?.HidePassword();
+            CurrentDetail?.ClearSensitiveData();
             CurrentDetail = null;
             SelectedEntry = null;
             Entries.Clear();
