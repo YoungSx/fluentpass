@@ -98,7 +98,7 @@ namespace FluentPass.ViewModels
             var children = new List<GroupItemViewModel>();
             foreach (var subGroup in Model.Groups)
             {
-                if (currentVms.TryGetValue(subGroup.Uuid, out var existing))
+                if (currentVms.TryGetValue(subGroup.Uuid, out var existing) && ReferenceEquals(existing.Model, subGroup))
                 {
                     existing.ReloadChildren();
                     children.Add(existing);
