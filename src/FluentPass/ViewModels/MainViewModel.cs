@@ -21,11 +21,13 @@ using MessageService = FluentPass.Common.MessageService;
 
 namespace FluentPass.ViewModels
 {
-    public partial class MainViewModel : ObservableObject
+    public partial class MainViewModel : ObservableObject, IDisposable
     {
         private readonly IPluginHost _host;
         private Window? _window;
         private readonly DispatcherTimer _searchDebounceTimer;
+        private bool _isClearingData;
+        private bool _isDisposed;
 
         private PwDatabase? _currentLoadedDb;
         private string? _currentLoadedPath;
@@ -178,6 +180,7 @@ namespace FluentPass.ViewModels
 
         partial void OnSearchTextChanged(string value)
         {
+            if (_isDisposed || _isClearingData) return;
             if (System.Windows.Application.Current == null || !System.Windows.Application.Current.Dispatcher.CheckAccess())
             {
                 ApplyFilter();
@@ -200,6 +203,7 @@ namespace FluentPass.ViewModels
 
         partial void OnSelectedGroupChanged(GroupItemViewModel? value)
         {
+            if (_isDisposed || _isClearingData) return;
             var db = _host.Database;
             IsRecycleBinSelected = db != null && db.RecycleBinEnabled && value != null &&
                 !db.RecycleBinUuid.Equals(PwUuid.Zero) && value.Model.Uuid.Equals(db.RecycleBinUuid);
@@ -221,6 +225,7 @@ namespace FluentPass.ViewModels
 
         partial void OnSelectedEntryChanged(EntryItemViewModel? value)
         {
+            if (_isDisposed || _isClearingData) return;
             CurrentDetail?.ClearSensitiveData();
 
             if (value != null)
@@ -243,6 +248,7 @@ namespace FluentPass.ViewModels
 
         public void RefreshDatabaseState()
         {
+            if (_isDisposed) return;
             var db = _host.Database;
             var mw = _host.MainWindow;
 
@@ -436,23 +442,37 @@ namespace FluentPass.ViewModels
 
         public void ClearData()
         {
-            _currentLoadedDb = null;
-            _currentLoadedPath = null;
-            CurrentDetail?.ClearSensitiveData();
-            CurrentDetail = null;
-            SelectedEntry = null;
-            SelectedGroup = null;
+            _searchDebounceTimer.Stop();
+            _isClearingData = true;
+            try
+            {
+                _currentLoadedDb = null;
+                _currentLoadedPath = null;
+                CurrentDetail?.ClearSensitiveData();
+                CurrentDetail = null;
+                SelectedEntry = null;
+                SelectedGroup = null;
 
-            FilteredEntries.Clear();
-            Entries.Clear();
-            RootGroups.Clear();
+                FilteredEntries.Clear();
+                Entries.Clear();
+                RootGroups.Clear();
 
-            TotalEntriesCount = 0;
-            FilteredEntriesCount = 0;
+                TotalEntriesCount = 0;
+                FilteredEntriesCount = 0;
+            }
+            finally { _isClearingData = false; }
+        }
+
+        public void Dispose()
+        {
+            _isDisposed = true;
+            Loc.Instance.LanguageChanged -= OnLocLanguageChanged;
+            ClearData();
         }
 
         public void LoadGroups()
         {
+            if (_isDisposed) return;
             RootGroups.Clear();
             var db = _host.Database;
             if (db == null || db.RootGroup == null) return;
@@ -465,6 +485,7 @@ namespace FluentPass.ViewModels
 
         public void LoadGroupEntries(GroupItemViewModel? groupVm)
         {
+            if (_isDisposed || _isClearingData) return;
             CurrentDetail?.ClearSensitiveData();
             CurrentDetail = null;
             SelectedEntry = null;
@@ -503,6 +524,7 @@ namespace FluentPass.ViewModels
 
         public void ApplyFilter()
         {
+            if (_isClearingData || _isDisposed) return;
             var preservedUuid = SelectedEntry?.Model.Uuid;
 
             var existingVms = Entries.ToDictionary(e => e.Model.Uuid);
