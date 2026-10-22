@@ -296,3 +296,11 @@ dotnet test tests\FluentPass.Tests\FluentPass.Tests.csproj
 
 本项目采用 [MIT License](LICENSE) 開放原始碼授權。
 欢迎提交 Issue 与 Pull Request 共同改进！
+
+---
+
+## 🤝 推廣致謝
+
+感謝以下社群平台在專案推廣與交流過程中給予的支持（排名不分先後）：
+
+- [LINUX DO](https://linux.do/)

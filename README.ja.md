@@ -179,3 +179,11 @@ dotnet test tests\FluentPass.Tests\FluentPass.Tests.csproj
 
 本プロジェクトは [MIT License](LICENSE) の下で公開されています。
 Issue や Pull Request の投稿を歓迎いたします！
+
+---
+
+## 🤝 プロモーションと謝辞
+
+本プロジェクトのプロモーションおよびコミュニティ交流においてご支援いただいたプラットフォームに感謝いたします（順不同）：
+
+- [LINUX DO](https://linux.do/)
