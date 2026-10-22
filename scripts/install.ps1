@@ -56,6 +56,12 @@ try {
     # 忽略非关键协议异常
 }
 
+# Windows 环境判定（兼容 Windows PowerShell 5.1 与 PowerShell 7+）：
+# $IsWindows 仅在 PowerShell 6+ 中定义且为只读自动变量，而 PowerShell 变量名不区分大小写，
+# 任何 $isWindows = ... 形式的同名赋值都会在 PS7 中抛出"无法覆盖变量 IsWindows"，
+# 因此统一改用 $env:OS 判定（Windows 上恒为 Windows_NT，两个版本行为一致）。
+$isWinOs = $env:OS -eq 'Windows_NT'
+
 Write-Host "=================================================" -ForegroundColor Cyan
 Write-Host "   Fluent Pass - 现代视觉插件一键安装程序       " -ForegroundColor Cyan
 Write-Host "=================================================" -ForegroundColor Cyan
@@ -207,7 +213,7 @@ if (-not [string]::IsNullOrWhiteSpace($PluginDir)) {
         "C:\Program Files (x86)\KeePass Password Safe 2"
     )
 
-    if ($IsWindows -or [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT) {
+    if ($isWinOs) {
         try {
             $reg = Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\KeePass.exe" -ErrorAction SilentlyContinue
             if ($reg -and $reg.'(Default)') {
@@ -243,9 +249,8 @@ $primaryTargetDir = $targetPluginDirs[0]
 Write-Host "[INFO] 目标插件安装目录: $primaryTargetDir" -ForegroundColor Cyan
 
 # 5. 部署到目标目录（处理管理员权限与 UAC 提权）
-$isWindows = $IsWindows -or ([System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT)
 $isAdmin = $false
-if ($isWindows) {
+if ($isWinOs) {
     try {
         $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
         $principal = New-Object Security.Principal.WindowsPrincipal($identity)
