@@ -370,6 +370,7 @@ namespace FluentPass.ViewModels
                 }
                 activeEntries.Add(entry);
             }
+            activeEntries.Reverse();
 
             // 构建现有 ViewModel 映射以供重用并就地更新状态
             var existingVms = Entries.ToDictionary(e => e.Model.Uuid);
@@ -508,7 +509,7 @@ namespace FluentPass.ViewModels
                 (groupVm.Model.Equals(recycleBin) || groupVm.Model.IsContainedIn(recycleBin));
 
             var entries = groupVm.Model.GetEntries(ShowSubgroupEntries);
-            foreach (var entry in entries)
+            foreach (var entry in entries.AsEnumerable().Reverse())
             {
                 if (!isViewingRecycleBin && recycleBin != null &&
                     (entry.ParentGroup.Equals(recycleBin) || entry.ParentGroup.IsContainedIn(recycleBin)))
@@ -549,6 +550,7 @@ namespace FluentPass.ViewModels
             {
                 var allEntries = db.RootGroup.GetEntries(true)
                     .Where(entry => recycleBin == null || (!entry.ParentGroup.Equals(recycleBin) && !entry.ParentGroup.IsContainedIn(recycleBin)))
+                    .Reverse()
                     .ToList();
                 TotalEntriesCount = allEntries.Count;
                 candidateEntries = allEntries.Select(entry =>
