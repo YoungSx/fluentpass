@@ -89,6 +89,7 @@
                         <ComboBoxItem Content="{common:Loc Settings_Language_ZhCN}" Tag="zh-CN" />
                         <ComboBoxItem Content="{common:Loc Settings_Language_ZhTW}" Tag="zh-TW" />
                         <ComboBoxItem Content="{common:Loc Settings_Language_EnUS}" Tag="en-US" />
+                        <ComboBoxItem Content="{common:Loc Settings_Language_DeDE}" Tag="de-DE" />
                         <ComboBoxItem Content="{common:Loc Settings_Language_JaJP}" Tag="ja-JP" />
                         <ComboBoxItem Content="{common:Loc Settings_Language_KoKR}" Tag="ko-KR" />
                         <ComboBoxItem Content="{common:Loc Settings_Language_RuRU}" Tag="ru-RU" />
