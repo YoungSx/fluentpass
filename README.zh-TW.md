@@ -303,4 +303,5 @@ dotnet test tests\FluentPass.Tests\FluentPass.Tests.csproj
 
 感謝以下社群平台在專案推廣與交流過程中給予的支持（排名不分先後）：
 
+- [SourceForge](https://sourceforge.net/)
 - [LINUX DO](https://linux.do/)

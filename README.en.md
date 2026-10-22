@@ -186,4 +186,5 @@ Contributions, issues, and feature requests are welcome!
 
 Special thanks to the following community platforms for supporting and promoting this project (in no particular order):
 
+- [SourceForge](https://sourceforge.net/)
 - [LINUX DO](https://linux.do/)

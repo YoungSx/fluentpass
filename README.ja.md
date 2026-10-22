@@ -186,4 +186,5 @@ Issue や Pull Request の投稿を歓迎いたします！
 
 本プロジェクトのプロモーションおよびコミュニティ交流においてご支援いただいたプラットフォームに感謝いたします（順不同）：
 
+- [SourceForge](https://sourceforge.net/)
 - [LINUX DO](https://linux.do/)
