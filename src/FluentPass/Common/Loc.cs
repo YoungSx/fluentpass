@@ -67,6 +67,11 @@ namespace FluentPass.Common
             {
                 targetCode = "es-ES";
             }
+            else if (string.Equals(_languagePreference, "de-DE", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(_languagePreference, "de", StringComparison.OrdinalIgnoreCase))
+            {
+                targetCode = "de-DE";
+            }
             else if (string.Equals(_languagePreference, "en-US", StringComparison.OrdinalIgnoreCase) ||
                      string.Equals(_languagePreference, "en", StringComparison.OrdinalIgnoreCase))
             {
@@ -197,6 +202,7 @@ namespace FluentPass.Common
                     if (code.StartsWith("ko")) return "ko-KR";
                     if (code.StartsWith("ru")) return "ru-RU";
                     if (code.StartsWith("es")) return "es-ES";
+                    if (code.StartsWith("de")) return "de-DE";
                     if (code.StartsWith("en")) return "en-US";
                 }
             }
@@ -233,6 +239,10 @@ namespace FluentPass.Common
                     {
                         return "es-ES";
                     }
+                    if (lower.Contains("german") || lower.Contains("deutsch") || lower.Contains("de-de"))
+                    {
+                        return "de-DE";
+                    }
                 }
             }
             catch { }
@@ -267,6 +277,10 @@ namespace FluentPass.Common
                 if (twoLetter == "es")
                 {
                     return "es-ES";
+                }
+                if (twoLetter == "de")
+                {
+                    return "de-DE";
                 }
                 if (twoLetter == "en")
                 {

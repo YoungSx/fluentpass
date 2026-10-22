@@ -133,6 +133,8 @@ namespace FluentPass.Common
                 string.Equals(val, "ru", StringComparison.OrdinalIgnoreCase)) return "ru-RU";
             if (string.Equals(val, "es-ES", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(val, "es", StringComparison.OrdinalIgnoreCase)) return "es-ES";
+            if (string.Equals(val, "de-DE", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(val, "de", StringComparison.OrdinalIgnoreCase)) return "de-DE";
             if (string.Equals(val, "Auto", StringComparison.OrdinalIgnoreCase)) return "Auto";
 
             return DefaultLanguage;
@@ -156,6 +158,7 @@ namespace FluentPass.Common
                     else if (upper == "KO-KR" || upper == "KO") language = "ko-KR";
                     else if (upper == "RU-RU" || upper == "RU") language = "ru-RU";
                     else if (upper == "ES-ES" || upper == "ES") language = "es-ES";
+                    else if (upper == "DE-DE" || upper == "DE") language = "de-DE";
                     else if (upper == "AUTO") language = "Auto";
                     else language = DefaultLanguage;
                 }

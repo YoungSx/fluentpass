@@ -17,6 +17,7 @@ namespace FluentPass.Tests
             "zh-CN",
             "zh-TW",
             "en-US",
+            "de-DE",
             "ja-JP",
             "ko-KR",
             "ru-RU",
@@ -56,7 +57,7 @@ namespace FluentPass.Tests
         }
 
         [Test]
-        public void TranslationStore_AllSevenLanguages_ShouldHaveIdenticalKeys()
+        public void TranslationStore_AllEightLanguages_ShouldHaveIdenticalKeys()
         {
             var dictionaries = AllLanguages.ToDictionary(lang => lang, lang => TranslationStore.GetDictionary(lang));
 
@@ -79,7 +80,7 @@ namespace FluentPass.Tests
         }
 
         [Test]
-        public void TranslationStore_AllSevenLanguages_NoEmptyStringsOrNullValues()
+        public void TranslationStore_AllEightLanguages_NoEmptyStringsOrNullValues()
         {
             foreach (var lang in AllLanguages)
             {
@@ -237,6 +238,11 @@ namespace FluentPass.Tests
             Loc.Instance.SetLanguagePreference("es-ES");
             Assert.That(Loc.Get("Common_Save"), Is.EqualTo("Guardar"));
             Assert.That(Loc.Instance["Common_Cancel"], Is.EqualTo("Cancelar"));
+
+            // German
+            Loc.Instance.SetLanguagePreference("de-DE");
+            Assert.That(Loc.Get("Common_Save"), Is.EqualTo("Speichern"));
+            Assert.That(Loc.Instance["Common_Cancel"], Is.EqualTo("Abbrechen"));
         }
 
         [Test]
@@ -269,6 +275,10 @@ namespace FluentPass.Tests
             Loc.Instance.SetLanguagePreference("es-ES");
             var esFormatted = Loc.Get("Entries_SummaryFormat", 100, 25);
             Assert.That(esFormatted, Is.EqualTo("100 entradas en total (25 mostradas)"));
+
+            Loc.Instance.SetLanguagePreference("de-DE");
+            var deFormatted = Loc.Get("Entries_SummaryFormat", 100, 25);
+            Assert.That(deFormatted, Is.EqualTo("100 Einträge (25 angezeigt)"));
         }
 
         [Test]
