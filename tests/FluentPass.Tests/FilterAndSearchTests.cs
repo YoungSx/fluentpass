@@ -153,6 +153,26 @@ namespace FluentPass.Tests
         }
 
         [Test, Category("Integration")]
+        public void Entries_DefaultOrder_ShouldBeReversedPhysicalOrder()
+        {
+            Assert.That(_mainVm.Entries.Count, Is.EqualTo(4));
+            Assert.That(_mainVm.Entries[0].Title, Is.EqualTo("Server SSH Key"));
+            Assert.That(_mainVm.Entries[1].Title, Is.EqualTo("Microsoft Azure"));
+            Assert.That(_mainVm.Entries[2].Title, Is.EqualTo("Google Mail"));
+            Assert.That(_mainVm.Entries[3].Title, Is.EqualTo("GitHub Account"));
+        }
+
+        [Test, Category("Integration")]
+        public void SyncCurrentGroupEntries_ExternalAdd_PlacesNewEntryAtTop()
+        {
+            var e5 = TestPluginHost.CreateTestEntry("Z Newest Entry", "admin", "pass5");
+            _host.Database.RootGroup.AddEntry(e5, true);
+            _mainVm.RefreshDatabaseState();
+
+            Assert.That(_mainVm.Entries.Count, Is.EqualTo(5));
+            Assert.That(_mainVm.Entries[0].Title, Is.EqualTo("Z Newest Entry"));
+        }
+
         public void InlineEdit_PasswordMask_ToggleShouldWorkSafely()
         {
             var entry = _host.Database.RootGroup.Entries.GetAt(0);
