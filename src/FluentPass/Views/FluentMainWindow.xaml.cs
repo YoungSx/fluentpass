@@ -89,6 +89,8 @@ namespace FluentPass.Views
                 NotificationService.SetPresenter(RootSnackbarPresenter);
             }
 
+            HookSearchIconSubmit();
+
             EnsureThemeWatcher();
 
             try
@@ -155,6 +157,36 @@ namespace FluentPass.Views
             }
         }
 
+        private void OnSearchQuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
+        {
+            // 对齐 KeePass 原生 OnQuickFindKeyDown：Enter 无条件重跑快速搜索（以控件当前文本为准）
+            _viewModel.SubmitSearch(args.QueryText);
+        }
+
+        private void OnSearchBoxTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+        {
+            // WPF-UI 4.3.0 的 AutoSuggestBox.Text 依赖属性不随用户输入回写（未注册双向绑定，
+            // 内部 TextBox 仅抛出 TextChanged 事件），官方消费方式就是在该事件中取 args.Text
+            args.Handled = true; // 本产品不使用自动建议列表（对齐原生快速搜索语义），同时跳过内部默认过滤（其会对空 OriginalItemsSource 抛异常）
+            _viewModel.SearchText = args.Text;
+
+            // 控件在用户输入后总会自动打开建议弹层；在下一次渲染前关闭，避免标题栏下方出现空弹层残影
+            sender.Dispatcher.BeginInvoke(() => sender.SetCurrentValue(AutoSuggestBox.IsSuggestionListOpenProperty, false));
+        }
+
+        private void OnTreeViewPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            // 对齐 KeePass 原生 OnGroupsNodeMouseClick：重复点击“已选中”的分组节点时也强制重建条目列表，
+            // 使处于搜索结果视图时单击当前分组即可退出搜索结果、回到该分组条目
+            if (!_viewModel.IsSearchResultsActive) return;
+
+            var treeViewItem = FindVisualAncestor<System.Windows.Controls.TreeViewItem>(e.OriginalSource as DependencyObject);
+            if (treeViewItem?.DataContext is GroupItemViewModel groupVm && ReferenceEquals(groupVm, _viewModel.SelectedGroup))
+            {
+                _viewModel.LoadGroupEntries(groupVm);
+            }
+        }
+
         private void OnTreeViewPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
         {
             var treeViewItem = FindVisualAncestor<System.Windows.Controls.TreeViewItem>(e.OriginalSource as DependencyObject);
@@ -168,6 +200,54 @@ namespace FluentPass.Views
         private void OnTreeViewContextMenuOpening(object sender, ContextMenuEventArgs e)
         {
             _viewModel.RefreshGroupActionStates();
+        }
+
+        private void TrySelectAllInSearchBox()
+        {
+            // AutoSuggestBox 未公开 SelectAll；借模板部件 PART_TextBox 实现与原生 Ctrl+E 一致的全选体验
+            try
+            {
+                (SearchBox?.Template?.FindName("PART_TextBox", SearchBox) as System.Windows.Controls.TextBox)?.SelectAll();
+            }
+            catch { }
+        }
+
+        private ContentPresenter? _hookedSearchIconHost;
+
+        /// <summary>
+        /// 解析搜索图标宿主。WPF-UI 4.3.0 的 Icon 是纯视觉 ContentPresenter（非按钮，无事件与命令），
+        /// 且位于内部 TextBox（PART_TextBox）的模板命名域中——必须经内层模板 FindName 才能取到。
+        /// </summary>
+        private ContentPresenter? FindSearchIconHost(AutoSuggestBox? box)
+        {
+            try
+            {
+                var inner = box?.Template?.FindName("PART_TextBox", box) as System.Windows.Controls.TextBox;
+                return inner?.Template?.FindName("ControlIconRight", inner) as ContentPresenter
+                    ?? inner?.Template?.FindName("ControlIconLeft", inner) as ContentPresenter;
+            }
+            catch { return null; }
+        }
+
+        private void HookSearchIconSubmit()
+        {
+            // WPF-UI 的搜索图标无内置点击行为；把提交动作直接挂到图标宿主元素上
+            // （PreviewMouseLeftButtonUp 为 Direct 路由：鼠标指针位于图标区域即在本元素触发），
+            // 使“点击放大镜 = 提交搜索”等价于 Enter。若主题切换重建模板，下次窗口加载时重新挂接。
+            var host = FindSearchIconHost(SearchBox);
+            if (host == null || ReferenceEquals(host, _hookedSearchIconHost)) return;
+
+            host.Cursor = System.Windows.Input.Cursors.Hand;
+            host.PreviewMouseLeftButtonUp -= OnSearchIconClick;
+            host.PreviewMouseLeftButtonUp += OnSearchIconClick;
+            _hookedSearchIconHost = host;
+        }
+
+        private void OnSearchIconClick(object sender, MouseButtonEventArgs e)
+        {
+            e.Handled = true;
+            SearchBox?.Focus();
+            _viewModel.SubmitSearch();
         }
 
         private static T? FindVisualAncestor<T>(DependencyObject? current) where T : DependencyObject
@@ -449,7 +529,7 @@ namespace FluentPass.Views
                 else if (e.Key == Key.F)
                 {
                     SearchBox?.Focus();
-                    SearchBox?.SelectAll();
+                    TrySelectAllInSearchBox();
                     e.Handled = true;
                 }
                 else if (e.Key == Key.N)
