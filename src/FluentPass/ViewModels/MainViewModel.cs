@@ -73,6 +73,14 @@ namespace FluentPass.ViewModels
         [ObservableProperty]
         private string _searchText = string.Empty;
 
+        /// <summary>
+        /// 中栏当前是否处于“搜索结果视图”（对齐 KeePass 原生以虚拟结果组临时接管条目列表的会话语义）。
+        /// 该状态仅由用户在搜索框输入/提交激活；任何分组导航或列表重建都会退出该视图，
+        /// 但与原生一致不清空搜索框文本（只有锁定/关闭数据库才清空）。
+        /// </summary>
+        [ObservableProperty]
+        private bool _isSearchResultsActive;
+
         [ObservableProperty]
         private bool _showSubgroupEntries = true;
 
@@ -181,6 +189,10 @@ namespace FluentPass.ViewModels
         partial void OnSearchTextChanged(string value)
         {
             if (_isDisposed || _isClearingData) return;
+
+            // 搜索会话状态随文本即时切换（含清空即退出）；仅对中栏视图重建做 200ms 防抖
+            IsSearchResultsActive = !string.IsNullOrEmpty(value);
+
             if (System.Windows.Application.Current == null || !System.Windows.Application.Current.Dispatcher.CheckAccess())
             {
                 ApplyFilter();
@@ -189,6 +201,37 @@ namespace FluentPass.ViewModels
 
             _searchDebounceTimer.Stop();
             _searchDebounceTimer.Start();
+        }
+
+        /// <summary>
+        /// 立即提交快速搜索（对齐 KeePass 原生 OnQuickFindKeyDown：Enter 无条件重跑
+        /// PerformSearchQuick 并重新展示结果，不依赖之前的视图状态）。
+        /// </summary>
+        public void SubmitSearch(string? query = null)
+        {
+            if (_isDisposed || _isClearingData) return;
+
+            var text = query ?? SearchText;
+            if (!string.IsNullOrEmpty(text) && !string.Equals(text, SearchText, StringComparison.Ordinal))
+            {
+                SearchText = text; // 以提交文本为准（对齐原生传参 m_tbQuickFind.Text），TextChanged 会同步标志
+            }
+
+            if (System.Windows.Application.Current != null && !System.Windows.Application.Current.Dispatcher.CheckAccess())
+            {
+                System.Windows.Application.Current.Dispatcher.Invoke(ActivateSearchResultsView);
+                return;
+            }
+
+            _searchDebounceTimer.Stop();
+            ActivateSearchResultsView();
+        }
+
+        private void ActivateSearchResultsView()
+        {
+            // 无论当前处于何种视图（如分组点击后已退出搜索），提交动作都会重新进入搜索结果视图
+            IsSearchResultsActive = !string.IsNullOrEmpty(SearchText);
+            ApplyFilter();
         }
 
         partial void OnShowSubgroupEntriesChanged(bool value)
@@ -204,6 +247,8 @@ namespace FluentPass.ViewModels
         partial void OnSelectedGroupChanged(GroupItemViewModel? value)
         {
             if (_isDisposed || _isClearingData) return;
+            // 分组导航意图优先于尚在防抖等待中的搜索（对齐原生 SelectGroup 立即重建条目列表）
+            _searchDebounceTimer.Stop();
             var db = _host.Database;
             IsRecycleBinSelected = db != null && db.RecycleBinEnabled && value != null &&
                 !db.RecycleBinUuid.Equals(PwUuid.Zero) && value.Model.Uuid.Equals(db.RecycleBinUuid);
@@ -339,6 +384,10 @@ namespace FluentPass.ViewModels
 
         private void SyncCurrentGroupEntries()
         {
+            // 对齐原生 UpdateUI→UpdateEntryList(null)：任何外部/内部状态刷新都会按选中分组重建条目列表，
+            // 搜索结果视图随之结束（原生搜索结果同样是临时视图，不会在 UI 重建后残留）
+            IsSearchResultsActive = false;
+
             if (SelectedGroup == null)
             {
                 if (Entries.Count > 0)
@@ -417,11 +466,7 @@ namespace FluentPass.ViewModels
             }
             else
             {
-                // 如果当前正在搜索或过滤，可能因为条目字段改动导致匹配状态改变，重新执行过滤
-                if (!string.IsNullOrEmpty(SearchText))
-                {
-                    ApplyFilter();
-                }
+                // 列表成员未变化：搜索结果视图已由本方法入口退出，无需再基于旧文本重放过滤
             }
 
             // 右侧详情面板数据同步
@@ -449,6 +494,9 @@ namespace FluentPass.ViewModels
             {
                 _currentLoadedDb = null;
                 _currentLoadedPath = null;
+                // 对齐原生 CloseDocument：数据库锁定/关闭时清空快速搜索框并结束搜索结果视图
+                SearchText = string.Empty;
+                IsSearchResultsActive = false;
                 CurrentDetail?.ClearSensitiveData();
                 CurrentDetail = null;
                 SelectedEntry = null;
@@ -487,6 +535,8 @@ namespace FluentPass.ViewModels
         public void LoadGroupEntries(GroupItemViewModel? groupVm)
         {
             if (_isDisposed || _isClearingData) return;
+            // 对齐原生 SelectGroup→UpdateEntryList(null)：分组条目重建即结束搜索结果视图（搜索框文本保留）
+            IsSearchResultsActive = false;
             CurrentDetail?.ClearSensitiveData();
             CurrentDetail = null;
             SelectedEntry = null;
@@ -530,66 +580,21 @@ namespace FluentPass.ViewModels
 
             var existingVms = Entries.ToDictionary(e => e.Model.Uuid);
             foreach (var entry in FilteredEntries) existingVms[entry.Model.Uuid] = entry;
-            var filtered = new List<EntryItemViewModel>();
 
-            string query = SearchText?.Trim().ToLowerInvariant() ?? string.Empty;
-            var db = _host.Database;
-
-            PwGroup? recycleBin = null;
-            if (db != null && db.RecycleBinEnabled && !db.RecycleBinUuid.Equals(PwUuid.Zero) && db.RootGroup != null)
+            // 仅当处于“搜索结果视图”时才以全库搜索结果接管中栏；
+            // 普通状态（含点击分组后退出的状态）即使搜索框留有文本，也直接呈现当前分组条目——与 KeePass 原生一致
+            List<EntryItemViewModel> displayEntries;
+            if (IsSearchResultsActive && !string.IsNullOrWhiteSpace(SearchText))
             {
-                recycleBin = db.RootGroup.FindGroup(db.RecycleBinUuid, true);
-            }
-
-            bool isViewingRecycleBin = recycleBin != null && SelectedGroup != null &&
-                (SelectedGroup.Model.Equals(recycleBin) || SelectedGroup.Model.IsContainedIn(recycleBin));
-
-            IEnumerable<EntryItemViewModel> candidateEntries;
-
-            if (!isViewingRecycleBin && IsDatabaseWideSearch && !string.IsNullOrEmpty(query) && db?.RootGroup != null)
-            {
-                var allEntries = db.RootGroup.GetEntries(true)
-                    .Where(entry => recycleBin == null || (!entry.ParentGroup.Equals(recycleBin) && !entry.ParentGroup.IsContainedIn(recycleBin)))
-                    .Reverse()
-                    .ToList();
-                TotalEntriesCount = allEntries.Count;
-                candidateEntries = allEntries.Select(entry =>
-                {
-                    if (existingVms.TryGetValue(entry.Uuid, out var existing) && ReferenceEquals(existing.Model, entry))
-                    {
-                        existing.RefreshState();
-                        return existing;
-                    }
-                    return new EntryItemViewModel(entry, _host.MainWindow, db);
-                });
+                displayEntries = ExecuteQuickFind(SearchText.Trim(), existingVms);
             }
             else
             {
                 TotalEntriesCount = Entries.Count;
-                candidateEntries = Entries;
+                displayEntries = new List<EntryItemViewModel>(Entries);
             }
 
-            foreach (var item in candidateEntries)
-            {
-                if (string.IsNullOrEmpty(query))
-                {
-                    filtered.Add(item);
-                }
-                else
-                {
-                    bool match = item.Title.ToLowerInvariant().Contains(query)
-                                 || item.UserName.ToLowerInvariant().Contains(query)
-                                 || item.Url.ToLowerInvariant().Contains(query)
-                                 || item.NotesSnippet.ToLowerInvariant().Contains(query);
-
-                    if (match)
-                    {
-                        filtered.Add(item);
-                    }
-                }
-            }
-
-            ObservableCollectionSync.Update(FilteredEntries, filtered);
+            ObservableCollectionSync.Update(FilteredEntries, displayEntries);
             FilteredEntriesCount = FilteredEntries.Count;
 
             if (preservedUuid != null)
@@ -601,6 +606,101 @@ namespace FluentPass.ViewModels
             {
                 SelectedEntry = FilteredEntries[0];
             }
+        }
+
+        /// <summary>
+        /// 执行快速搜索：完全复用 KeePassLib 原生搜索引擎（SearchParameters + PwGroup.SearchEntries），
+        /// 搜索参数与 KeePass 原生 MainForm.PerformSearchQuick 对齐（QuickFind* 配置、标签/UUID/组名/组路径检索）。
+        /// </summary>
+        private List<EntryItemViewModel> ExecuteQuickFind(string query, Dictionary<PwUuid, EntryItemViewModel> existingVms)
+        {
+            var results = new List<EntryItemViewModel>();
+            var db = _host.Database;
+            if (db?.RootGroup == null)
+            {
+                TotalEntriesCount = 0;
+                return results;
+            }
+
+            // 参数构造与 KeePass 2.61 原生 MainForm.PerformSearchQuick 逐行对齐（含 //正则// 语法支持）
+            var sp = new SearchParameters
+            {
+                SearchInPasswords = false,
+                SearchInTags = true,
+                SearchInUuids = true,
+                SearchInGroupPaths = true,
+                SearchInGroupNames = true,
+                ExcludeExpired = false,
+                RespectEntrySearchingDisabled = false, // 原生快速搜索不尊重条目/分组级“禁用搜索”标志
+            };
+
+            if (query.StartsWith("//", StringComparison.Ordinal) && query.EndsWith("//", StringComparison.Ordinal) && query.Length > 4)
+            {
+                sp.SearchString = query.Substring(2, query.Length - 4);
+                sp.SearchMode = PwSearchMode.Regular;
+            }
+            else
+            {
+                sp.SearchString = query;
+            }
+
+            try
+            {
+                var quickFindCfg = KeePass.Program.Config?.MainWindow;
+                if (quickFindCfg != null)
+                {
+                    sp.SearchInPasswords = quickFindCfg.QuickFindSearchInPasswords;
+                    sp.SearchInGroupNames = sp.SearchInGroupPaths = quickFindCfg.QuickFindSearchInGroupPaths;
+                    sp.ExcludeExpired = quickFindCfg.QuickFindExcludeExpired;
+                    // 说明：原生另会经 internal 的 SearchUtil.SetTransformation 挂接 SprEngine.DerefFn
+                    // 以支持 QuickFindDerefData（解引用 {REF:...} 后搜索）。二者均为 KeePass 2.61 的
+                    // internal 成员、非插件公开 API（且该签名在 2.58→2.61 间刚发生过变化），
+                    // 遵循“不依赖宿主内部实现”原则此处不对齐，DataTransformationFn 保持默认 null。
+                }
+            }
+            catch { /* 宿主配置不可用时按原生默认参数执行 */ }
+
+            PwGroup? recycleBin = null;
+            if (db.RecycleBinEnabled && !db.RecycleBinUuid.Equals(PwUuid.Zero))
+            {
+                recycleBin = db.RootGroup.FindGroup(db.RecycleBinUuid, true);
+            }
+
+            bool isViewingRecycleBin = recycleBin != null && SelectedGroup != null &&
+                (SelectedGroup.Model.Equals(recycleBin) || SelectedGroup.Model.IsContainedIn(recycleBin));
+
+            // 默认全库搜索（原生快速搜索语义）；IsDatabaseWideSearch=false 或回收站视图时收敛到当前分组（对应原生 In-group quick find）
+            PwGroup scope = (!IsDatabaseWideSearch || isViewingRecycleBin) && SelectedGroup != null
+                ? SelectedGroup.Model
+                : db.RootGroup;
+
+            var storage = new PwObjectList<PwEntry>();
+            scope.SearchEntries(sp, storage);
+
+            foreach (var entry in storage)
+            {
+                // 本产品浏览视图始终隐藏回收站条目，搜索结果保持同一口径（原生全库搜索不排除回收站，属刻意差异）
+                if (!isViewingRecycleBin && recycleBin != null &&
+                    (entry.ParentGroup.Equals(recycleBin) || entry.ParentGroup.IsContainedIn(recycleBin)))
+                {
+                    continue;
+                }
+
+                if (existingVms.TryGetValue(entry.Uuid, out var existing) && ReferenceEquals(existing.Model, entry))
+                {
+                    existing.RefreshState();
+                    results.Add(existing);
+                }
+                else
+                {
+                    results.Add(new EntryItemViewModel(entry, _host.MainWindow, db));
+                }
+            }
+
+            results.Reverse(); // 保持产品统一的“最新条目在前”列表顺序
+            TotalEntriesCount = scope.GetEntries(true).Count(entry => isViewingRecycleBin || recycleBin == null ||
+                (!entry.ParentGroup.Equals(recycleBin) && !entry.ParentGroup.IsContainedIn(recycleBin)));
+            return results;
         }
 
         private void CheckMinimizeAfterCopy()

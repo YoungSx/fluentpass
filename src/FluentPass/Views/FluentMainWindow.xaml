@@ -115,18 +115,20 @@
                 </StackPanel>
             </ui:TitleBar.Header>
 
-            <!-- 中间 CenterContent: 实时搜索框 -->
+            <!-- 中间 CenterContent: 实时搜索框（WPF-UI 官方 AutoSuggestBox；输入经 TextChanged 事件同步，Enter 提交对齐 KeePass 原生快速搜索） -->
             <ui:TitleBar.CenterContent>
-                <ui:TextBox x:Name="SearchBox"
+                <ui:AutoSuggestBox x:Name="SearchBox"
                             Width="360"
                             Height="32"
                             VerticalAlignment="Center"
                             WindowChrome.IsHitTestVisibleInChrome="True"
                             Visibility="{Binding IsDatabaseOpen, Converter={StaticResource BooleanToVisibilityConverter}}"
-                            Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                            Text="{Binding SearchText}"
                             PlaceholderText="{common:Loc TitleBar_Search_Placeholder}"
                             Icon="{ui:SymbolIcon Search20}"
-                            ClearButtonEnabled="True" />
+                            ClearButtonEnabled="True"
+                            TextChanged="OnSearchBoxTextChanged"
+                            QuerySubmitted="OnSearchQuerySubmitted" />
             </ui:TitleBar.CenterContent>
 
             <!-- 右侧 TrailingContent: 原版协同、外观主题与设置中心 -->
@@ -292,6 +294,7 @@
                                   VerticalAlignment="Stretch"
                                   AllowDrop="True"
                                   SelectedItemChanged="OnTreeViewSelectedItemChanged"
+                                  PreviewMouseLeftButtonDown="OnTreeViewPreviewMouseLeftButtonDown"
                                   PreviewMouseRightButtonDown="OnTreeViewPreviewMouseRightButtonDown"
                                   ContextMenuOpening="OnTreeViewContextMenuOpening"
                                   DragOver="OnGroupsTreeViewDragOver"

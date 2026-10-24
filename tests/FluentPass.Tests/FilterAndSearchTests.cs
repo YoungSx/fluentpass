@@ -153,6 +153,134 @@ namespace FluentPass.Tests
         }
 
         [Test, Category("Integration")]
+        public void Search_UsesKeePassNativeEngine_IncludingTags()
+        {
+            // 标签检索是 KeePassLib 原生 SearchParameters 的能力（原生快速搜索启用 SearchInTags），
+            // 旧的 Title/UserName/Url/Notes 手写 Contains 引擎无法命中标签
+            var tagged = TestPluginHost.CreateTestEntry("Tagged Entry", "user", "pass");
+            tagged.Tags.Add("work");
+            _host.Database.RootGroup.AddEntry(tagged, true);
+
+            _mainVm.SearchText = "work";
+            _mainVm.ApplyFilter();
+
+            Assert.That(_mainVm.FilteredEntries.Count, Is.EqualTo(1));
+            Assert.That(_mainVm.FilteredEntries[0].Title, Is.EqualTo("Tagged Entry"));
+        }
+
+        [Test, Category("Integration")]
+        public void Search_UsesKeePassNativeEngine_RegexSyntax()
+        {
+            // //正则// 语法为 KeePass 2.61 原生快速搜索内建能力
+            _mainVm.SearchText = "//Git.*//";
+            _mainVm.ApplyFilter();
+
+            Assert.That(_mainVm.IsSearchResultsActive, Is.True);
+            Assert.That(_mainVm.FilteredEntries.Count, Is.EqualTo(1));
+            Assert.That(_mainVm.FilteredEntries[0].Title, Is.EqualTo("GitHub Account"));
+        }
+
+        [Test, Category("Integration")]
+        public void GroupSelection_AfterSearch_ExitsSearchResultsView_AndRetainsSearchText()
+        {
+            var group = new PwGroup(true, true, "Target Group", PwIcon.Folder);
+            group.AddEntry(TestPluginHost.CreateTestEntry("Target Entry A", "a", "p"), true);
+            group.AddEntry(TestPluginHost.CreateTestEntry("Target Entry B", "b", "p"), true);
+            _host.Database.RootGroup.AddGroup(group, true);
+            _mainVm.LoadGroups();
+
+            _mainVm.SearchText = "git";
+            _mainVm.SubmitSearch();
+            Assert.That(_mainVm.IsSearchResultsActive, Is.True);
+            Assert.That(_mainVm.FilteredEntries.Count, Is.EqualTo(1));
+
+            // 模拟用户点击左侧分组
+            var targetVm = _mainVm.RootGroups[0].Children.Single(g => g.Name == "Target Group");
+            _mainVm.SelectedGroup = targetVm;
+
+            Assert.That(_mainVm.IsSearchResultsActive, Is.False, "分组点击必须退出搜索结果视图（对齐原生 SelectGroup）");
+            Assert.That(_mainVm.FilteredEntries.Count, Is.EqualTo(2), "中栏必须显示最新点击分组的条目");
+            Assert.That(_mainVm.FilteredEntries.All(e => e.Title.StartsWith("Target")), Is.True);
+            Assert.That(_mainVm.SearchText, Is.EqualTo("git"), "搜索框文本保留是 KeePass 原生行为（仅锁定/关闭数据库才清空）");
+        }
+
+        [Test, Category("Integration")]
+        public void ReClickSelectedGroup_ExitsSearchResultsView()
+        {
+            _mainVm.SearchText = "git";
+            _mainVm.SubmitSearch();
+            Assert.That(_mainVm.IsSearchResultsActive, Is.True);
+            Assert.That(_mainVm.FilteredEntries.Count, Is.EqualTo(1));
+
+            // WPF TreeView 重复点击同一节点不触发 SelectedItemChanged；
+            // 视图层以 LoadGroupEntries 模拟原生 OnGroupsNodeMouseClick 的强制刷新
+            _mainVm.LoadGroupEntries(_mainVm.SelectedGroup);
+
+            Assert.That(_mainVm.IsSearchResultsActive, Is.False);
+            Assert.That(_mainVm.FilteredEntries.Count, Is.EqualTo(4), "重复点击当前分组也应回到该分组的全部条目");
+        }
+
+        [Test, Category("Integration")]
+        public void Search_AfterExitingResults_CanBeReactivated()
+        {
+            _mainVm.SearchText = "git";
+            _mainVm.LoadGroupEntries(_mainVm.SelectedGroup); // 退出搜索结果视图
+            Assert.That(_mainVm.IsSearchResultsActive, Is.False);
+
+            // 用户修改搜索词再次输入 → 重新进入搜索结果视图
+            _mainVm.SearchText = "azure.com";
+            _mainVm.ApplyFilter();
+
+            Assert.That(_mainVm.IsSearchResultsActive, Is.True);
+            Assert.That(_mainVm.FilteredEntries.Count, Is.EqualTo(1));
+            Assert.That(_mainVm.FilteredEntries[0].Title, Is.EqualTo("Microsoft Azure"));
+        }
+
+        [Test, Category("Integration")]
+        public void SubmitSearch_AfterGroupExit_RearmsSearchResultsView_WithoutTextChange()
+        {
+            _mainVm.SearchText = "git";
+            _mainVm.SubmitSearch();
+            Assert.That(_mainVm.IsSearchResultsActive, Is.True);
+
+            // 点击分组退出搜索结果视图（搜索框文本保留，对齐原生）
+            _mainVm.LoadGroupEntries(_mainVm.SelectedGroup);
+            Assert.That(_mainVm.IsSearchResultsActive, Is.False);
+            Assert.That(_mainVm.SearchText, Is.EqualTo("git"));
+
+            // 回到搜索框直接按 Enter（文本未变化）：必须重新进入搜索结果视图
+            _mainVm.SubmitSearch("git");
+
+            Assert.That(_mainVm.IsSearchResultsActive, Is.True,
+                "Enter 提交必须无条件重跑搜索（对齐原生 PerformSearchQuick），不应依赖文本变化");
+            Assert.That(_mainVm.FilteredEntries.Count, Is.EqualTo(1));
+            Assert.That(_mainVm.FilteredEntries[0].Title, Is.EqualTo("GitHub Account"));
+        }
+
+        [Test, Category("Integration")]
+        public void ClearData_ClearsSearchText_AndSearchState()
+        {
+            _mainVm.SearchText = "git";
+            Assert.That(_mainVm.IsSearchResultsActive, Is.True);
+
+            _mainVm.ClearData();
+
+            Assert.That(_mainVm.SearchText, Is.Empty, "锁定/关闭数据库时清空快速搜索框（对齐原生 CloseDocument）");
+            Assert.That(_mainVm.IsSearchResultsActive, Is.False);
+        }
+
+        [Test, Category("Integration")]
+        public void SubmitSearch_RunsImmediately()
+        {
+            _mainVm.SearchText = "azure.com";
+            _mainVm.SubmitSearch(); // Enter 提交路径：不等待 200ms 防抖
+
+            Assert.That(_mainVm.IsSearchResultsActive, Is.True);
+            Assert.That(_mainVm.FilteredEntries.Count, Is.EqualTo(1));
+            Assert.That(_mainVm.FilteredEntries[0].Title, Is.EqualTo("Microsoft Azure"));
+        }
+
+        [Test, Category("Integration")]
         public void Entries_DefaultOrder_ShouldBeReversedPhysicalOrder()
         {
             Assert.That(_mainVm.Entries.Count, Is.EqualTo(4));
