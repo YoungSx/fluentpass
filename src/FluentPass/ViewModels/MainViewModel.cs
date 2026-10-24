@@ -573,6 +573,24 @@ namespace FluentPass.ViewModels
             ApplyFilter();
         }
 
+        /// <summary>
+        /// 读取 KeePass 原生 QuickFind* 快速搜索配置。各配置项随 KeePass 版本演进
+        /// （如 QuickFindSearchInGroupPaths 为 2.61 新增，2.60 及之前原生硬编码为开启），
+        /// 反射读取并以各版本原生默认值兜底，保证插件在 2.4x~2.61+ 的宿主上均可编译并按原生行为运行。
+        /// </summary>
+        private static bool GetQuickFindOption(object config, string propertyName, bool fallback)
+        {
+            try
+            {
+                if (config.GetType().GetProperty(propertyName)?.GetValue(config, null) is bool value)
+                {
+                    return value;
+                }
+            }
+            catch { }
+            return fallback;
+        }
+
         public void ApplyFilter()
         {
             if (_isClearingData || _isDisposed) return;
@@ -622,7 +640,7 @@ namespace FluentPass.ViewModels
                 return results;
             }
 
-            // 参数构造与 KeePass 2.61 原生 MainForm.PerformSearchQuick 逐行对齐（含 //正则// 语法支持）
+            // 参数构造与 KeePass 原生 MainForm.PerformSearchQuick 对齐（含 //正则// 语法支持）
             var sp = new SearchParameters
             {
                 SearchInPasswords = false,
@@ -637,7 +655,7 @@ namespace FluentPass.ViewModels
             if (query.StartsWith("//", StringComparison.Ordinal) && query.EndsWith("//", StringComparison.Ordinal) && query.Length > 4)
             {
                 sp.SearchString = query.Substring(2, query.Length - 4);
-                sp.SearchMode = PwSearchMode.Regular;
+                sp.RegularExpression = true; // 兼容各版本的布尔包装（2.6x 内部映射到 SearchMode.Regular）
             }
             else
             {
@@ -649,11 +667,12 @@ namespace FluentPass.ViewModels
                 var quickFindCfg = KeePass.Program.Config?.MainWindow;
                 if (quickFindCfg != null)
                 {
-                    sp.SearchInPasswords = quickFindCfg.QuickFindSearchInPasswords;
-                    sp.SearchInGroupNames = sp.SearchInGroupPaths = quickFindCfg.QuickFindSearchInGroupPaths;
-                    sp.ExcludeExpired = quickFindCfg.QuickFindExcludeExpired;
+                    sp.SearchInPasswords = GetQuickFindOption(quickFindCfg, "QuickFindSearchInPasswords", false);
+                    bool searchInGroupPaths = GetQuickFindOption(quickFindCfg, "QuickFindSearchInGroupPaths", true);
+                    sp.SearchInGroupNames = sp.SearchInGroupPaths = searchInGroupPaths;
+                    sp.ExcludeExpired = GetQuickFindOption(quickFindCfg, "QuickFindExcludeExpired", false);
                     // 说明：原生另会经 internal 的 SearchUtil.SetTransformation 挂接 SprEngine.DerefFn
-                    // 以支持 QuickFindDerefData（解引用 {REF:...} 后搜索）。二者均为 KeePass 2.61 的
+                    // 以支持 QuickFindDerefData（解引用 {REF:...} 后搜索）。二者均为 KeePass 的
                     // internal 成员、非插件公开 API（且该签名在 2.58→2.61 间刚发生过变化），
                     // 遵循“不依赖宿主内部实现”原则此处不对齐，DataTransformationFn 保持默认 null。
                 }
