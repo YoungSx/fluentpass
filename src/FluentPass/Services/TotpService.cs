@@ -62,8 +62,8 @@ namespace FluentPass.Services
 
         /// <summary>
         /// 经宿主 SprEngine 编译 {TIMEOTP} 生成当前验证码。
-        /// 旗标经实证校准（宿主 2.61.1）：OTP 展开由 OtpNonActive 门控（语义：允许在
-        /// 非激活上下文生成 OTP），仅 HmacOtp/Active 均不展开。
+        /// 旗标经双版本实证（2.57.1 / 2.61.1，见 SprFlagCompatibility）：
+        /// 2.57.1 由 HmacOtp 门控；2.6x 起须叠加 OtpNonActive（反射探测存在才叠加）。
         /// 种子缺失/非法、宿主未替换占位符时返回 null（调用方应隐藏 TOTP 区域）。
         /// </summary>
         public static string? CompileCurrentCode(PwEntry? entry, PwDatabase? db)
@@ -72,8 +72,7 @@ namespace FluentPass.Services
 
             try
             {
-                var ctx = new SprContext(entry, db,
-                    SprCompileFlags.Active | SprCompileFlags.HmacOtp | SprCompileFlags.OtpNonActive);
+                var ctx = new SprContext(entry, db, SprFlagCompatibility.Otp);
                 string result = SprEngine.Compile(TotpPlaceholder, ctx);
 
                 // 宿主无法生成（种子损坏/不支持）时占位符原样返回或返回空
