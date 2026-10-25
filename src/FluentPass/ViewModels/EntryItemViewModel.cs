@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using KeePass.Forms;
@@ -39,6 +41,11 @@ namespace FluentPass.ViewModels
         [ObservableProperty]
         private bool _hasPassword = false;
 
+        /// <summary>条目标签（原生 PwEntry.Tags，非敏感展示数据）。</summary>
+        public IReadOnlyList<string> Tags { get; private set; } = Array.Empty<string>();
+
+        public bool HasTags => Tags.Count > 0;
+
         public EntryItemViewModel(PwEntry entry, MainForm? mainForm, PwDatabase? database)
         {
             Model = entry ?? throw new ArgumentNullException(nameof(entry));
@@ -64,6 +71,12 @@ namespace FluentPass.ViewModels
 
             LastModifiedDisplay = Model.LastModificationTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm");
             HasPassword = Model.Strings.GetSafe(PwDefs.PasswordField).Length > 0;
+
+            var tags = Model.Tags;
+            Tags = tags == null || tags.Count == 0
+                ? Array.Empty<string>()
+                : tags.Where(t => !string.IsNullOrWhiteSpace(t)).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            OnPropertyChanged(nameof(HasTags));
 
             IconSource = IconConverterHelper.GetIconSource(_mainForm, _database, Model.IconId, Model.CustomIconUuid);
         }

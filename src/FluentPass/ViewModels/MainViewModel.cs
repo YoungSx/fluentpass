@@ -90,6 +90,11 @@ namespace FluentPass.ViewModels
         [ObservableProperty]
         private bool _isRecycleBinSelected = false;
 
+        partial void OnIsRecycleBinSelectedChanged(bool value)
+        {
+            OnPropertyChanged(nameof(CanRestoreSelectedEntry));
+        }
+
         [ObservableProperty]
         private bool _canDuplicateSelectedGroup = false;
 
@@ -110,6 +115,21 @@ namespace FluentPass.ViewModels
 
         [ObservableProperty]
         private bool _isSettingsOpen = false;
+
+        // ===== 条目模板（原生 PwDatabase.EntryTemplatesGroup） =====
+        public ObservableCollection<TemplateItemViewModel> Templates { get; } = new ObservableCollection<TemplateItemViewModel>();
+
+        [ObservableProperty]
+        private bool _hasTemplates = false;
+
+        // ===== 面包屑分组导航 =====
+        public ObservableCollection<BreadcrumbItemViewModel> BreadcrumbItems { get; } = new ObservableCollection<BreadcrumbItemViewModel>();
+
+        /// <summary>是否存在可导航的祖先链（仅根分组时隐藏面包屑条）。</summary>
+        public bool HasBreadcrumb => BreadcrumbItems.Count > 1;
+
+        /// <summary>回收站视图下是否可执行“还原”（选中了回收站内的条目）。</summary>
+        public bool CanRestoreSelectedEntry => IsRecycleBinSelected && SelectedEntry != null;
 
         public SettingsViewModel Settings { get; }
 
@@ -254,6 +274,7 @@ namespace FluentPass.ViewModels
                 !db.RecycleBinUuid.Equals(PwUuid.Zero) && value.Model.Uuid.Equals(db.RecycleBinUuid);
 
             RefreshGroupActionStates();
+            RebuildBreadcrumb();
             LoadGroupEntries(value);
         }
 
@@ -281,6 +302,8 @@ namespace FluentPass.ViewModels
             {
                 CurrentDetail = null;
             }
+
+            OnPropertyChanged(nameof(CanRestoreSelectedEntry));
 
         }
 
@@ -380,6 +403,94 @@ namespace FluentPass.ViewModels
                     SyncCurrentGroupEntries();
                 }
             }
+
+            ReloadTemplates();
+        }
+
+        /// <summary>
+        /// 重建条目模板下拉数据（原生 PwDatabase.EntryTemplatesGroup 语义）：
+        /// 仅枚举模板组顶层条目（2.45+ 支持子分组子菜单，此处取与原生主路径一致的顶层集合）。
+        /// </summary>
+        private void ReloadTemplates()
+        {
+            Templates.Clear();
+            HasTemplates = false;
+
+            var db = _host.Database;
+            if (db == null || !db.IsOpen || db.RootGroup == null) return;
+            if (db.EntryTemplatesGroup == null || db.EntryTemplatesGroup.Equals(PwUuid.Zero)) return;
+
+            var templateGroup = db.RootGroup.FindGroup(db.EntryTemplatesGroup, true);
+            if (templateGroup == null) return;
+
+            foreach (var entry in templateGroup.Entries)
+            {
+                Templates.Add(new TemplateItemViewModel(entry, _host.MainWindow, db));
+            }
+
+            HasTemplates = Templates.Count > 0;
+        }
+
+        /// <summary>根据当前选中分组重建面包屑（根 → ... → 当前，当前节为末节）。</summary>
+        private void RebuildBreadcrumb()
+        {
+            BreadcrumbItems.Clear();
+
+            var current = SelectedGroup;
+            if (current == null)
+            {
+                OnPropertyChanged(nameof(HasBreadcrumb));
+                return;
+            }
+
+            var chain = new List<GroupItemViewModel>();
+            var walker = current;
+            while (walker != null)
+            {
+                chain.Add(walker);
+                walker = walker.Parent;
+            }
+            chain.Reverse();
+
+            foreach (var node in chain)
+            {
+                BreadcrumbItems.Add(new BreadcrumbItemViewModel(node.Name, node, ReferenceEquals(node, current)));
+            }
+
+            OnPropertyChanged(nameof(HasBreadcrumb));
+        }
+
+        /// <summary>面包屑点击导航：切换选中分组（选中变更会自动重建面包屑与条目列表）。</summary>
+        [RelayCommand]
+        public void NavigateToBreadcrumb(BreadcrumbItemViewModel? item)
+        {
+            if (item?.GroupVm == null || item.IsCurrent) return;
+            SelectedGroup = item.GroupVm;
+        }
+
+        /// <summary>在分组树 VM 中按模型查找节点（面包屑还原、回收站还原的目标定位）。</summary>
+        private GroupItemViewModel? FindGroupVm(PwGroup model)
+        {
+            foreach (var root in RootGroups)
+            {
+                if (ReferenceEquals(root.Model, model)) return root;
+
+                var found = FindGroupVmInChildren(root, model);
+                if (found != null) return found;
+            }
+            return null;
+        }
+
+        private static GroupItemViewModel? FindGroupVmInChildren(GroupItemViewModel node, PwGroup model)
+        {
+            foreach (var child in node.Children)
+            {
+                if (ReferenceEquals(child.Model, model)) return child;
+
+                var found = FindGroupVmInChildren(child, model);
+                if (found != null) return found;
+            }
+            return null;
         }
 
         private void SyncCurrentGroupEntries()
@@ -505,6 +616,10 @@ namespace FluentPass.ViewModels
                 FilteredEntries.Clear();
                 Entries.Clear();
                 RootGroups.Clear();
+                Templates.Clear();
+                HasTemplates = false;
+                BreadcrumbItems.Clear();
+                OnPropertyChanged(nameof(HasBreadcrumb));
 
                 TotalEntriesCount = 0;
                 FilteredEntriesCount = 0;
@@ -814,7 +929,9 @@ namespace FluentPass.ViewModels
         {
             var target = entryVm ?? SelectedEntry;
             if (target == null) return;
-            string url = target.Model.Strings.ReadSafe(PwDefs.UrlField);
+
+            // 对齐原生管线：条目级 OverrideUrl → 全局/Scheme Overrides → URL 占位符编译
+            string? url = UrlService.ResolveOpenUrl(target.Model, _host.Database);
             if (string.IsNullOrWhiteSpace(url)) return;
 
             try
@@ -923,6 +1040,126 @@ namespace FluentPass.ViewModels
             catch (Exception ex)
             {
                 StatusMessage = Loc.Get("Status_EntryCreateFailedFormat", ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 从模板新建条目（原生 EntryTemplatesGroup 语义）：官方 PwEntry.Duplicate 全字段复制
+        /// + 全新 UUID，不携带模板历史链，落入当前选中分组后直接进入内联编辑。
+        /// </summary>
+        [RelayCommand]
+        public void NewEntryFromTemplate(PwEntry? template)
+        {
+            if (template == null || SelectedGroup == null || _host.Database == null) return;
+
+            try
+            {
+                var entry = template.Duplicate();
+                // 模板克隆产物不携带模板条目的历史版本链（对齐原生“从模板新建”产物语义）
+                entry.History = new PwObjectList<PwEntry>();
+                entry.Touch(true, false);
+
+                SelectedGroup.Model.AddEntry(entry, true);
+                SelectedGroup.RefreshSelfAndAncestors();
+
+                _host.Database.Modified = true;
+                SafeInvokeOnHost(() => _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true));
+
+                var vm = new EntryItemViewModel(entry, _host.MainWindow, _host.Database);
+                Entries.Insert(0, vm);
+                ApplyFilter();
+                SelectedEntry = vm;
+
+                CurrentDetail?.BeginEdit();
+                StatusMessage = Loc.Get("Status_EntryCreatedFromTemplateFormat",
+                    template.Strings.ReadSafe(PwDefs.TitleField));
+                RefreshDatabaseState();
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = Loc.Get("Status_EntryCreateFailedFormat", ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 复制条目：官方 PwEntry.Duplicate + 原生 DuplicationForm 复制选项（铁律 4：
+        /// 复制语义细节交给原版窗体；EnableDialogs=false 时静默按默认语义执行）。
+        /// </summary>
+        [RelayCommand]
+        public void DuplicateEntry(EntryItemViewModel? entryVm)
+        {
+            var target = entryVm ?? SelectedEntry;
+            if (target == null || _host.Database == null || SelectedGroup == null) return;
+
+            try
+            {
+                bool confirmed = true;
+                DuplicationForm? form = null;
+                if (MessageService.EnableDialogs)
+                {
+                    form = new DuplicationForm();
+                    IWin32Window? owner = _window != null ? new Wpf32Window(_window) : null;
+                    confirmed = form.ShowDialog(owner) == DialogResult.OK;
+                }
+                if (!confirmed) return;
+
+                var entry = target.Model;
+                var parent = entry.ParentGroup ?? SelectedGroup.Model;
+                var dup = entry.Duplicate();
+                parent.AddEntry(dup, true);
+                form?.ApplyTo(dup, entry, _host.Database);
+
+                _host.Database.Modified = true;
+                SafeInvokeOnHost(() => _host.MainWindow?.UpdateUI(false, null, true, null, true, null, true));
+
+                // 重建当前分组列表（“最新在前”口径下复制件自然置顶）
+                LoadGroupEntries(SelectedGroup);
+                SelectedGroup.RefreshSelfAndAncestors();
+                StatusMessage = Loc.Get("Status_EntryDuplicatedFormat", target.Title);
+                RefreshDatabaseState();
+                NotificationService.ShowSuccess(Loc.Get("Notification_EntryDuplicated_Title"), Loc.Get("Notification_EntryDuplicated_Message", target.Title));
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = Loc.Get("Status_EntryDuplicateFailedFormat", ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 从回收站还原条目：对齐原生 Restore 语义——目标位置为回收站分组的父分组
+        /// （通常为根分组），复用既有 EntryMovementService 移动管线（含备份与宿主刷新）。
+        /// </summary>
+        [RelayCommand]
+        public void RestoreEntryFromRecycleBin(EntryItemViewModel? entryVm)
+        {
+            var target = entryVm ?? SelectedEntry;
+            if (target == null || _host.Database == null) return;
+
+            var db = _host.Database;
+            if (!db.RecycleBinEnabled || db.RecycleBinUuid.Equals(PwUuid.Zero) || db.RootGroup == null) return;
+
+            var recycleBin = db.RootGroup.FindGroup(db.RecycleBinUuid, true);
+            if (recycleBin == null) return;
+
+            var entry = target.Model;
+            if (entry.ParentGroup == null ||
+                (!entry.ParentGroup.Equals(recycleBin) && !entry.ParentGroup.IsContainedIn(recycleBin)))
+            {
+                return;
+            }
+
+            var destination = recycleBin.ParentGroup ?? db.RootGroup;
+            if (destination == null) return;
+
+            var destinationVm = FindGroupVm(destination) ?? RootGroups.FirstOrDefault();
+            if (destinationVm == null) return;
+
+            if (MoveEntriesToGroup(new[] { target }, destinationVm))
+            {
+                StatusMessage = Loc.Get("Status_EntryRestoredFormat", destinationVm.Name);
+                NotificationService.ShowSuccess(
+                    Loc.Get("Notification_EntryRestored_Title"),
+                    Loc.Get("Notification_EntryRestored_Message", target.Title));
             }
         }
 
@@ -1545,6 +1782,15 @@ namespace FluentPass.ViewModels
         public void OpenSettings()
         {
             IsSettingsOpen = true;
+        }
+
+        /// <summary>命令面板打开请求（Ctrl+Shift+P / 面包屑栏按钮）：窗口创建交由视图层处理。</summary>
+        public event EventHandler? QuickAccessRequested;
+
+        [RelayCommand]
+        public void OpenQuickAccess()
+        {
+            QuickAccessRequested?.Invoke(this, EventArgs.Empty);
         }
 
         [RelayCommand]

@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Forms.Integration;
 using KeePass.Plugins;
 using FluentPass.Common;
 using FluentPass.ViewModels;
@@ -79,7 +80,43 @@ namespace FluentPass.Views
             PreviewMouseDown += OnUserActivityOccurred;
             PreviewKeyDown += OnUserActivityOccurred;
 
+            _viewModel.QuickAccessRequested += OnQuickAccessRequested;
+
             Loaded += OnWindowLoaded;
+        }
+
+        private QuickAccessWindow? _quickAccessWindow;
+
+        private void OnQuickAccessRequested(object? sender, EventArgs e)
+        {
+            try
+            {
+                // 单例浮层：已打开时仅重新聚焦
+                if (_quickAccessWindow != null && _quickAccessWindow.IsLoaded)
+                {
+                    _quickAccessWindow.Activate();
+                    return;
+                }
+
+                _quickAccessWindow = new QuickAccessWindow(_host, _viewModel);
+                ElementHost.EnableModelessKeyboardInterop(_quickAccessWindow);
+                _quickAccessWindow.PositionOver(this);
+                _quickAccessWindow.Closed += (_, __) => _quickAccessWindow = null;
+                _quickAccessWindow.Show();
+            }
+            catch
+            {
+                // 浮层创建失败时静默降级（不影响主窗口）
+            }
+        }
+
+        /// <summary>双击条目 = 复制密码（与 docs 落地页承诺一致；拖拽路径已由 Preview 链路隔离，不冲突）。</summary>
+        private void OnEntryListDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is System.Windows.Controls.ListViewItem item && item.DataContext is EntryItemViewModel vm)
+            {
+                _viewModel.CopySelectedPasswordCommand.Execute(vm);
+            }
         }
 
         private void OnWindowLoaded(object sender, RoutedEventArgs e)
@@ -488,6 +525,14 @@ namespace FluentPass.Views
         {
             base.OnKeyDown(e);
 
+            // 命令面板快捷键（Ctrl+Shift+P）：文本输入态也放行（避开原生 Ctrl+K=复制条目的高冲突组合）
+            if (e.Key == Key.P && Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
+            {
+                _viewModel.OpenQuickAccessCommand.Execute(null);
+                e.Handled = true;
+                return;
+            }
+
             // 文本框焦点守卫：如果焦点在输入框内，放行所有原生编辑键 (Ctrl+C, Ctrl+V, Del 等)
             if (Keyboard.FocusedElement is TextBoxBase ||
                 Keyboard.FocusedElement is System.Windows.Controls.PasswordBox)
@@ -555,6 +600,11 @@ namespace FluentPass.Views
                 else if (e.Key == Key.V)
                 {
                     _viewModel.AutoTypeSelectedCommand.Execute(_viewModel.SelectedEntry);
+                    e.Handled = true;
+                }
+                else if (e.Key == Key.D)
+                {
+                    _viewModel.DuplicateEntryCommand.Execute(_viewModel.SelectedEntry);
                     e.Handled = true;
                 }
                 else if (e.Key == Key.OemComma)
