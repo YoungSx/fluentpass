@@ -441,6 +441,33 @@ namespace FluentPass.ViewModels
             }
         }
 
+        /// <summary>
+        /// 编辑模式下的密码复制：复制的是当前未保存的编辑草稿（所见即所复），
+        /// 同样走官方 ClipboardUtil 全链路（防历史记录、倒计时清空）。
+        /// </summary>
+        [RelayCommand]
+        public void CopyEditPassword()
+        {
+            if (!IsEditing) return;
+
+            try
+            {
+                ClipboardUtil.CopyAndMinimize(
+                    new ProtectedString(true, EditPassword),
+                    true,
+                    _host.MainWindow,
+                    Model,
+                    _host.Database);
+                SafeInvokeOnHost(() => _host.MainWindow?.StartClipboardCountdown());
+                CheckMinimizeAfterCopy();
+                NotificationService.ShowSuccess(Loc.Get("Notification_CopiedPassword_Title"), Loc.Get("Notification_CopiedPassword_Message", Title));
+            }
+            catch (Exception ex)
+            {
+                MessageService.Show(Loc.Get("Status_CopiedPasswordFailedFormat", ex.Message));
+            }
+        }
+
         [RelayCommand]
         public void CopyUrl()
         {
