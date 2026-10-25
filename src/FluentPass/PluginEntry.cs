@@ -24,7 +24,12 @@ namespace FluentPass
         private bool _isWindows;
         private Image? _cachedSmallIcon;
 
-        public override string UpdateUrl => "https://github.com/fluentpass/fluentpass";
+        // KeePass ≥2.18 官方插件更新检查契约：UpdateUrl 必须返回版本信息文本文件
+        // （首行/末行为分隔符，中间行 "<AssemblyTitle>:<AssemblyFileVersion>"，
+        // 规范见 https://keepass.info/help/v2_dev/plg_index.html）。
+        // version.txt 由 Release 流水线随每次发版生成并作为 Release 资产发布，
+        // releases/latest/download 恒定 302 到最新稳定版的同名资产（草稿与预发布自动排除）。
+        public override string UpdateUrl => "https://github.com/YoungSx/fluentpass/releases/latest/download/version.txt";
 
         /// <summary>
         /// KeePass 规范的小图标（严格要求 16x16 像素，用于插件管理器与菜单项）
