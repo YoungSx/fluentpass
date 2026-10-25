@@ -130,6 +130,7 @@ sequenceDiagram
 1. **`FluentPass-vX.Y.Z.zip`**：推荐普通用户下载的完整包，内含 `FluentPass.dll`、使用文档与 `INSTALL.txt` 安装指南。
 2. **`FluentPass.dll`**：单文件绿色插件，供熟练用户直接复制到 `KeePass/Plugins/` 目录升级。
 3. **`SHA256SUMS.txt`**：所有产物的 SHA256 哈希值，供安全审计与完整性核对。
+4. **`version.txt`**：KeePass 官方插件更新检查（`Plugin.UpdateUrl`）所需的版本信息文本文件，由流水线按 [官方格式规范](https://keepass.info/help/v2_dev/plg_index.html) 自动生成。固定地址 `releases/latest/download/version.txt` 恒定指向最新稳定版的该资产，KeePass 客户端借此检测新版本（草稿与预发布 Release 不进入更新通道）。
 
 ---
 
@@ -150,6 +151,11 @@ sequenceDiagram
    - 菜单栏 **`工具 (Tools)` -> `Fluent Pass`** 正确出现。
    - 点击可拉起 Windows 11 Mica 现代化主视窗。
    - 数据库正常解锁与凭据查看无报错。
+4. **验证更新检查通道**：
+   ```bash
+   curl -L https://github.com/YoungSx/fluentpass/releases/latest/download/version.txt
+   ```
+   应 302 至最新稳定版资产并输出三行版本信息文件，中间行版本号与本次 Tag 一致。随后可在装有旧版插件的 KeePass 中执行 **帮助 -> 检查更新** 确认能提示新版本。
 
 ---
 

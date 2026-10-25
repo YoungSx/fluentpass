@@ -178,6 +178,17 @@ jobs:
           # Copy standalone DLL directly to release-assets
           Copy-Item $dllSource -Destination "$assetsDir\FluentPass.dll" -Force
 
+          # Generate KeePass official update-check version file (plugin UpdateUrl target).
+          # Format: https://keepass.info/help/v2_dev/plg_index.html — UTF-8 without BOM,
+          # first/last line are the separator, middle lines are "<AssemblyTitle>:<AssemblyFileVersion>".
+          # Published via releases/latest/download/version.txt, which always serves the
+          # newest stable release's asset (drafts and prereleases are excluded automatically).
+          $versionFile = "$assetsDir\version.txt"
+          $versionContent = ":", "FluentPass:$env:SEMVER", ":" -join "`n"
+          [System.IO.File]::WriteAllText($versionFile, $versionContent + "`n", [System.Text.UTF8Encoding]::new($false))
+          Write-Host "Generated version.txt (KeePass update check):"
+          Get-Content $versionFile
+
           # Calculate SHA256 checksums
           $filesToHash = Get-ChildItem -Path $assetsDir -File
           $hashReport = @()
@@ -228,6 +239,7 @@ jobs:
             release-assets/FluentPass-${{ env.TAG_NAME }}.zip
             release-assets/FluentPass.dll
             release-assets/SHA256SUMS.txt
+            release-assets/version.txt
 
       - name: Upload Release Assets to Workflow Artifacts
         uses: actions/upload-artifact@v4
