@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using FluentPass.Tests.Mocks;
 using FluentPass.ViewModels;
@@ -35,7 +36,12 @@ namespace FluentPass.Tests
         public void NormalizeTags_RemovesEmptyAndDuplicates()
         {
             var tags = EntryDetailViewModel.NormalizeTags("a, ,b;;a,A");
-            CollectionAssert.AreEquivalent(new[] { "a", "b" }, tags);
+            // 语义断言：去空、去重（大小写不敏感）后恰为 {a, b}。
+            // 保留哪个大小写由官方 StrUtil.StringToTags 决定（2.57.1 自行去重且保留后位、
+            // 2.61.1 原样返回由本层去重），故不钉死大小写，保证跨宿主版本可移植。
+            Assert.That(tags.Count, Is.EqualTo(2));
+            Assert.That(tags.Any(t => t.Equals("a", StringComparison.OrdinalIgnoreCase)), Is.True);
+            Assert.That(tags.Any(t => t.Equals("b", StringComparison.OrdinalIgnoreCase)), Is.True);
         }
 
         [Test]

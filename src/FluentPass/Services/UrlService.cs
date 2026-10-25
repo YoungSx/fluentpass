@@ -16,8 +16,8 @@ namespace FluentPass.Services
     {
         /// <summary>
         /// 解析条目实际应当打开的 URL/命令串；条目无 URL 时返回 null。
-        /// 旗标经实证校准（宿主 2.61.1）：{URL} 归 EntryStrings、{URL:…} 组件归
-        /// EntryStringsSpecial，仅 Active 时二者均不展开；TOTP-in-URL 需 HmacOtp。
+        /// 旗标经双版本实证校准（2.57.1 / 2.61.1，见 SprFlagCompatibility）：
+        /// {URL} 归 EntryStrings、{URL:…} 组件归 EntryStringsSpecial，仅 Active 时均不展开。
         /// </summary>
         public static string? ResolveOpenUrl(PwEntry? entry, PwDatabase? db)
         {
@@ -26,9 +26,7 @@ namespace FluentPass.Services
             string raw = entry.Strings.ReadSafe(PwDefs.UrlField);
             if (string.IsNullOrWhiteSpace(raw)) return null;
 
-            var ctx = new SprContext(entry, db,
-                SprCompileFlags.Active | SprCompileFlags.EntryStrings | SprCompileFlags.EntryStringsSpecial
-                | SprCompileFlags.HmacOtp | SprCompileFlags.OtpNonActive);
+            var ctx = new SprContext(entry, db, SprFlagCompatibility.Url);
 
             string? target = null;
 

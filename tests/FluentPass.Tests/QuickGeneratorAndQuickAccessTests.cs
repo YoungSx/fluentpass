@@ -172,8 +172,7 @@ namespace FluentPass.Tests
 
             qa.ExecuteEntryCopyPassword(target);
 
-            var clipboard = System.Windows.Forms.Clipboard.GetText();
-            Assert.That(clipboard, Is.EqualTo("secret-pass-1"));
+            Assert.That(GetClipboardTextWithRetry("secret-pass-1"), Is.EqualTo("secret-pass-1"));
         }
 
         [Test]
@@ -185,8 +184,7 @@ namespace FluentPass.Tests
 
             qa.ExecuteEntryCopyUsername(target);
 
-            var clipboard = System.Windows.Forms.Clipboard.GetText();
-            Assert.That(clipboard, Is.EqualTo("octocat"));
+            Assert.That(GetClipboardTextWithRetry("octocat"), Is.EqualTo("octocat"));
         }
 
         [Test]
@@ -210,8 +208,24 @@ namespace FluentPass.Tests
 
             qa.ExecuteDefault(target);
 
-            var clipboard = System.Windows.Forms.Clipboard.GetText();
-            Assert.That(clipboard, Is.EqualTo("secret-pass-2"));
+            Assert.That(GetClipboardTextWithRetry("secret-pass-2"), Is.EqualTo("secret-pass-2"));
+        }
+
+        /// <summary>
+        /// OLE 剪贴板写入存在延迟渲染/flush 时序：前一个测试的写入可能尚未对新读者可见。
+        /// 轮询至多 2 秒，避免偶发的“读到上一次写入”竞态（实测于 2.57.1/2.61.1 双宿主）。
+        /// </summary>
+        private static string GetClipboardTextWithRetry(string expected)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            string last = string.Empty;
+            while (sw.ElapsedMilliseconds < 2000)
+            {
+                last = System.Windows.Forms.Clipboard.GetText();
+                if (last == expected) return last;
+                System.Threading.Thread.Sleep(50);
+            }
+            return last;
         }
 
         [Test]

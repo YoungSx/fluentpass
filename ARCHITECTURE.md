@@ -64,7 +64,7 @@
 | **密码安全取用** | 默认掩码隐藏、按需明文查看、安全复制 | 10秒超时自动重新遮蔽；调用原版 `ClipboardUtil` 享受自动倒计时抹除 |
 | **生命周期互操作** | 数据库锁定、关闭、修改状态全双工同步 | 监听 `_host.MainWindow.FileOpened/Closed/UIStateUpdated`；窗口关闭时清理订阅与 WPF Application |
 | **输入防闲置误判** | 键盘/鼠标活动通知宿主防误锁 | 内置 `IdleNotificationThrottle`，节流通知 KeePass 原生 `ResetIdleTimer` |
-| **TOTP 实时验证码** | 周期倒计时环 + 一键复制 | 100% 委派宿主：`SprEngine.Compile("{TIMEOTP}")`（旗标须含 `OtpNonActive`，实证于 2.61.1）；种子字段遵循原生 `TimeOtp-Secret-*` 约定，配置回退原版 `OtpGeneratorForm` |
+| **TOTP 实时验证码** | 周期倒计时环 + 一键复制 | 100% 委派宿主：`SprEngine.Compile("{TIMEOTP}")`（旗标经 2.57.1/2.61.1 双版本实证并由 `SprFlagCompatibility` 兼容层统一管理：2.57.1 由 HmacOtp 门控，2.6x 起须叠加反射探测的 OtpNonActive）；种子字段遵循原生 `TimeOtp-Secret-*` 约定，配置回退原版 `OtpGeneratorForm` |
 | **条目模板新建** | SplitButton 下拉从模板新建 | 原生 `PwDatabase.EntryTemplatesGroup` + `PwEntry.Duplicate()`（全新 UUID、不携带模板历史链） |
 | **标签体系** | 列表徽标、详情查看/编辑 | 原生 `PwEntry.Tags` + `StrUtil.StringToTags/TagsToString` 规范化 |
 | **附件管理** | 另存为 / 打开 / 新增 / 删除 | `PwEntry.Binaries`（ProtectedBinary），写路径强制 `CreateBackup`；临时文件经 `TempAttachmentStore` 登记清理 |
