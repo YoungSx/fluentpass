@@ -851,34 +851,93 @@
                                     </Grid>
                                 </ui:CardExpander>
 
-                                <!-- ================= 字段 5: 自定义附加字段 原生 CardExpander ================= -->
+                                <!-- ================= 字段 5: 自定义附加字段 原生 CardExpander（支持内联编辑） ================= -->
                                 <ui:CardExpander Header="{common:Loc Detail_Field_CustomFields}"
                                                  Icon="{ui:SymbolIcon Tag24}"
                                                  IsExpanded="True"
                                                  Margin="0,0,0,10"
-                                                 Visibility="{Binding CustomFields.Count, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                    <ItemsControl ItemsSource="{Binding CustomFields}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Grid Margin="0,4">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="130" />
-                                                        <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <ui:TextBlock Grid.Column="0" Text="{Binding Key}" FontTypography="BodyStrong" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />
-                                                    <TextBox Grid.Column="1" Style="{StaticResource FluentReadOnlyFieldStyle}"
-                                                             Text="{Binding DisplayValue}"
-                                                             FontSize="14" />
-                                                    <ui:Button Grid.Column="2" Style="{StaticResource ActionIconButtonStyle}" Margin="6,0,0,0"
-                                                               Visibility="{Binding IsProtected, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                                               Command="{Binding ToggleRevealCommand}" ToolTip="{common:Loc Detail_ViewPlaintext_Tooltip}">
-                                                        <ui:SymbolIcon Symbol="Eye20" />
-                                                    </ui:Button>
-                                                </Grid>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
+                                                 Visibility="{Binding IsCustomFieldsSectionVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <StackPanel>
+                                        <ItemsControl ItemsSource="{Binding CustomFields}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,4">
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto" />
+                                                        </Grid.RowDefinitions>
+
+                                                        <!-- 查看模式：名称 + 只读值 + 保护字段显隐 -->
+                                                        <Grid Visibility="{Binding DataContext.IsEditing, RelativeSource={RelativeSource AncestorType={x:Type ui:DynamicScrollViewer}}, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="130" />
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <ui:TextBlock Grid.Column="0" Text="{Binding Key}" FontTypography="BodyStrong" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />
+                                                            <TextBox Grid.Column="1" Style="{StaticResource FluentReadOnlyFieldStyle}"
+                                                                     Text="{Binding DisplayValue}"
+                                                                     FontSize="14" />
+                                                            <ui:Button Grid.Column="2" Style="{StaticResource ActionIconButtonStyle}" Margin="6,0,0,0"
+                                                                       Visibility="{Binding IsProtected, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                                       Command="{Binding ToggleRevealCommand}" ToolTip="{common:Loc Detail_ViewPlaintext_Tooltip}">
+                                                                <ui:SymbolIcon Symbol="Eye20" />
+                                                            </ui:Button>
+                                                        </Grid>
+
+                                                        <!-- 编辑模式：名称输入 + 值输入（保护字段掩码/明文切换）+ 保护开关 + 删除 -->
+                                                        <Grid Visibility="{Binding DataContext.IsEditing, RelativeSource={RelativeSource AncestorType={x:Type ui:DynamicScrollViewer}}, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="120" />
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <ui:TextBox Grid.Column="0" Text="{Binding EditKey, UpdateSourceTrigger=PropertyChanged}"
+                                                                        PlaceholderText="{common:Loc Detail_CustomField_KeyPlaceholder}"
+                                                                        Margin="0,0,6,0" />
+                                                            <Grid Grid.Column="1" Margin="0,0,6,0">
+                                                                <ui:PasswordBox Password="{Binding EditValue, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                                                                PlaceholderText="{common:Loc Detail_CustomField_ValuePlaceholder}"
+                                                                                Visibility="{Binding IsEditValueMaskedBoxVisible, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                                <ui:TextBox Text="{Binding EditValue, UpdateSourceTrigger=PropertyChanged}"
+                                                                            PlaceholderText="{common:Loc Detail_CustomField_ValuePlaceholder}"
+                                                                            Visibility="{Binding IsEditValuePlainBoxVisible, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                            </Grid>
+                                                            <ui:Button Grid.Column="2" Style="{StaticResource ActionIconButtonStyle}" Margin="2,0"
+                                                                       Visibility="{Binding IsProtected, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                                       Command="{Binding ToggleEditValueVisibilityCommand}" ToolTip="{common:Loc Detail_ViewPlaintext_Tooltip}">
+                                                                <ui:SymbolIcon Symbol="Eye20" />
+                                                            </ui:Button>
+                                                            <ui:Button Grid.Column="3" Style="{StaticResource ActionIconButtonStyle}" Margin="2,0"
+                                                                       Command="{Binding ToggleEditProtectionCommand}" ToolTip="{common:Loc Detail_CustomField_ToggleProtect_Tooltip}">
+                                                                <Grid>
+                                                                    <ui:SymbolIcon Symbol="LockClosed20" Visibility="{Binding IsProtected, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                                    <ui:SymbolIcon Symbol="LockOpen20" Visibility="{Binding IsProtected, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}" />
+                                                                </Grid>
+                                                            </ui:Button>
+                                                            <ui:Button Grid.Column="4" Style="{StaticResource DangerIconButtonStyle}" Margin="2,0"
+                                                                       Command="{Binding DataContext.RemoveCustomFieldCommand, RelativeSource={RelativeSource AncestorType={x:Type ui:DynamicScrollViewer}}}"
+                                                                       CommandParameter="{Binding}"
+                                                                       ToolTip="{common:Loc Detail_CustomField_Remove_Tooltip}">
+                                                                <ui:SymbolIcon Symbol="Delete20" />
+                                                            </ui:Button>
+                                                        </Grid>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <!-- 编辑模式下的“添加字段”入口 -->
+                                        <ui:Button Appearance="Secondary"
+                                                   HorizontalAlignment="Left"
+                                                   Margin="0,8,0,0"
+                                                   Padding="14,6"
+                                                   Icon="{ui:SymbolIcon Add20}"
+                                                   Content="{common:Loc Detail_CustomField_Add}"
+                                                   Command="{Binding AddCustomFieldCommand}"
+                                                   Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                    </StackPanel>
                                 </ui:CardExpander>
 
                                 <!-- ================= 字段 6: 二进制附件 原生 CardExpander ================= -->

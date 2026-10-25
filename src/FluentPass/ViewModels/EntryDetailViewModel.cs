@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Forms;
@@ -121,6 +122,12 @@ namespace FluentPass.ViewModels
         public string CreatedTimeSummary => Loc.Get("Detail_CreatedFormat", CreatedTimeDisplay);
         public string LastModifiedDetailSummary => Loc.Get("Detail_LastModifiedFormat", LastModifiedDisplay);
 
+        /// <summary>
+        /// 自定义字段区块可见性：有字段或处于编辑会话时显示
+        /// （编辑模式即使暂无字段也要展示区块，以提供“添加字段”入口）。
+        /// </summary>
+        public bool IsCustomFieldsSectionVisible => CustomFields.Count > 0 || IsEditing;
+
         public ObservableCollection<CustomFieldItemViewModel> CustomFields { get; } = new ObservableCollection<CustomFieldItemViewModel>();
         public ObservableCollection<AttachmentItemViewModel> Attachments { get; } = new ObservableCollection<AttachmentItemViewModel>();
         public ObservableCollection<EntryHistoryItemViewModel> HistoryRevisions { get; } = new ObservableCollection<EntryHistoryItemViewModel>();
@@ -141,6 +148,8 @@ namespace FluentPass.ViewModels
             };
             _passwordHideTimer.Tick += OnPasswordTimerTick;
 
+            CustomFields.CollectionChanged += (_, __) => OnPropertyChanged(nameof(IsCustomFieldsSectionVisible));
+
             RefreshData();
         }
 
@@ -156,6 +165,11 @@ namespace FluentPass.ViewModels
                 var ps = new ProtectedString(true, value);
                 UpdatePasswordQuality(ps);
             }
+        }
+
+        partial void OnIsEditingChanged(bool value)
+        {
+            OnPropertyChanged(nameof(IsCustomFieldsSectionVisible));
         }
 
         private void UpdatePasswordQuality(ProtectedString? ps)
@@ -490,6 +504,11 @@ namespace FluentPass.ViewModels
             EditUrl = Model.Strings.ReadSafe(PwDefs.UrlField);
             EditNotes = Model.Strings.ReadSafe(PwDefs.NotesField);
 
+            foreach (var customField in CustomFields)
+            {
+                customField.BeginEditDraft();
+            }
+
             IsEditPasswordRevealed = false;
             IsEditing = true;
 
@@ -502,7 +521,41 @@ namespace FluentPass.ViewModels
             EditPassword = string.Empty;
             IsEditPasswordRevealed = false;
             IsEditing = false;
+
+            // 丢弃自定义字段编辑草稿；本次会话新增的空行整行移除
+            for (int i = CustomFields.Count - 1; i >= 0; i--)
+            {
+                var customField = CustomFields[i];
+                if (customField.IsNew)
+                {
+                    CustomFields.RemoveAt(i);
+                }
+                else
+                {
+                    customField.ClearEditDraft();
+                }
+            }
+
             UpdatePasswordQuality(Model.Strings.GetSafe(PwDefs.PasswordField));
+        }
+
+        [RelayCommand]
+        public void AddCustomField()
+        {
+            if (!IsEditing) return;
+
+            var field = new CustomFieldItemViewModel(string.Empty, new ProtectedString(false, string.Empty), isNew: true);
+            field.BeginEditDraft();
+            CustomFields.Add(field);
+        }
+
+        [RelayCommand]
+        public void RemoveCustomField(CustomFieldItemViewModel? field)
+        {
+            if (field == null) return;
+
+            CustomFields.Remove(field);
+            field.ClearEditDraft();
         }
 
         [RelayCommand]
@@ -515,6 +568,35 @@ namespace FluentPass.ViewModels
         {
             try
             {
+                // 自定义字段草稿校验（先于 CreateBackup，避免为非法草稿产生无意义历史版本）
+                var draftFields = CustomFields
+                    .Where(f => !(f.IsNew && string.IsNullOrWhiteSpace(f.EditKey) && string.IsNullOrWhiteSpace(f.EditValue))) // 空白新增行静默丢弃
+                    .ToList();
+
+                foreach (var field in draftFields)
+                {
+                    if (string.IsNullOrWhiteSpace(field.EditKey))
+                    {
+                        MessageService.Show(Loc.Get("Dialog_CustomField_EmptyKey"));
+                        return;
+                    }
+
+                    if (PwDefs.IsStandardField(field.EditKey.Trim()))
+                    {
+                        MessageService.Show(Loc.Get("Dialog_CustomField_StandardKeyFormat", field.EditKey.Trim()));
+                        return;
+                    }
+                }
+
+                var duplicateGroup = draftFields
+                    .GroupBy(f => f.EditKey.Trim(), StringComparer.Ordinal)
+                    .FirstOrDefault(g => g.Count() > 1);
+                if (duplicateGroup != null)
+                {
+                    MessageService.Show(Loc.Get("Dialog_CustomField_DuplicateKeyFormat", duplicateGroup.Key));
+                    return;
+                }
+
                 // 规范 4: 先行创建历史备份
                 Model.CreateBackup(_host.Database);
 
@@ -524,6 +606,21 @@ namespace FluentPass.ViewModels
                 Model.Strings.Set(PwDefs.PasswordField, new ProtectedString(true, EditPassword));
                 Model.Strings.Set(PwDefs.UrlField, new ProtectedString(false, EditUrl));
                 Model.Strings.Set(PwDefs.NotesField, new ProtectedString(false, EditNotes));
+
+                // 写入自定义字段：与原生 PwEntryForm 保存契约一致——移除全部旧自定义字段后按草稿整体重写
+                // （重命名、删除、保护切换均自然覆盖；未变更字段的重写与原生行为相同）
+                var obsoleteCustomKeys = Model.Strings
+                    .Where(kvp => !PwDefs.IsStandardField(kvp.Key))
+                    .Select(kvp => kvp.Key)
+                    .ToList();
+                foreach (var obsoleteKey in obsoleteCustomKeys)
+                {
+                    Model.Strings.Remove(obsoleteKey);
+                }
+                foreach (var field in draftFields)
+                {
+                    Model.Strings.Set(field.EditKey.Trim(), new ProtectedString(field.IsProtected, field.EditValue));
+                }
 
                 // 更新时间戳并标记数据库已修改
                 Model.Touch(true, false);
