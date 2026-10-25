@@ -1,0 +1,79 @@
+<ui:FluentWindow x:Class="FluentPass.Views.QuickAccessWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:common="clr-namespace:FluentPass.Common"
+        Title="Fluent Pass Quick Access"
+        Width="620" MinHeight="92" MaxHeight="560" SizeToContent="Height"
+        WindowStartupLocation="Manual"
+        ShowInTaskbar="False" ShowActivated="True"
+        Topmost="True" ResizeMode="NoResize"
+        WindowBackdropType="Acrylic"
+        ExtendsContentIntoTitleBar="True"
+        Deactivated="OnWindowDeactivated"
+        PreviewKeyDown="OnWindowPreviewKeyDown">
+
+    <Window.Resources>
+        <common:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <common:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
+    </Window.Resources>
+
+    <Grid>
+        <StackPanel Margin="10,12,10,12">
+            <ui:AutoSuggestBox x:Name="QueryBox"
+                               Height="38"
+                               FontSize="16"
+                               PlaceholderText="{common:Loc QuickAccess_SearchPlaceholder}"
+                               Icon="{ui:SymbolIcon Search24}"
+                               TextChanged="OnQueryTextChanged"
+                               QuerySubmitted="OnQuerySubmitted" />
+
+            <ListBox x:Name="ResultsList"
+                     ItemsSource="{Binding Results}"
+                     SelectedItem="{Binding SelectedResult, Mode=TwoWay}"
+                     BorderThickness="0"
+                     Background="Transparent"
+                     MaxHeight="440"
+                     Margin="0,8,0,0"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     MouseDoubleClick="OnResultListDoubleClick">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="2,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <Image Grid.Column="0" Source="{Binding IconSource}" Width="20" Height="20" Margin="2,0,10,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality" />
+
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <ui:TextBlock Text="{Binding Title}" FontTypography="BodyStrong" TextTrimming="CharacterEllipsis" />
+                                <ui:TextBlock Text="{Binding Subtitle}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis"
+                                              Visibility="{Binding Subtitle, Converter={StaticResource StringToVisibilityConverter}}" />
+                            </StackPanel>
+
+                            <!-- 条目行快捷动作（命令行隐藏） -->
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center"
+                                        Visibility="{Binding IsEntry, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <ui:Button Appearance="Transparent" BorderThickness="0" Padding="5,3"
+                                           ToolTip="{common:Loc QuickAccess_Action_CopyUsername}"
+                                           Command="{Binding DataContext.ExecuteEntryCopyUsernameCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                                           CommandParameter="{Binding}">
+                                    <ui:SymbolIcon Symbol="Person20" />
+                                </ui:Button>
+                                <ui:Button Appearance="Transparent" BorderThickness="0" Padding="5,3"
+                                           ToolTip="{common:Loc QuickAccess_Action_AutoType}"
+                                           Command="{Binding DataContext.ExecuteEntryAutoTypeCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                                           CommandParameter="{Binding}">
+                                    <ui:SymbolIcon Symbol="Keyboard20" />
+                                </ui:Button>
+                            </StackPanel>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </StackPanel>
+    </Grid>
+</ui:FluentWindow>

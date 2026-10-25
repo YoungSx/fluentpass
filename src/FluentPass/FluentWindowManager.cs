@@ -238,6 +238,8 @@ namespace FluentPass
         {
             _autoTypeWindow?.Dispose();
             _autoTypeWindow = null;
+            // 附件“打开”功能落盘的临时文件随插件卸载统一清理
+            Services.TempAttachmentStore.CleanupAll();
             if (_refreshTimer != null)
             {
                 _refreshTimer.Stop();

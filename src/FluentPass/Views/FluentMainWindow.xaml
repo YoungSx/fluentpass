@@ -19,6 +19,7 @@
         <ResourceDictionary>
             <common:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
             <common:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
+            <common:InverseBooleanConverter x:Key="InverseBooleanConverter" />
 
             <Style x:Key="ActionIconButtonStyle" TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
                 <Setter Property="Appearance" Value="Transparent" />
@@ -111,6 +112,14 @@
                                ToolTip="{common:Loc TitleBar_Lock_Tooltip}"
                                Command="{Binding LockDatabaseCommand}">
                         <ui:SymbolIcon Symbol="LockClosed20" />
+                    </ui:Button>
+
+                    <!-- 命令面板（Ctrl+Shift+P）：快捷检索条目与内置命令 -->
+                    <ui:Button Style="{StaticResource ActionIconButtonStyle}"
+                               WindowChrome.IsHitTestVisibleInChrome="True"
+                               ToolTip="{common:Loc TitleBar_QuickAccess_Tooltip}"
+                               Command="{Binding OpenQuickAccessCommand}">
+                        <ui:SymbolIcon Symbol="Search20" />
                     </ui:Button>
                 </StackPanel>
             </ui:TitleBar.Header>
@@ -407,11 +416,12 @@
                     <Grid VerticalAlignment="Stretch">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
-                        <!-- 条目统计信息与新建条目合并行 -->
-                        <Grid Grid.Row="0" Margin="4,2,4,8">
+                        <!-- 条目统计信息与新建条目合并行（SplitButton：主按新建空白，下拉从模板新建） -->
+                        <Grid Grid.Row="0" Margin="4,2,4,6">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
@@ -424,15 +434,74 @@
                                           FontTypography="Caption"
                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                           Text="{Binding EntriesSummaryText}" />
-                            <ui:Button Grid.Column="1"
-                                       Appearance="Primary"
-                                       Content="{common:Loc Entries_NewButton}"
-                                       Icon="{ui:SymbolIcon Add20}"
-                                       Command="{Binding NewEntryCommand}" />
+                            <ui:SplitButton Grid.Column="1"
+                                            Appearance="Primary"
+                                            Content="{common:Loc Entries_NewButton}"
+                                            Icon="{ui:SymbolIcon Add20}"
+                                            Command="{Binding NewEntryCommand}">
+                                <ui:SplitButton.Flyout>
+                                    <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                        <ItemsControl ItemsSource="{Binding Templates}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <ui:MenuItem Header="{Binding Title}"
+                                                                 Command="{Binding DataContext.NewEntryFromTemplateCommand, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                                                                 CommandParameter="{Binding Model}">
+                                                        <ui:MenuItem.Icon>
+                                                            <ui:ImageIcon Source="{Binding IconSource}" Width="16" Height="16" />
+                                                        </ui:MenuItem.Icon>
+                                                    </ui:MenuItem>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <ui:MenuItem Header="{common:Loc Entries_NoTemplates}"
+                                                     IsEnabled="False"
+                                                     Visibility="{Binding HasTemplates, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}" />
+                                    </ContextMenu>
+                                </ui:SplitButton.Flyout>
+                            </ui:SplitButton>
                         </Grid>
 
+                        <!-- 面包屑分组导航（根→…→当前；仅根分组时隐藏）。
+                             注：不使用 ui:BreadcrumbBar——WPF-UI 4.3.0 该控件在 ItemsSource 为空时
+                             Loaded 广播阶段于 UpdateLastContainer 内 NRE 并杀死宿主进程（上游缺陷，
+                             隐藏状态同样触发），故以标准 Button + ChevronRight 组合实现同等交互 -->
+                        <ItemsControl Grid.Row="1"
+                                      x:Name="BreadcrumbTrail"
+                                      Margin="4,0,4,6"
+                                      ItemsSource="{Binding BreadcrumbItems}"
+                                      Visibility="{Binding HasBreadcrumb, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <ui:Button Appearance="Transparent"
+                                                   BorderThickness="0"
+                                                   Padding="4,2"
+                                                   MinHeight="0"
+                                                   Focusable="False"
+                                                   Cursor="Hand"
+                                                   IsEnabled="{Binding IsCurrent, Converter={StaticResource InverseBooleanConverter}}"
+                                                   Command="{Binding DataContext.NavigateToBreadcrumbCommand, RelativeSource={RelativeSource AncestorType={x:Type ui:FluentWindow}}}"
+                                                   CommandParameter="{Binding}">
+                                            <ui:TextBlock Text="{Binding Name}"
+                                                          FontTypography="Caption"
+                                                          TextTrimming="CharacterEllipsis" />
+                                        </ui:Button>
+                                        <ui:SymbolIcon Symbol="ChevronRight20" FontSize="10" Margin="2,1,2,0"
+                                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                       Visibility="{Binding IsCurrent, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
                         <!-- 虚拟化原生 ui:ListView 条目列表与空数据友好提示 -->
-                        <Grid Grid.Row="1" VerticalAlignment="Stretch">
+                        <Grid Grid.Row="2" VerticalAlignment="Stretch">
                             <ui:ListView x:Name="EntriesListView"
                                          ItemsSource="{Binding FilteredEntries}"
                                          SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
@@ -453,6 +522,7 @@
                                         <EventSetter Event="PreviewMouseMove" Handler="OnListViewItemPreviewMouseMove" />
                                         <EventSetter Event="PreviewMouseLeftButtonUp" Handler="OnListViewItemPreviewMouseLeftButtonUp" />
                                         <EventSetter Event="PreviewMouseRightButtonDown" Handler="OnListViewItemPreviewMouseRightButtonDown" />
+                                        <EventSetter Event="MouseDoubleClick" Handler="OnEntryListDoubleClick" />
                                     </Style>
                                 </ui:ListView.ItemContainerStyle>
                                 <ui:ListView.ContextMenu>
@@ -480,6 +550,16 @@
                                                      InputGestureText="Ctrl+V"
                                                      Icon="{ui:SymbolIcon Keyboard20}"
                                                      Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.AutoTypeSelectedCommand}"
+                                                     CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
+                                        <Separator />
+                                        <ui:MenuItem Header="{common:Loc Menu_DuplicateEntry}"
+                                                     Icon="{ui:SymbolIcon Copy20}"
+                                                     Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.DuplicateEntryCommand}"
+                                                     CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
+                                        <ui:MenuItem Header="{common:Loc Menu_RestoreFromRecycleBin}"
+                                                     Icon="{ui:SymbolIcon ArrowUp20}"
+                                                     Visibility="{Binding Source={StaticResource MainVmProxy}, Path=Data.CanRestoreSelectedEntry, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                     Command="{Binding Source={StaticResource MainVmProxy}, Path=Data.RestoreEntryFromRecycleBinCommand}"
                                                      CommandParameter="{Binding Source={StaticResource MainVmProxy}, Path=Data.SelectedEntry}" />
                                         <Separator />
                                         <ui:MenuItem Header="{common:Loc Menu_EditEntry}"
@@ -515,12 +595,28 @@
                                                 <Grid.RowDefinitions>
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
                                                 </Grid.RowDefinitions>
                                                 <ui:TextBlock Grid.Row="0" Text="{Binding Title}" FontTypography="BodyStrong" TextTrimming="CharacterEllipsis" />
                                                 <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,2,0,0">
                                                     <ui:TextBlock Text="{Binding UserName}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,10,0" TextTrimming="CharacterEllipsis" MaxWidth="140" />
                                                     <ui:TextBlock Text="{Binding LastModifiedDisplay}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
                                                 </StackPanel>
+                                                <!-- 原生 Tags 徽标（最多展示于行内，随换行收缩） -->
+                                                <ItemsControl Grid.Row="2" ItemsSource="{Binding Tags}"
+                                                              Visibility="{Binding HasTags, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                              Margin="0,3,0,0">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <StackPanel Orientation="Horizontal" />
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <ui:InfoBadge Value="{Binding}" Severity="Success" Margin="0,0,4,0" />
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
                                             </Grid>
                                         </Grid>
                                     </DataTemplate>
@@ -588,6 +684,14 @@
                             </ui:DynamicScrollViewer.Style>
 
                             <StackPanel Margin="0,0,8,0">
+                                <!-- 过期警示（已过期/临近过期，口径与原生“即将过期”一致） -->
+                                <ui:InfoBar IsOpen="{Binding IsExpiryWarningVisible, Mode=TwoWay}"
+                                            IsClosable="False"
+                                            Severity="Warning"
+                                            Title="{common:Loc Detail_Expiry_WarningTitle}"
+                                            Message="{Binding ExpiryWarningText}"
+                                            Margin="0,0,0,10" />
+
                                 <!-- 顶部标题与操作卡片 -->
                                 <ui:Card Margin="0,0,0,14" Padding="14,12">
                                     <Grid>
@@ -760,8 +864,14 @@
                                                 <ui:SymbolIcon Symbol="Copy20" />
                                             </ui:Button>
 
-                                            <!-- 调起原版密码生成器 -->
+                                            <!-- 内联快速生成（官方 PwGenerator + 宿主自动生成档案） -->
                                             <ui:Button Grid.Column="3" Style="{StaticResource ActionIconButtonStyle}" Margin="4,0,0,0"
+                                                       ToolTip="{common:Loc Detail_QuickGenerate_Tooltip}" Command="{Binding GeneratePasswordQuickCommand}">
+                                                <ui:SymbolIcon Symbol="ArrowClockwise20" />
+                                            </ui:Button>
+
+                                            <!-- 调起原版密码生成器 -->
+                                            <ui:Button Grid.Column="4" Style="{StaticResource ActionIconButtonStyle}" Margin="4,0,0,0"
                                                        ToolTip="{common:Loc Detail_InvokePwGen_Tooltip}" Command="{Binding InvokePwGeneratorCommand}">
                                                 <ui:SymbolIcon Symbol="Wand20" />
                                             </ui:Button>
@@ -780,6 +890,41 @@
                                                           Foreground="{Binding PasswordQualityColor}" VerticalAlignment="Center" />
                                         </Grid>
                                     </StackPanel>
+                                </ui:Card>
+
+                                <!-- ================= 字段 2.5: TOTP 一次性验证码（宿主 SprEngine {TIMEOTP} 生成） ================= -->
+                                <ui:Card Margin="0,0,0,10" Padding="14,10"
+                                         Visibility="{Binding HasTotp, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- 周期倒计时环 -->
+                                        <ui:ProgressRing Grid.Column="0" Width="36" Height="36" Margin="0,0,12,0"
+                                                         IsIndeterminate="False"
+                                                         Progress="{Binding TotpCountdownPercent}"
+                                                         Foreground="{DynamicResource SystemAccentColorBrush}" />
+
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <ui:TextBlock Text="{common:Loc Detail_Totp_Header}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                            <ui:TextBlock Text="{Binding TotpCode}" FontFamily="Consolas" FontSize="20" FontWeight="SemiBold"
+                                                          VerticalAlignment="Center" Margin="0,2,0,0" />
+                                        </StackPanel>
+
+                                        <!-- 剩余秒数徽标 -->
+                                        <ui:InfoBadge Grid.Column="2" Value="{Binding TotpCountdownText}" Severity="Informational"
+                                                      VerticalAlignment="Center" Margin="0,0,8,0" />
+
+                                        <!-- 复制验证码（官方 ClipboardUtil 条目语义） -->
+                                        <ui:Button Grid.Column="3" Style="{StaticResource ActionIconButtonStyle}"
+                                                   ToolTip="{common:Loc Detail_Totp_CopyTooltip}" Command="{Binding CopyTotpCommand}">
+                                            <ui:SymbolIcon Symbol="Copy20" />
+                                        </ui:Button>
+                                    </Grid>
                                 </ui:Card>
 
                                 <!-- ================= 字段 3: 网址 (URL) ================= -->
@@ -829,6 +974,48 @@
                                         </ui:Button>
                                     </Grid>
                                 </ui:Card>
+
+                                <!-- ================= 字段 3.5: 标签（原生 PwEntry.Tags） ================= -->
+                                <ui:CardExpander Header="{common:Loc Detail_Field_Tags}"
+                                                 Icon="{ui:SymbolIcon Bookmark24}"
+                                                 IsExpanded="True"
+                                                 Margin="0,0,0,10"
+                                                 Visibility="{Binding IsTagsSectionVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <Grid Margin="0,4,0,0">
+                                        <!-- 查看模式：原生标签徽标流 -->
+                                        <StackPanel Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
+                                            <ItemsControl ItemsSource="{Binding Tags}"
+                                                          Visibility="{Binding HasTags, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <StackPanel Orientation="Horizontal" />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <ui:InfoBadge Value="{Binding}" Severity="Success" Margin="0,0,6,6" />
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <ui:TextBlock Text="{common:Loc Detail_Tags_Empty}"
+                                                          FontTypography="Body"
+                                                          Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                          FontStyle="Italic"
+                                                          Visibility="{Binding HasTags, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}" />
+                                        </StackPanel>
+
+                                        <!-- 编辑模式：按原生语义以逗号/分号分隔，保存时官方 StrUtil.StringToTags 规范化 -->
+                                        <StackPanel Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                            <ui:TextBox Text="{Binding EditTagsText, UpdateSourceTrigger=PropertyChanged}"
+                                                        PlaceholderText="{common:Loc Detail_Tags_EditPlaceholder}"
+                                                        ClearButtonEnabled="True" />
+                                            <ui:TextBlock Text="{common:Loc Detail_Tags_EditHint}"
+                                                          FontTypography="Caption"
+                                                          Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                          Margin="0,4,0,0" />
+                                        </StackPanel>
+                                    </Grid>
+                                </ui:CardExpander>
 
                                 <!-- ================= 字段 4: 备注 (Notes) 原生 CardExpander ================= -->
                                 <ui:CardExpander Header="{common:Loc Detail_Field_Notes}"
@@ -949,30 +1136,63 @@
                                     </StackPanel>
                                 </ui:CardExpander>
 
-                                <!-- ================= 字段 6: 二进制附件 原生 CardExpander ================= -->
+                                <!-- ================= 字段 6: 二进制附件 原生 CardExpander（另存/打开/新增/删除） ================= -->
                                 <ui:CardExpander Header="{common:Loc Detail_Field_Attachments}"
                                                  Icon="{ui:SymbolIcon Attach24}"
                                                  IsExpanded="True"
                                                  Margin="0,0,0,10"
-                                                 Visibility="{Binding Attachments.Count, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                    <ItemsControl ItemsSource="{Binding Attachments}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <ui:Card Margin="0,3" Padding="12,8">
-                                                    <Grid>
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="Auto" />
-                                                            <ColumnDefinition Width="*" />
-                                                            <ColumnDefinition Width="Auto" />
-                                                        </Grid.ColumnDefinitions>
-                                                        <ui:SymbolIcon Grid.Column="0" Symbol="Attach20" Margin="0,0,10,0" VerticalAlignment="Center" Foreground="{DynamicResource SystemAccentColorBrush}" />
-                                                        <ui:TextBlock Grid.Column="1" Text="{Binding Name}" FontTypography="BodyStrong" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                                        <ui:InfoBadge Grid.Column="2" Value="{Binding SizeDisplay}" Severity="Informational" VerticalAlignment="Center" />
-                                                    </Grid>
-                                                </ui:Card>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
+                                                 Visibility="{Binding IsAttachmentsSectionVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <StackPanel>
+                                        <ItemsControl ItemsSource="{Binding Attachments}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <ui:Card Margin="0,3" Padding="12,8">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto" />
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <ui:SymbolIcon Grid.Column="0" Symbol="Attach20" Margin="0,0,10,0" VerticalAlignment="Center" Foreground="{DynamicResource SystemAccentColorBrush}" />
+                                                            <ui:TextBlock Grid.Column="1" Text="{Binding Name}" FontTypography="BodyStrong" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                            <ui:InfoBadge Grid.Column="2" Value="{Binding SizeDisplay}" Severity="Informational" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                                            <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                                                                <ui:Button Style="{StaticResource ActionIconButtonStyle}"
+                                                                           ToolTip="{common:Loc Detail_AttachmentSave_Tooltip}"
+                                                                           Command="{Binding DataContext.SaveAttachmentToDiskCommand, RelativeSource={RelativeSource AncestorType={x:Type ui:DynamicScrollViewer}}}"
+                                                                           CommandParameter="{Binding}">
+                                                                    <ui:SymbolIcon Symbol="Save20" />
+                                                                </ui:Button>
+                                                                <ui:Button Style="{StaticResource ActionIconButtonStyle}"
+                                                                           ToolTip="{common:Loc Detail_AttachmentView_Tooltip}"
+                                                                           Command="{Binding DataContext.OpenAttachmentCommand, RelativeSource={RelativeSource AncestorType={x:Type ui:DynamicScrollViewer}}}"
+                                                                           CommandParameter="{Binding}">
+                                                                    <ui:SymbolIcon Symbol="Open20" />
+                                                                </ui:Button>
+                                                                <ui:Button Style="{StaticResource DangerIconButtonStyle}"
+                                                                           ToolTip="{common:Loc Detail_AttachmentDelete_Tooltip}"
+                                                                           Command="{Binding DataContext.DeleteAttachmentCommand, RelativeSource={RelativeSource AncestorType={x:Type ui:DynamicScrollViewer}}}"
+                                                                           CommandParameter="{Binding}">
+                                                                    <ui:SymbolIcon Symbol="Delete20" />
+                                                                </ui:Button>
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </ui:Card>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <!-- 编辑会话中的“添加附件”入口 -->
+                                        <ui:Button Appearance="Secondary"
+                                                   HorizontalAlignment="Left"
+                                                   Margin="0,8,0,0"
+                                                   Padding="14,6"
+                                                   Icon="{ui:SymbolIcon Add20}"
+                                                   Content="{common:Loc Detail_Attachment_Add}"
+                                                   Command="{Binding AddAttachmentCommand}"
+                                                   Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                    </StackPanel>
                                 </ui:CardExpander>
 
                                 <!-- ================= 字段 7: 历史修改版本 原生 CardExpander ================= -->
@@ -1006,11 +1226,36 @@
                                     </ItemsControl>
                                 </ui:CardExpander>
 
-                                <!-- 底部创建与修改时间 -->
-                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                    <ui:TextBlock Text="{Binding CreatedTimeSummary}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,16,0" />
-                                    <ui:TextBlock Text="{Binding LastModifiedDetailSummary}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
-                                </StackPanel>
+                                <!-- 底部元数据：创建 / 修改 / 最近访问 / 使用次数 / 过期 -->
+                                <ui:CardExpander Header="{Binding MetadataHeader}"
+                                                 Icon="{ui:SymbolIcon Clock24}"
+                                                 IsExpanded="False"
+                                                 Margin="0,8,0,0">
+                                    <Grid Margin="0,4,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+
+                                        <ui:TextBlock Grid.Row="0" Grid.Column="0" Text="{common:Loc Detail_Metadata_Created}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,20,4" />
+                                        <ui:TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding CreatedTimeDisplay}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                                        <ui:TextBlock Grid.Row="1" Grid.Column="0" Text="{common:Loc Detail_Metadata_LastModified}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,20,4" />
+                                        <ui:TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LastModifiedDisplay}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                                        <ui:TextBlock Grid.Row="2" Grid.Column="0" Text="{common:Loc Detail_Metadata_LastAccess}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,20,4" />
+                                        <ui:TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LastAccessDisplay}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                                        <ui:TextBlock Grid.Row="3" Grid.Column="0" Text="{common:Loc Detail_Metadata_UsageCount}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,20,4" />
+                                        <ui:TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding UsageCountDisplay}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                                        <ui:TextBlock Grid.Row="4" Grid.Column="0" Text="{common:Loc Detail_Metadata_Expiry}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,20,4" />
+                                        <ui:TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding ExpiryDisplay}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                                    </Grid>
+                                </ui:CardExpander>
                             </StackPanel>
                         </ui:DynamicScrollViewer>
                     </Grid>
