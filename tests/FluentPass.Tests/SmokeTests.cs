@@ -28,11 +28,11 @@ namespace FluentPass.Tests
         {
             var plugin = new FluentPassExt();
             Assert.That(plugin.UpdateUrl, Is.Not.Null.And.Not.Empty);
-            // UpdateUrl 必须指向 Release 资产 version.txt（KeePass 官方版本信息文件，
-            // 由 Release 流水线生成；releases/latest/download 恒指最新稳定版资产），
-            // 防止退化指向任意 HTML 页面 —— KeePass 解析失败时更新检查静默失效
-            Assert.That(plugin.UpdateUrl, Does.StartWith("https://github.com/"));
-            Assert.That(plugin.UpdateUrl, Does.EndWith("/releases/latest/download/version.txt"));
+            // UpdateUrl 必须精确指向 Release 资产 version.txt（KeePass 官方版本信息文件，
+            // 由 Release 流水线生成；releases/latest/download 恒指最新稳定版资产）。
+            // 完整相等断言防止 URL 被改坏 —— KeePass 下载/解析失败时更新检查会静默失效
+            Assert.That(plugin.UpdateUrl, Is.EqualTo(
+                "https://github.com/YoungSx/fluentpass/releases/latest/download/version.txt"));
             // SmallIcon 可以安全读取，且严格符合 KeePass 官方 16x16 像素规范
             var icon = plugin.SmallIcon;
             Assert.That(icon, Is.Not.Null);

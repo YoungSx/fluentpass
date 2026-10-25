@@ -183,8 +183,11 @@ jobs:
           # first/last line are the separator, middle lines are "<AssemblyTitle>:<AssemblyFileVersion>".
           # Published via releases/latest/download/version.txt, which always serves the
           # newest stable release's asset (drafts and prereleases are excluded automatically).
+          # Use ASSEMBLY_VER (the AssemblyFileVersion baked into the DLL) rather than SEMVER:
+          # KeePass's version parser is numeric-only per dot segment and would misparse a
+          # SemVer suffix like "1.4.0-rc.1" as 1.4.0.1, producing a phantom update prompt.
           $versionFile = "$assetsDir\version.txt"
-          $versionContent = ":", "FluentPass:$env:SEMVER", ":" -join "`n"
+          $versionContent = ":", "FluentPass:$env:ASSEMBLY_VER", ":" -join "`n"
           [System.IO.File]::WriteAllText($versionFile, $versionContent + "`n", [System.Text.UTF8Encoding]::new($false))
           Write-Host "Generated version.txt (KeePass update check):"
           Get-Content $versionFile
@@ -213,6 +216,7 @@ jobs:
               "### 📦 资产下载与安装 (Downloads)",
               "- **[FluentPass-$env:TAG_NAME.zip](https://github.com/YoungSx/fluentpass/releases/download/$env:TAG_NAME/FluentPass-$env:TAG_NAME.zip)**: 完整安装包（含使用说明与说明文档）。",
               "- **[FluentPass.dll](https://github.com/YoungSx/fluentpass/releases/download/$env:TAG_NAME/FluentPass.dll)**: 单文件即插即用插件（直接丢入 KeePass 的 `Plugins\` 目录即可）。",
+              "- **[version.txt](https://github.com/YoungSx/fluentpass/releases/download/$env:TAG_NAME/version.txt)**: KeePass 客户端「检查更新」所需的版本信息文件（`releases/latest/download/version.txt` 恒指向最新稳定版的该资产）。",
               "",
               "### 🔐 完整性校验 (SHA256 Checksums)",
               "```text",
@@ -235,6 +239,7 @@ jobs:
           draft: ${{ inputs.draft || false }}
           prerelease: ${{ inputs.prerelease || false }}
           generate_release_notes: true
+          fail_on_unmatched_files: true
           files: |
             release-assets/FluentPass-${{ env.TAG_NAME }}.zip
             release-assets/FluentPass.dll

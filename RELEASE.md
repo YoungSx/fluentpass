@@ -155,7 +155,7 @@ sequenceDiagram
    ```bash
    curl -L https://github.com/YoungSx/fluentpass/releases/latest/download/version.txt
    ```
-   应 302 至最新稳定版资产并输出三行版本信息文件，中间行版本号与本次 Tag 一致。随后可在装有旧版插件的 KeePass 中执行 **帮助 -> 检查更新** 确认能提示新版本。
+   应 302 至最新稳定版资产并输出三行版本信息文件，中间行为 `FluentPass:<FileVersion>` 四段形式（如 v1.3.2 → `FluentPass:1.3.2.0`），与 DLL 内嵌的 AssemblyFileVersion 严格一致。随后可在装有旧版插件的 KeePass 中执行 **帮助 -> 检查更新** 确认能提示新版本。
 
 ---
 
