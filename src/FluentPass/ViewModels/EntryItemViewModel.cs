@@ -41,10 +41,21 @@ namespace FluentPass.ViewModels
         [ObservableProperty]
         private bool _hasPassword = false;
 
+        /// <summary>行内徽标最多展示的标签数；超出部分折叠为 “+N” 徽标，避免撑高列表行。</summary>
+        private const int MaxInlineTags = 3;
+
         /// <summary>条目标签（原生 PwEntry.Tags，非敏感展示数据）。</summary>
         public IReadOnlyList<string> Tags { get; private set; } = Array.Empty<string>();
 
+        /// <summary>行内实际渲染的标签（至多 <see cref="MaxInlineTags"/> 个）。</summary>
+        public IReadOnlyList<string> VisibleTags { get; private set; } = Array.Empty<string>();
+
+        /// <summary>折叠计数文本（“+N”）；无折叠时为空字符串。</summary>
+        public string OverflowTagsDisplay { get; private set; } = string.Empty;
+
         public bool HasTags => Tags.Count > 0;
+
+        public bool HasTagOverflow => Tags.Count > MaxInlineTags;
 
         public EntryItemViewModel(PwEntry entry, MainForm? mainForm, PwDatabase? database)
         {
@@ -76,7 +87,14 @@ namespace FluentPass.ViewModels
             Tags = tags == null || tags.Count == 0
                 ? Array.Empty<string>()
                 : tags.Where(t => !string.IsNullOrWhiteSpace(t)).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+
+            VisibleTags = Tags.Count <= MaxInlineTags ? Tags : Tags.Take(MaxInlineTags).ToArray();
+            OverflowTagsDisplay = Tags.Count > MaxInlineTags
+                ? Loc.Get("Common_TagsOverflowFormat", Tags.Count - MaxInlineTags)
+                : string.Empty;
+
             OnPropertyChanged(nameof(HasTags));
+            OnPropertyChanged(nameof(HasTagOverflow));
 
             IconSource = IconConverterHelper.GetIconSource(_mainForm, _database, Model.IconId, Model.CustomIconUuid);
         }

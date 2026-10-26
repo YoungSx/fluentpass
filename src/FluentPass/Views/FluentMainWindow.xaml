@@ -434,32 +434,39 @@
                                           FontTypography="Caption"
                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                           Text="{Binding EntriesSummaryText}" />
-                            <ui:SplitButton Grid.Column="1"
-                                            Appearance="Primary"
-                                            Content="{common:Loc Entries_NewButton}"
-                                            Icon="{ui:SymbolIcon Add20}"
-                                            Command="{Binding NewEntryCommand}">
-                                <ui:SplitButton.Flyout>
-                                    <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                                        <ItemsControl ItemsSource="{Binding Templates}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <ui:MenuItem Header="{Binding Title}"
-                                                                 Command="{Binding DataContext.NewEntryFromTemplateCommand, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
-                                                                 CommandParameter="{Binding Model}">
-                                                        <ui:MenuItem.Icon>
-                                                            <ui:ImageIcon Source="{Binding IconSource}" Width="16" Height="16" />
-                                                        </ui:MenuItem.Icon>
-                                                    </ui:MenuItem>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                        <ui:MenuItem Header="{common:Loc Entries_NoTemplates}"
-                                                     IsEnabled="False"
-                                                     Visibility="{Binding HasTemplates, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}" />
-                                    </ContextMenu>
-                                </ui:SplitButton.Flyout>
-                            </ui:SplitButton>
+                            <Grid Grid.Column="1">
+                                <!-- 无模板时退化为普通按钮：SplitButton 的箭头分区不再出现，
+                                     避免用户点开一个只有“未配置模板”占位项的空气泡 -->
+                                <ui:Button Appearance="Primary"
+                                           Content="{common:Loc Entries_NewButton}"
+                                           Icon="{ui:SymbolIcon Add20}"
+                                           Command="{Binding NewEntryCommand}"
+                                           Visibility="{Binding HasTemplates, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}" />
+
+                                <ui:SplitButton Appearance="Primary"
+                                                Content="{common:Loc Entries_NewButton}"
+                                                Icon="{ui:SymbolIcon Add20}"
+                                                Command="{Binding NewEntryCommand}"
+                                                Visibility="{Binding HasTemplates, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <ui:SplitButton.Flyout>
+                                        <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                            <ItemsControl ItemsSource="{Binding Templates}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <ui:MenuItem Header="{Binding Title}"
+                                                                     Command="{Binding DataContext.NewEntryFromTemplateCommand, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                                                                     CommandParameter="{Binding Model}">
+                                                            <ui:MenuItem.Icon>
+                                                                <ui:ImageIcon Source="{Binding IconSource}" Width="16" Height="16" />
+                                                            </ui:MenuItem.Icon>
+                                                        </ui:MenuItem>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ContextMenu>
+                                    </ui:SplitButton.Flyout>
+                                </ui:SplitButton>
+                            </Grid>
                         </Grid>
 
                         <!-- 面包屑分组导航（根→…→当前；仅根分组时隐藏）。
@@ -488,9 +495,24 @@
                                                    IsEnabled="{Binding IsCurrent, Converter={StaticResource InverseBooleanConverter}}"
                                                    Command="{Binding DataContext.NavigateToBreadcrumbCommand, RelativeSource={RelativeSource AncestorType={x:Type ui:FluentWindow}}}"
                                                    CommandParameter="{Binding}">
-                                            <ui:TextBlock Text="{Binding Name}"
-                                                          FontTypography="Caption"
-                                                          TextTrimming="CharacterEllipsis" />
+                                            <Grid>
+                                                <!-- 回收站节点特殊化：垃圾桶图标 + 警示色，与普通分组区分 -->
+                                                <StackPanel Orientation="Horizontal"
+                                                            ToolTip="{common:Loc Breadcrumb_RecycleBin_Tooltip}"
+                                                            Visibility="{Binding IsRecycleBin, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                    <ui:SymbolIcon Symbol="Delete20" FontSize="12" Margin="0,0,4,0"
+                                                                   VerticalAlignment="Center"
+                                                                   Foreground="{DynamicResource SystemFillColorCautionBrush}" />
+                                                    <ui:TextBlock Text="{Binding Name}"
+                                                                  FontTypography="Caption"
+                                                                  TextTrimming="CharacterEllipsis"
+                                                                  Foreground="{DynamicResource SystemFillColorCautionBrush}" />
+                                                </StackPanel>
+                                                <ui:TextBlock Text="{Binding Name}"
+                                                              FontTypography="Caption"
+                                                              TextTrimming="CharacterEllipsis"
+                                                              Visibility="{Binding IsRecycleBin, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}" />
+                                            </Grid>
                                         </ui:Button>
                                         <ui:SymbolIcon Symbol="ChevronRight20" FontSize="10" Margin="2,1,2,0"
                                                        Foreground="{DynamicResource TextFillColorTertiaryBrush}"
@@ -602,21 +624,26 @@
                                                     <ui:TextBlock Text="{Binding UserName}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,10,0" TextTrimming="CharacterEllipsis" MaxWidth="140" />
                                                     <ui:TextBlock Text="{Binding LastModifiedDisplay}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
                                                 </StackPanel>
-                                                <!-- 原生 Tags 徽标（最多展示于行内，随换行收缩） -->
-                                                <ItemsControl Grid.Row="2" ItemsSource="{Binding Tags}"
+                                                <!-- 原生 Tags 徽标（至多 3 个 + “+N” 折叠，避免撑高列表行） -->
+                                                <StackPanel Grid.Row="2" Orientation="Horizontal"
                                                               Visibility="{Binding HasTags, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                               Margin="0,3,0,0">
-                                                    <ItemsControl.ItemsPanel>
-                                                        <ItemsPanelTemplate>
-                                                            <StackPanel Orientation="Horizontal" />
-                                                        </ItemsPanelTemplate>
-                                                    </ItemsControl.ItemsPanel>
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <ui:InfoBadge Value="{Binding}" Severity="Success" Margin="0,0,4,0" />
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
+                                                    <ItemsControl ItemsSource="{Binding VisibleTags}">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <StackPanel Orientation="Horizontal" />
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <ui:InfoBadge Value="{Binding}" Severity="Success" Margin="0,0,4,0" />
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                    <ui:InfoBadge Value="{Binding OverflowTagsDisplay}"
+                                                                  Severity="Informational"
+                                                                  Visibility="{Binding HasTagOverflow, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                </StackPanel>
                                             </Grid>
                                         </Grid>
                                     </DataTemplate>

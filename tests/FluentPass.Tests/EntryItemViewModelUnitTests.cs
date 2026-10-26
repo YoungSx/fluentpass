@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using FluentPass.Common;
 using FluentPass.Tests.Mocks;
 using FluentPass.ViewModels;
@@ -110,6 +111,37 @@ namespace FluentPass.Tests
         public void Constructor_NullEntry_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => new EntryItemViewModel(null!, null, null));
+        }
+
+        [Test, Category("Unit")]
+        public void Tags_AtMostThree_FitInlineWithoutOverflow()
+        {
+            var entry = TestPluginHost.CreateTestEntry("Tagged", "u", "p");
+            foreach (var tag in new[] { "alpha", "beta", "gamma" }) entry.Tags.Add(tag);
+
+            var vm = new EntryItemViewModel(entry, null, null);
+
+            // 展示顺序沿用宿主 PwEntry.Tags 的既有顺序（原生语义，不在此重排）
+            Assert.That(vm.VisibleTags, Is.EqualTo(vm.Tags.ToArray()));
+            Assert.That(vm.HasTagOverflow, Is.False);
+            Assert.That(vm.OverflowTagsDisplay, Is.Empty);
+        }
+
+        [Test, Category("Unit")]
+        public void Tags_MoreThanThree_CollapseIntoOverflowBadge()
+        {
+            var entry = TestPluginHost.CreateTestEntry("Tagged", "u", "p");
+            foreach (var tag in new[] { "alpha", "beta", "gamma", "delta", "epsilon" })
+            {
+                entry.Tags.Add(tag);
+            }
+
+            var vm = new EntryItemViewModel(entry, null, null);
+
+            Assert.That(vm.Tags.Count, Is.EqualTo(5), "完整标签集仍应保留给详情等消费方");
+            Assert.That(vm.VisibleTags, Is.EqualTo(vm.Tags.Take(3).ToArray()));
+            Assert.That(vm.HasTagOverflow, Is.True);
+            Assert.That(vm.OverflowTagsDisplay, Is.EqualTo(Loc.Get("Common_TagsOverflowFormat", 2)));
         }
     }
 }

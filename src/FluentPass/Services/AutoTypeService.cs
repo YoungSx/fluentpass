@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Windows;
 using KeePass.Plugins;
 using KeePass.UI;
@@ -12,11 +11,18 @@ namespace FluentPass.Services
     public sealed class AutoTypeService
     {
         private readonly IPluginHost _host;
+        private readonly IForegroundWindowProbe _foregroundProbe;
+        private readonly uint _currentProcessId;
         public bool IsActive { get; private set; }
         public bool IsBusy => IsActive || SendInputEx.IsSending;
         private PwDatabase? _selectedDatabase;
 
-        public AutoTypeService(IPluginHost host) => _host = host;
+        public AutoTypeService(IPluginHost host, IForegroundWindowProbe? foregroundProbe = null)
+        {
+            _host = host;
+            _foregroundProbe = foregroundProbe ?? Win32ForegroundWindowProbe.Instance;
+            _currentProcessId = (uint)Process.GetCurrentProcess().Id;
+        }
 
         public void RunNative(Action action)
         {
@@ -73,19 +79,14 @@ namespace FluentPass.Services
                 GlobalWindowManager.WindowCount != 0 || !IsExternalForeground()) e.Sequence = string.Empty;
         }
 
-        internal static bool IsExternalForeground()
+        internal bool IsExternalForeground()
         {
-            var foreground = GetForegroundWindow();
+            var foreground = _foregroundProbe.GetForegroundWindow();
             if (foreground == IntPtr.Zero) return false;
-            GetWindowThreadProcessId(foreground, out uint processId);
-            return processId != 0 && processId != (uint)Process.GetCurrentProcess().Id &&
-                AutoType.IsValidAutoTypeWindow(foreground, false);
+
+            uint processId = _foregroundProbe.GetProcessId(foreground);
+            return processId != 0 && processId != _currentProcessId &&
+                _foregroundProbe.IsValidAutoTypeTarget(foreground);
         }
-
-        [DllImport("user32.dll")]
-        private static extern IntPtr GetForegroundWindow();
-
-        [DllImport("user32.dll")]
-        private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
     }
 }

@@ -452,9 +452,13 @@ namespace FluentPass.ViewModels
             }
             chain.Reverse();
 
+            var db = _host.Database;
+            bool hasRecycleBin = db != null && db.RecycleBinEnabled && !db.RecycleBinUuid.Equals(PwUuid.Zero);
+
             foreach (var node in chain)
             {
-                BreadcrumbItems.Add(new BreadcrumbItemViewModel(node.Name, node, ReferenceEquals(node, current)));
+                bool isRecycleBin = hasRecycleBin && node.Model.Uuid.Equals(db!.RecycleBinUuid);
+                BreadcrumbItems.Add(new BreadcrumbItemViewModel(node.Name, node, ReferenceEquals(node, current), isRecycleBin));
             }
 
             OnPropertyChanged(nameof(HasBreadcrumb));

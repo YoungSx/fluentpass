@@ -200,6 +200,33 @@ namespace FluentPass.Tests
         }
 
         [Test]
+        public void QuickAccess_InlineActionCommands_AreExposedForXamlBinding()
+        {
+            var qa = new QuickAccessViewModel(_host, _mainVm);
+
+            // XAML 以 <MethodName>Command 绑定；缺失 [RelayCommand] 时按钮会静默失效。
+            Assert.That(qa.ExecuteEntryCopyPasswordCommand, Is.Not.Null);
+            Assert.That(qa.ExecuteEntryCopyUsernameCommand, Is.Not.Null);
+            Assert.That(qa.ExecuteEntryAutoTypeCommand, Is.Not.Null);
+        }
+
+        [Test]
+        public void QuickAccess_ExecuteEntryAutoType_RequestsOverlayCloseFirst()
+        {
+            var qa = new QuickAccessViewModel(_host, _mainVm);
+            qa.SearchText = "GitHub Account";
+            var target = qa.Results.First(r => r.IsEntry);
+
+            int closeRequests = 0;
+            qa.CloseRequested += (_, __) => closeRequests++;
+
+            qa.ExecuteEntryAutoTypeCommand.Execute(target);
+
+            Assert.That(closeRequests, Is.EqualTo(1),
+                "行内 Auto-Type 必须先关闭浮层，避免 previous-window 判定落在面板自身");
+        }
+
+        [Test]
         public void QuickAccess_ExecuteDefault_Entry_CopiesPassword()
         {
             var qa = new QuickAccessViewModel(_host, _mainVm);

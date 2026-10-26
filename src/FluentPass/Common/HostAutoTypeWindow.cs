@@ -58,7 +58,7 @@ namespace FluentPass.Common
                 return;
             }
 
-            if (!AutoTypeService.IsExternalForeground()) { m.Result = IntPtr.Zero; return; }
+            if (!_autoType.IsExternalForeground()) { m.Result = IntPtr.Zero; return; }
 
             var message = m;
             _autoType.RunNative(() => base.WndProc(ref message));

@@ -88,6 +88,24 @@ jobs:
       - name: Build FluentPass (Release)
         run: msbuild FluentPass.sln /p:Configuration=Release /p:Platform="Any CPU" /p:KeePassDir="C:\Program Files\KeePass Password Safe 2"
 
+      # 铁律 5：分发物必须是单文件（依赖全部由 Costura 内嵌），任何散落 DLL 都会
+      # 造成插件在真实宿主中静默加载失败。此门禁把发版后的手工冒烟前移到构建期。
+      - name: Verify Single-File Packaging Invariant
+        shell: pwsh
+        run: |
+          $outDir = "src\FluentPass\bin\Release\net48"
+          $stray = Get-ChildItem -Path $outDir -Filter *.dll -File |
+            Where-Object { $_.Name -ne "FluentPass.dll" }
+          if ($stray) {
+            throw "Costura packaging regression: stray DLLs in output: $($stray.Name -join ', ')"
+          }
+          $dll = Join-Path $outDir "FluentPass.dll"
+          $product = (Get-Item $dll).VersionInfo.ProductName
+          if ($product -ne "KeePass Plugin") {
+            throw "Invalid plugin ProductName: $product"
+          }
+          Write-Host "Single-file packaging invariant verified ($((Get-Item $dll).Length) bytes)."
+
       - name: Deploy Built Plugin for Diagnostic Tests
         shell: pwsh
         run: |
@@ -172,8 +190,9 @@ jobs:
           Write-Host "Plugin deployed successfully."
 
       # --- 集成测试分层 (~20% 黄金金字塔分层) ---
+      # RequiresInteractiveDesktop 用例依赖真实桌面焦点，CI 无头会话中显式排除。
       - name: Run Integration Tests
-        run: dotnet test tests/FluentPass.Tests/bin/Release/net48/FluentPass.Tests.dll --verbosity normal --filter "Category=Integration"
+        run: dotnet test tests/FluentPass.Tests/bin/Release/net48/FluentPass.Tests.dll --verbosity normal --filter "Category=Integration&Category!=RequiresInteractiveDesktop"
 
       # --- Windows 冒烟与诊断测试分层 (~10% 黄金金字塔分层) ---
       - name: Run Windows Smoke Tests

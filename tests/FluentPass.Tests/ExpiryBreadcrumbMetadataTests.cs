@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using FluentPass.Common;
 using FluentPass.Tests.Mocks;
 using FluentPass.ViewModels;
@@ -194,6 +195,51 @@ namespace FluentPass.Tests
 
             Assert.That(mainVm.BreadcrumbItems, Is.Empty);
             Assert.That(mainVm.HasBreadcrumb, Is.False);
+        }
+
+        [Test]
+        public void Breadcrumb_MarksRecycleBinNodeForSpecialRendering()
+        {
+            var root = _host.Database.RootGroup;
+            var bin = new PwGroup(true, true, "Bin", PwIcon.TrashBin);
+            var nested = new PwGroup(true, true, "Nested", PwIcon.Folder);
+            root.AddGroup(bin, true);
+            bin.AddGroup(nested, true);
+            _host.Database.RecycleBinEnabled = true;
+            _host.Database.RecycleBinUuid = bin.Uuid;
+
+            var mainVm = new MainViewModel(_host);
+            mainVm.LoadGroups();
+            // RootGroups 含根 + KeePass 虚拟节点，按模型定位回收站
+            var binVm = FindGroupVm(mainVm, bin)!;
+            var nestedVm = binVm.Children[0];
+            mainVm.SelectedGroup = nestedVm;
+
+            var binCrumb = mainVm.BreadcrumbItems.Single(c => c.Name == "Bin");
+            Assert.That(binCrumb.IsRecycleBin, Is.True);
+            Assert.That(mainVm.BreadcrumbItems.Single(c => c.Name == "Nested").IsRecycleBin, Is.False);
+            Assert.That(mainVm.BreadcrumbItems[0].IsRecycleBin, Is.False, "数据库根不是回收站");
+        }
+
+        private static GroupItemViewModel? FindGroupVm(MainViewModel vm, PwGroup model)
+        {
+            foreach (var root in vm.RootGroups)
+            {
+                var found = FindGroupVmIn(root, model);
+                if (found != null) return found;
+            }
+            return null;
+        }
+
+        private static GroupItemViewModel? FindGroupVmIn(GroupItemViewModel node, PwGroup model)
+        {
+            if (ReferenceEquals(node.Model, model)) return node;
+            foreach (var child in node.Children)
+            {
+                var found = FindGroupVmIn(child, model);
+                if (found != null) return found;
+            }
+            return null;
         }
     }
 }
