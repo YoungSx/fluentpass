@@ -15,6 +15,13 @@ namespace FluentPass.Views
     {
         private readonly QuickAccessViewModel _viewModel;
 
+        /// <summary>
+        /// 关闭幂等标志。关闭过程中窗口会失活，Deactivated 处理器若再次 Close()，
+        /// Window.InternalClose 会抛 InvalidOperationException（VerifyNotClosing），
+        /// 该异常在 WPF 事件处理器内未捕获，会直接终止宿主 KeePass 进程。
+        /// </summary>
+        private bool _isClosing;
+
         public QuickAccessWindow(IPluginHost host, MainViewModel main)
         {
             InitializeComponent();
@@ -23,13 +30,32 @@ namespace FluentPass.Views
             DataContext = _viewModel;
 
             _viewModel.CloseRequested += OnCloseRequested;
+            Closing += OnWindowClosing;
             Loaded += OnWindowLoaded;
         }
 
         /// <summary>视图模型请求关闭（行内 Auto-Type 前必须让出前台）。</summary>
         private void OnCloseRequested(object? sender, EventArgs e)
         {
-            if (IsLoaded) Close();
+            if (IsLoaded) CloseOnce();
+        }
+
+        private void OnWindowClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+        {
+            // 覆盖 Alt+F4 / 外部 Close() 等非本类发起的关闭路径，
+            // 确保随后的 Deactivated 不会再触发一次 Close()。
+            _isClosing = true;
+        }
+
+        /// <summary>
+        /// 唯一关闭入口：Deactivated、Esc、双击与视图模型的关闭请求可能相互重入，
+        /// 这里保证同一次关闭只调用一次 Close()。
+        /// </summary>
+        private void CloseOnce()
+        {
+            if (_isClosing) return;
+            _isClosing = true;
+            Close();
         }
 
         private void OnWindowLoaded(object sender, RoutedEventArgs e)
@@ -75,19 +101,19 @@ namespace FluentPass.Views
             if (result == null) return;
 
             _viewModel.ExecuteDefault(result);
-            Close();
+            CloseOnce();
         }
 
         private void OnWindowDeactivated(object sender, EventArgs e)
         {
-            Close();
+            CloseOnce();
         }
 
         private void OnWindowPreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
             {
-                Close();
+                CloseOnce();
                 e.Handled = true;
                 return;
             }
