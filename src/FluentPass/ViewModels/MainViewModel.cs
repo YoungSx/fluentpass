@@ -292,7 +292,7 @@ namespace FluentPass.ViewModels
         partial void OnSelectedEntryChanged(EntryItemViewModel? value)
         {
             if (_isDisposed || _isClearingData) return;
-            CurrentDetail?.ClearSensitiveData();
+            CurrentDetail?.Dispose();
 
             if (value != null)
             {
@@ -591,6 +591,7 @@ namespace FluentPass.ViewModels
                 if (!stillExists)
                 {
                     CurrentDetail.HidePassword();
+                    CurrentDetail.Dispose();
                     CurrentDetail = null;
                     SelectedEntry = null;
                 }
@@ -612,7 +613,7 @@ namespace FluentPass.ViewModels
                 // 对齐原生 CloseDocument：数据库锁定/关闭时清空快速搜索框并结束搜索结果视图
                 SearchText = string.Empty;
                 IsSearchResultsActive = false;
-                CurrentDetail?.ClearSensitiveData();
+                CurrentDetail?.Dispose();
                 CurrentDetail = null;
                 SelectedEntry = null;
                 SelectedGroup = null;
@@ -656,7 +657,7 @@ namespace FluentPass.ViewModels
             if (_isDisposed || _isClearingData) return;
             // 对齐原生 SelectGroup→UpdateEntryList(null)：分组条目重建即结束搜索结果视图（搜索框文本保留）
             IsSearchResultsActive = false;
-            CurrentDetail?.ClearSensitiveData();
+            CurrentDetail?.Dispose();
             CurrentDetail = null;
             SelectedEntry = null;
             Entries.Clear();

@@ -26,6 +26,67 @@ namespace FluentPass.Tests
             return entry;
         }
 
+        private static PwEntry CreateAlgorithmEntry(string algorithm)
+        {
+            var entry = CreateTotpEntry("TimeOtp-Secret-Base32", "JBSWY3DPEHPK3PXP");
+            entry.Strings.Set("TimeOtp-Algorithm", new ProtectedString(false, algorithm));
+            return entry;
+        }
+
+        [Test]
+        public void IsUnsupportedAlgorithm_FlagsAnythingOutsideHostAlgorithms()
+        {
+            // 宿主仅支持 HMAC-SHA-1/256/512（与 HmacOtp.Alg* 常量一致）
+            Assert.That(TotpService.IsUnsupportedAlgorithm(CreateAlgorithmEntry("HMAC-SHA-1")), Is.False);
+            Assert.That(TotpService.IsUnsupportedAlgorithm(CreateAlgorithmEntry("hmac-sha-256")), Is.False);
+            Assert.That(TotpService.IsUnsupportedAlgorithm(CreateAlgorithmEntry("  HMAC-SHA-512  ")), Is.False);
+
+            // 未设置算法 = 宿主默认 SHA-1，属支持范围
+            Assert.That(TotpService.IsUnsupportedAlgorithm(CreateTotpEntry("TimeOtp-Secret-Base32", "JBSWY3DPEHPK3PXP")), Is.False);
+            Assert.That(TotpService.IsUnsupportedAlgorithm(null), Is.False);
+
+            // Steam 及任何未知算法均超出宿主能力
+            Assert.That(TotpService.IsUnsupportedAlgorithm(CreateAlgorithmEntry("Steam")), Is.True);
+            Assert.That(TotpService.IsUnsupportedAlgorithm(CreateAlgorithmEntry("steam")), Is.True);
+            Assert.That(TotpService.IsUnsupportedAlgorithm(CreateAlgorithmEntry("bogus")), Is.True);
+        }
+
+        [Test]
+        public void Compile_SteamAlgorithm_ReturnsNullBecauseHostCannotGenerate()
+        {
+            // 实证：KeePass 2.61.1 无 Steam 字符表也无 Steam 分支，{TIMEOTP} 编译为空。
+            // 契约：返回 null（调用方展示“不支持”而非静默隐藏或伪造码）。
+            var host = new TestPluginHost();
+            var entry = CreateAlgorithmEntry("Steam");
+            host.Database.RootGroup.AddEntry(entry, true);
+
+            Assert.That(TotpService.CompileCurrentCode(entry, host.Database), Is.Null);
+        }
+
+        [Test]
+        public void Compile_UnknownAlgorithm_ReturnsNull()
+        {
+            var host = new TestPluginHost();
+            var entry = CreateAlgorithmEntry("bogus");
+            host.Database.RootGroup.AddEntry(entry, true);
+
+            Assert.That(TotpService.CompileCurrentCode(entry, host.Database), Is.Null);
+        }
+
+        [TestCase("HMAC-SHA-1")]
+        [TestCase("HMAC-SHA-256")]
+        [TestCase("HMAC-SHA-512")]
+        public void Compile_SupportedAlgorithms_ProduceSixDigits(string algorithm)
+        {
+            var host = new TestPluginHost();
+            var entry = CreateAlgorithmEntry(algorithm);
+            host.Database.RootGroup.AddEntry(entry, true);
+
+            var code = TotpService.CompileCurrentCode(entry, host.Database);
+            Assert.That(code, Is.Not.Null);
+            Assert.That(code, Does.Match(@"^\d{6}$"));
+        }
+
         [Test]
         public void HasTotpSeed_NoSeed_ReturnsFalse()
         {
@@ -127,6 +188,31 @@ namespace FluentPass.Tests
             Assert.That(vm.TotpCode, Does.Match(@"^\d{6}$"));
             Assert.That(vm.TotpCountdownPercent, Is.InRange(0.0, 100.0));
             Assert.That(vm.TotpSecondsRemaining, Is.InRange(1, 30));
+        }
+
+        [Test]
+        public void DetailViewModel_UnsupportedAlgorithm_FlagsInsteadOfHiding()
+        {
+            var host = new TestPluginHost();
+            var entry = CreateAlgorithmEntry("Steam");
+            host.Database.RootGroup.AddEntry(entry, true);
+
+            var vm = new EntryDetailViewModel(entry, host, null, () => { });
+            // 种子存在但算法不支持：必须明确告知，不能静默当作“无 TOTP”处理
+            Assert.That(vm.HasTotp, Is.False);
+            Assert.That(vm.IsTotpUnsupported, Is.True);
+            Assert.That(vm.TotpCode, Is.Empty);
+        }
+
+        [Test]
+        public void DetailViewModel_SupportedAlgorithm_IsNotFlaggedUnsupported()
+        {
+            var host = new TestPluginHost();
+            var entry = CreateTotpEntry("TimeOtp-Secret-Base32", "JBSWY3DPEHPK3PXP");
+            host.Database.RootGroup.AddEntry(entry, true);
+
+            var vm = new EntryDetailViewModel(entry, host, null, () => { });
+            Assert.That(vm.IsTotpUnsupported, Is.False);
         }
 
         [Test]
