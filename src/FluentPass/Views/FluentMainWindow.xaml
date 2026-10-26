@@ -20,6 +20,7 @@
             <common:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
             <common:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
             <common:InverseBooleanConverter x:Key="InverseBooleanConverter" />
+            <common:ExpiredToInfoBarSeverityConverter x:Key="ExpiredToInfoBarSeverityConverter" />
 
             <Style x:Key="ActionIconButtonStyle" TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
                 <Setter Property="Appearance" Value="Transparent" />
@@ -711,10 +712,11 @@
                             </ui:DynamicScrollViewer.Style>
 
                             <StackPanel Margin="0,0,8,0">
-                                <!-- 过期警示（已过期/临近过期，口径与原生“即将过期”一致） -->
+                                <!-- 过期警示（已过期/临近过期，口径与原生“即将过期”一致）
+                                     严重级别由 IsExpiryExpired 决定：已过期→Error，临近→Warning，两者不共用同一色阶 -->
                                 <ui:InfoBar IsOpen="{Binding IsExpiryWarningVisible, Mode=TwoWay}"
                                             IsClosable="False"
-                                            Severity="Warning"
+                                            Severity="{Binding IsExpiryExpired, Converter={StaticResource ExpiredToInfoBarSeverityConverter}}"
                                             Title="{common:Loc Detail_Expiry_WarningTitle}"
                                             Message="{Binding ExpiryWarningText}"
                                             Margin="0,0,0,10" />
@@ -919,6 +921,15 @@
                                     </StackPanel>
                                 </ui:Card>
 
+                                <!-- ================= TOTP 算法超出宿主能力时明确告警 ================= -->
+                                <!-- 种子存在但算法不支持（如 Steam 字符码）：不能静默隐藏卡片，否则用户会以为插件漏支持 -->
+                                <ui:InfoBar IsOpen="{Binding IsTotpUnsupported, Mode=OneWay}"
+                                            IsClosable="False"
+                                            Severity="Informational"
+                                            Title="{common:Loc Detail_Totp_Header}"
+                                            Message="{Binding TotpUnsupportedText}"
+                                            Margin="0,0,0,10" />
+
                                 <!-- ================= 字段 2.5: TOTP 一次性验证码（宿主 SprEngine {TIMEOTP} 生成） ================= -->
                                 <ui:Card Margin="0,0,0,10" Padding="14,10"
                                          Visibility="{Binding HasTotp, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -930,11 +941,21 @@
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
 
-                                        <!-- 周期倒计时环 -->
+                                        <!-- 周期倒计时环（低于 5 秒转告警色，提示即将换码） -->
                                         <ui:ProgressRing Grid.Column="0" Width="36" Height="36" Margin="0,0,12,0"
                                                          IsIndeterminate="False"
-                                                         Progress="{Binding TotpCountdownPercent}"
-                                                         Foreground="{DynamicResource SystemAccentColorBrush}" />
+                                                         Progress="{Binding TotpCountdownPercent}">
+                                            <ui:ProgressRing.Style>
+                                                <Style TargetType="ui:ProgressRing">
+                                                    <Setter Property="Foreground" Value="{DynamicResource SystemAccentColorBrush}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsTotpExpiringSoon}" Value="True">
+                                                            <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </ui:ProgressRing.Style>
+                                        </ui:ProgressRing>
 
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                             <ui:TextBlock Text="{common:Loc Detail_Totp_Header}" FontTypography="Caption" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />

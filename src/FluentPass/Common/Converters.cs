@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
+using Wpf.Ui.Controls;
 
 namespace FluentPass.Common
 {
@@ -111,6 +112,26 @@ namespace FluentPass.Common
         public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             return !(value is bool b && b);
+        }
+    }
+
+    /// <summary>
+    /// bool → InfoBarSeverity。用于过期警示条：
+    /// “已过期”属事实性失效，需比“即将过期”高一级，不能两者共用 Warning。
+    /// 转换放在视图层，VM 因此不依赖 Wpf.Ui 枚举。
+    /// </summary>
+    [ValueConversion(typeof(bool), typeof(InfoBarSeverity))]
+    public class ExpiredToInfoBarSeverityConverter : IValueConverter
+    {
+        public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            bool expired = value is bool b && b;
+            return expired ? InfoBarSeverity.Error : InfoBarSeverity.Warning;
+        }
+
+        public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            throw new NotSupportedException();
         }
     }
 }

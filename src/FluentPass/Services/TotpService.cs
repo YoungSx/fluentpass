@@ -16,11 +16,57 @@ namespace FluentPass.Services
         public const string TotpPlaceholder = "{TIMEOTP}";
         private const string SecretPrefix = "TimeOtp-Secret-";
         private const string PeriodField = "TimeOtp-Period";
+        private const string AlgorithmField = "TimeOtp-Algorithm";
         private const int DefaultPeriodSeconds = 30;
         private const int MaxPeriodSeconds = 3600;
         private const int DefaultDigits = 6;
 
-        /// <summary>条目是否配置了 TOTP 种子（仅检测字段名，不解密任何值）。</summary>
+        /// <summary>
+        /// 宿主原生支持的 OTP 算法名（与 KeePassLib.Cryptography.HmacOtp 的 Alg* 常量一致）。
+        /// 该集合外的任何值（典型如 Steam 的字符码算法）宿主都无法生成。
+        /// </summary>
+        private static readonly string[] SupportedAlgorithms =
+        {
+            "HMAC-SHA-1",
+            "HMAC-SHA-256",
+            "HMAC-SHA-512",
+        };
+
+        /// <summary>
+        /// 条目的 TimeOtp-Algorithm 是否超出宿主能力（如 Steam 的 5 位字符码）。
+        /// 实测证据（KeePass 2.61.1）：
+        /// - <c>HmacOtp.Generate</c> 的 bAddChecksum 只是追加校验位，并不是 Steam 字符表编码；
+        /// - KeePass.exe 内不存在任何 Steam 字符表常量，也无 Steam 分支；
+        /// - <c>SprEngine.Compile("{TIMEOTP}")</c> 对 Steam / 未知算法均返回空字符串。
+        /// 因此“兼容 Steam”无法在不自行重写 OTP 算法的前提下实现，
+        /// 此处只能如实识别并告知用户，而不是静默隐藏卡片或伪造一个错误口径的码。
+        /// </summary>
+        public static bool IsUnsupportedAlgorithm(PwEntry? entry)
+        {
+            if (entry == null) return false;
+            try
+            {
+                string raw = entry.Strings.ReadSafe(AlgorithmField)?.Trim();
+                if (string.IsNullOrEmpty(raw)) return false;
+
+                foreach (var alg in SupportedAlgorithms)
+                {
+                    if (string.Equals(raw, alg, StringComparison.OrdinalIgnoreCase)) return false;
+                }
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 条目是否配置了 TOTP 种子（仅检测字段名，不解密任何值）。
+        /// 边界：只认 <c>TimeOtp-Secret-*</c>。HOTP（<c>HmacOtp-Secret-*</c>）为计数型、
+        /// <c>{HMACOTP}</c> 占位符，需要维护计数器且用户无法在详情面板预期换码，
+        /// 因此有意不纳入：HOTP 条目不展示 TOTP 卡片，交由原生 OtpGeneratorForm 处理。
+        /// </summary>
         public static bool HasTotpSeed(PwEntry? entry)
         {
             if (entry == null) return false;
@@ -90,7 +136,10 @@ namespace FluentPass.Services
             }
         }
 
-        /// <summary>期望的验证码位数（用于 UI 展示宽度与校验，仅读取 Length 设置，默认 6）。</summary>
+        /// <summary>
+        /// 期望的验证码位数（用于 UI 展示宽度与校验，仅读取非敏感设置字段）：
+        /// 读 `TimeOtp-Length`，缺省/非法时按原生默认 6 位。
+        /// </summary>
         public static int GetExpectedDigits(PwEntry entry)
         {
             try

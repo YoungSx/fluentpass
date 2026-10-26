@@ -25,8 +25,10 @@ using MessageService = FluentPass.Common.MessageService;
 
 namespace FluentPass.ViewModels
 {
-    public partial class EntryDetailViewModel : ObservableObject
+    public partial class EntryDetailViewModel : ObservableObject, IDisposable
     {
+        private bool _isDisposed;
+
         private readonly IPluginHost _host;
         private readonly Window? _ownerWindow;
         private readonly Action _onEntryModified;
@@ -136,7 +138,25 @@ namespace FluentPass.ViewModels
         [ObservableProperty]
         private int _totpSecondsRemaining = 0;
 
+        /// <summary>
+        /// 条目配了种子但算法超出宿主能力（如 Steam 的 5 位字符码）。
+        /// 与“无 TOTP”区分开：前者要向用户解释为何看不到验证码，
+        /// 否则只能静默隐藏卡片，用户会以为插件漏支持。
+        /// </summary>
+        [ObservableProperty]
+        private bool _isTotpUnsupported = false;
+
+        /// <summary>倒计时环低于该秒数时转入告警色，提示用户即将换码。</summary>
+        public const int TotpUrgentThresholdSeconds = 5;
+
+        /// <summary>倒计时环是否处于换码告警区间（含 5 秒内）。</summary>
+        public bool IsTotpExpiringSoon => HasTotp && TotpSecondsRemaining <= TotpUrgentThresholdSeconds;
+
         public string TotpCountdownText => Loc.Get("Detail_Totp_CountdownFormat", TotpSecondsRemaining);
+
+        /// <summary>算法不被宿主支持时的解释文案（填入具体算法名，便于用户自行排查）。</summary>
+        public string TotpUnsupportedText =>
+            Loc.Get("Detail_Totp_UnsupportedFormat", Model.Strings.ReadSafe("TimeOtp-Algorithm")?.Trim());
 
         // ===== 过期警示（对齐原生“即将过期”天数口径） =====
         [ObservableProperty]
@@ -144,6 +164,13 @@ namespace FluentPass.ViewModels
 
         [ObservableProperty]
         private string _expiryWarningText = string.Empty;
+
+        /// <summary>
+        /// 警示是否属于“已过期”而非“即将过期”。VM 只暴露事实，
+        /// 具体严重级别（Error/Warning）由视图层决定，避免 VM 依赖 UI 工具包枚举。
+        /// </summary>
+        [ObservableProperty]
+        private bool _isExpiryExpired = false;
 
         // ===== 标签（原生 PwEntry.Tags） =====
         public ObservableCollection<string> Tags { get; } = new ObservableCollection<string>();
@@ -404,18 +431,22 @@ namespace FluentPass.ViewModels
         {
             IsExpiryWarningVisible = false;
             ExpiryWarningText = string.Empty;
+            IsExpiryExpired = false;
 
             if (!Model.Expires) return;
 
             string expiryLocal = Model.ExpiryTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm");
             if (Model.ExpiryTime < DateTime.UtcNow)
             {
+                // 已过期：凭据事实上已失效，需与“即将过期”区分严重级别
                 ExpiryWarningText = Loc.Get("Detail_Expiry_ExpiredFormat", expiryLocal);
+                IsExpiryExpired = true;
                 IsExpiryWarningVisible = true;
             }
             else if (Model.ExpiryTime <= DateTime.UtcNow.AddDays(GetExpirySoonDays()))
             {
                 ExpiryWarningText = Loc.Get("Detail_Expiry_SoonFormat", expiryLocal);
+                IsExpiryExpired = false;
                 IsExpiryWarningVisible = true;
             }
         }
@@ -438,9 +469,11 @@ namespace FluentPass.ViewModels
             _otpWindowIndex = -1;
 
             HasTotp = TotpService.HasTotpSeed(Model);
+            IsTotpUnsupported = HasTotp && TotpService.IsUnsupportedAlgorithm(Model);
             TotpCode = string.Empty;
             TotpCountdownPercent = 100;
             TotpSecondsRemaining = 0;
+            OnPropertyChanged(nameof(IsTotpExpiringSoon));
 
             if (!HasTotp) return;
 
@@ -473,6 +506,7 @@ namespace FluentPass.ViewModels
             long secondsIntoWindow = DateTimeOffset.UtcNow.ToUnixTimeSeconds() % _otpPeriodSeconds;
             TotpSecondsRemaining = (int)(_otpPeriodSeconds - secondsIntoWindow);
             TotpCountdownPercent = Math.Max(0.0, Math.Min(100.0, TotpSecondsRemaining * 100.0 / _otpPeriodSeconds));
+            OnPropertyChanged(nameof(IsTotpExpiringSoon));
         }
 
         private void OnOtpTimerTick(object? sender, EventArgs e)
@@ -573,6 +607,8 @@ namespace FluentPass.ViewModels
             TotpCode = string.Empty;
             TotpSecondsRemaining = 0;
             TotpCountdownPercent = 100;
+            IsTotpUnsupported = false;
+            OnPropertyChanged(nameof(IsTotpExpiringSoon));
 
             // 尽力清理本条目已提取的附件临时文件（被占用时留给全局清理）
             foreach (var path in _openAttachmentTempPaths)
@@ -580,6 +616,24 @@ namespace FluentPass.ViewModels
                 TempAttachmentStore.TryDelete(path);
             }
             _openAttachmentTempPaths.Clear();
+        }
+
+        /// <summary>
+        /// 释放详情 VM 持有的资源。此前清理完全依赖调用方主动调 <see cref="ClearSensitiveData"/>，
+        /// 任何一条新建路径漏调就会让 DispatcherTimer 继续存活并不断从旧条目重算验证码。
+        /// 实现 IDisposable 后，持有方可以有一个不可遗漏的结束点。
+        /// </summary>
+        public void Dispose()
+        {
+            if (_isDisposed) return;
+            _isDisposed = true;
+
+            _passwordHideTimer.Stop();
+            _passwordHideTimer.Tick -= OnPasswordTimerTick;
+            _otpTimer.Stop();
+            _otpTimer.Tick -= OnOtpTimerTick;
+
+            ClearSensitiveData();
         }
 
         private void CheckMinimizeAfterCopy()
