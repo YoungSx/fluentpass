@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using FluentPass.Common;
 using FluentPass.Tests.Mocks;
 using FluentPass.ViewModels;
@@ -109,10 +109,10 @@ namespace FluentPass.Tests
             Assert.That(SettingsService.GetAppTheme(_host), Is.EqualTo("Dark"));
             Assert.That(changedTheme, Is.EqualTo("Dark"));
 
-            // 4. Change AutoMaskSecondsIndex
-            vm.AutoMaskSecondsIndex = 3; // 30s
-            Assert.That(vm.AutoMaskSeconds, Is.EqualTo(30));
-            Assert.That(SettingsService.GetAutoMaskSeconds(_host), Is.EqualTo(30));
+            // 4. Change AutoMaskSecondsValue (NumberBox 绑定口径)
+            vm.AutoMaskSecondsValue = 45;
+            Assert.That(vm.AutoMaskSeconds, Is.EqualTo(45));
+            Assert.That(SettingsService.GetAutoMaskSeconds(_host), Is.EqualTo(45));
 
             // 5. Close Command
             vm.CloseSettingsCommand.Execute(null);
@@ -161,7 +161,7 @@ namespace FluentPass.Tests
             vm.AutoTakeoverUI = false;
             vm.CloseActionIndex = (int)WindowCloseAction.ExitKeePass;
             vm.SelectedTheme = "Dark";
-            vm.AutoMaskSecondsIndex = 0; // 5s
+            vm.AutoMaskSecondsValue = 5;
 
             vm.ResetSettingsCommand.Execute(null);
 
@@ -169,7 +169,6 @@ namespace FluentPass.Tests
             Assert.That(vm.CloseActionIndex, Is.EqualTo((int)WindowCloseAction.RestoreOriginalWindow));
             Assert.That(vm.SelectedTheme, Is.EqualTo("System"));
             Assert.That(vm.AutoMaskSeconds, Is.EqualTo(10));
-            Assert.That(vm.AutoMaskSecondsIndex, Is.EqualTo(1));
         }
     }
 }

@@ -11,6 +11,7 @@ using Wpf.Ui;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Markup;
 using FluentPass.Common;
+using FluentPass.Services;
 
 namespace FluentPass
 {
@@ -82,29 +83,8 @@ namespace FluentPass
 
             if (!SettingsService.GetAutoTakeoverUI(_host)) return;
 
-            // 1. 模态窗口守卫：检测是否有模态窗体或密码输入框开启，或主窗口因系统/Win32模态对话框被禁用
-            bool hasModal = !mw.Enabled;
-            if (!hasModal)
-            {
-                try
-                {
-                    foreach (System.Windows.Forms.Form form in System.Windows.Forms.Application.OpenForms)
-                    {
-                        if (form.Modal || form.GetType().Name.IndexOf("Key", StringComparison.OrdinalIgnoreCase) >= 0)
-                        {
-                            hasModal = true;
-                            break;
-                        }
-                    }
-                }
-                catch { }
-            }
-
-            if (hasModal)
-            {
-                // 等待数据库打开或模态对话框结束后，在 OnHostFileOpened 中再次接管
-                return;
-            }
+            // 1. 模态窗口守卫：主窗被禁用、存在模态窗体或原生密码框时不接管
+            if (HostWindowGuard.HasModalDialog(_host)) return;
 
             _hasAutoTakenOver = true;
 

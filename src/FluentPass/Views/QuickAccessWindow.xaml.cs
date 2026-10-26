@@ -22,7 +22,14 @@ namespace FluentPass.Views
             _viewModel = new QuickAccessViewModel(host, main);
             DataContext = _viewModel;
 
+            _viewModel.CloseRequested += OnCloseRequested;
             Loaded += OnWindowLoaded;
+        }
+
+        /// <summary>视图模型请求关闭（行内 Auto-Type 前必须让出前台）。</summary>
+        private void OnCloseRequested(object? sender, EventArgs e)
+        {
+            if (IsLoaded) Close();
         }
 
         private void OnWindowLoaded(object sender, RoutedEventArgs e)

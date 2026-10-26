@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using FluentPass.Common;
 using KeePass.Plugins;
 using KeePassLib;
@@ -65,6 +66,12 @@ namespace FluentPass.ViewModels
         private QuickAccessResultViewModel? _selectedResult;
 
         public ObservableCollection<QuickAccessResultViewModel> Results { get; } = new ObservableCollection<QuickAccessResultViewModel>();
+
+        /// <summary>
+        /// 请求关闭浮层。行内 Auto-Type 必须先让面板退出前台再投递击键，
+        /// 否则 previous-window 判定会落在面板/主窗口自身。
+        /// </summary>
+        public event EventHandler? CloseRequested;
 
         public QuickAccessViewModel(IPluginHost host, MainViewModel main)
         {
@@ -156,6 +163,7 @@ namespace FluentPass.ViewModels
         }
 
         /// <summary>默认动作：复制密码（官方 ClipboardUtil 管线）。</summary>
+        [RelayCommand]
         public void ExecuteEntryCopyPassword(QuickAccessResultViewModel? result)
         {
             if (result?.Entry != null)
@@ -164,6 +172,7 @@ namespace FluentPass.ViewModels
             }
         }
 
+        [RelayCommand]
         public void ExecuteEntryCopyUsername(QuickAccessResultViewModel? result)
         {
             if (result?.Entry != null)
@@ -172,12 +181,15 @@ namespace FluentPass.ViewModels
             }
         }
 
+        [RelayCommand]
         public void ExecuteEntryAutoType(QuickAccessResultViewModel? result)
         {
-            if (result?.Entry != null)
-            {
-                _main.AutoTypeSelectedCommand.Execute(result.Entry);
-            }
+            if (result?.Entry == null) return;
+
+            // 先关闭浮层：AutoType.Perform 依赖宿主 Z 序判定 previous-window，
+            // 面板仍在最前时会把自身当成目标窗口。
+            CloseRequested?.Invoke(this, EventArgs.Empty);
+            _main.AutoTypeSelectedCommand.Execute(result.Entry);
         }
 
         public void ExecuteCommand(QuickAccessResultViewModel? result)

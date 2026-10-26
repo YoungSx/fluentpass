@@ -117,6 +117,27 @@ jobs:
         run: |
           msbuild FluentPass.sln /p:Configuration=Release /p:Platform="Any CPU" /p:Version=${{ env.SEMVER }} /p:AssemblyVersion=${{ env.ASSEMBLY_VER }} /p:FileVersion=${{ env.ASSEMBLY_VER }} /p:InformationalVersion=${{ env.TAG_NAME }} /p:KeePassDir="C:\Program Files\KeePass Password Safe 2"
 
+      # 发版完整性门禁：单文件产物 + PE 版本与 version.txt 同源，防止更新检查通道与实际
+      # 二进制版本漂移（KeePass 会据此判定“是否有新版本”）。
+      - name: Verify Release Packaging Invariants
+        shell: pwsh
+        run: |
+          $outDir = "src\FluentPass\bin\Release\net48"
+          $stray = Get-ChildItem -Path $outDir -Filter *.dll -File |
+            Where-Object { $_.Name -ne "FluentPass.dll" }
+          if ($stray) {
+            throw "Costura packaging regression: stray DLLs in output: $($stray.Name -join ', ')"
+          }
+          $dll = Join-Path $outDir "FluentPass.dll"
+          $info = (Get-Item $dll).VersionInfo
+          if ($info.FileVersion -ne "$env:ASSEMBLY_VER") {
+            throw "FileVersion mismatch: DLL=$($info.FileVersion), expected=$env:ASSEMBLY_VER"
+          }
+          if ($info.ProductName -ne "KeePass Plugin") {
+            throw "Invalid plugin ProductName: $($info.ProductName)"
+          }
+          Write-Host "Release packaging OK: FileVersion=$($info.FileVersion), size=$((Get-Item $dll).Length) bytes"
+
       - name: Deploy Built Plugin for Diagnostics
         shell: pwsh
         run: |
@@ -127,7 +148,7 @@ jobs:
 
       - name: Run Full Quality Gate Tests (Unit, Integration & Smoke)
         run: |
-          dotnet test tests/FluentPass.Tests/FluentPass.Tests.csproj --configuration Release --no-build --verbosity normal /p:KeePassDir="C:\Program Files\KeePass Password Safe 2"
+          dotnet test tests/FluentPass.Tests/FluentPass.Tests.csproj --configuration Release --no-build --verbosity normal --filter "Category!=RequiresInteractiveDesktop" /p:KeePassDir="C:\Program Files\KeePass Password Safe 2"
 
       - name: Assemble Release Package
         shell: pwsh

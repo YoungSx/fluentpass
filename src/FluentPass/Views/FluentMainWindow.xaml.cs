@@ -10,6 +10,7 @@ using System.Windows.Input;
 using System.Windows.Forms.Integration;
 using KeePass.Plugins;
 using FluentPass.Common;
+using FluentPass.Services;
 using FluentPass.ViewModels;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
@@ -91,6 +92,10 @@ namespace FluentPass.Views
         {
             try
             {
+                // 安全守卫：自动输入进行中或宿主存在模态/密码窗体时不呼出面板，
+                // 否则会抢走焦点并可能把后续击键投递到错误窗口。
+                if (_viewModel.AutoType.IsBusy || HostWindowGuard.HasModalDialog(_host)) return;
+
                 // 单例浮层：已打开时仅重新聚焦
                 if (_quickAccessWindow != null && _quickAccessWindow.IsLoaded)
                 {

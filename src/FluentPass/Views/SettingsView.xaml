@@ -110,12 +110,11 @@
                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                         </StackPanel>
                     </ui:CardControl.Header>
-                    <ComboBox SelectedIndex="{Binding AutoMaskSecondsIndex, Mode=TwoWay}" Width="200">
-                        <ComboBoxItem Content="{common:Loc Settings_AutoMask_5s}" />
-                        <ComboBoxItem Content="{common:Loc Settings_AutoMask_10s}" />
-                        <ComboBoxItem Content="{common:Loc Settings_AutoMask_15s}" />
-                        <ComboBoxItem Content="{common:Loc Settings_AutoMask_30s}" />
-                    </ComboBox>
+                    <ui:NumberBox Value="{Binding AutoMaskSecondsValue, Mode=TwoWay}"
+                                  Minimum="3" Maximum="300"
+                                  SmallChange="1" LargeChange="5"
+                                  SpinButtonPlacementMode="Compact"
+                                  Width="200" />
                 </ui:CardControl>
             </StackPanel>
 

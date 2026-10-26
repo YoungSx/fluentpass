@@ -9,7 +9,9 @@ namespace FluentPass.ViewModels
 {
     public partial class SettingsViewModel : ObservableObject
     {
-        private static readonly int[] AvailableAutoMaskSeconds = { 5, 10, 15, 30 };
+        /// <summary>明文自动遮蔽秒数的合法区间（与 <see cref="SettingsService"/> 的持久化校验一致）。</summary>
+        public const int MinAutoMaskSeconds = 3;
+        public const int MaxAutoMaskSeconds = 300;
 
         private readonly IPluginHost? _host;
         private readonly Action? _onCloseSettings;
@@ -30,11 +32,15 @@ namespace FluentPass.ViewModels
         [ObservableProperty]
         private string _selectedLanguage;
 
+        /// <summary>
+        /// NumberBox 绑定值（控件 Value 为 double?）。写入前按 [3,300] 取整校验，
+        /// 越界/非法输入不落盘，保持设置值始终可用。
+        /// </summary>
         [ObservableProperty]
-        private int _autoMaskSeconds;
+        private double _autoMaskSecondsValue;
 
-        [ObservableProperty]
-        private int _autoMaskSecondsIndex;
+        /// <summary>当前生效的自动遮蔽秒数（取整后的持久化口径）。</summary>
+        public int AutoMaskSeconds => (int)Math.Round(AutoMaskSecondsValue);
 
         [ObservableProperty]
         private string _versionDisplay = "1.0.0";
@@ -51,8 +57,7 @@ namespace FluentPass.ViewModels
             _closeActionIndex = (int)SettingsService.GetCloseAction(_host);
             _selectedTheme = SettingsService.GetAppTheme(_host);
             _selectedLanguage = SettingsService.GetLanguage(_host);
-            _autoMaskSeconds = SettingsService.GetAutoMaskSeconds(_host);
-            _autoMaskSecondsIndex = MapSecondsToIndex(_autoMaskSeconds);
+            _autoMaskSecondsValue = SettingsService.GetAutoMaskSeconds(_host);
 
             try
             {
@@ -70,16 +75,6 @@ namespace FluentPass.ViewModels
         private void OnLocLanguageChanged(object? sender, EventArgs e)
         {
             OnPropertyChanged(nameof(VersionInfoSummary));
-        }
-
-        private static int MapSecondsToIndex(int seconds)
-        {
-            for (int i = 0; i < AvailableAutoMaskSeconds.Length; i++)
-            {
-                if (AvailableAutoMaskSeconds[i] == seconds)
-                    return i;
-            }
-            return 1; // Default: 10 seconds
         }
 
         partial void OnAutoTakeoverUIChanged(bool value)
@@ -108,13 +103,13 @@ namespace FluentPass.ViewModels
             OnPropertyChanged(nameof(VersionInfoSummary));
         }
 
-        partial void OnAutoMaskSecondsIndexChanged(int value)
+        partial void OnAutoMaskSecondsValueChanged(double value)
         {
-            if (value >= 0 && value < AvailableAutoMaskSeconds.Length)
-            {
-                AutoMaskSeconds = AvailableAutoMaskSeconds[value];
-                SettingsService.SetAutoMaskSeconds(_host, AutoMaskSeconds);
-            }
+            int seconds = (int)Math.Round(value);
+            if (seconds < MinAutoMaskSeconds || seconds > MaxAutoMaskSeconds) return;
+
+            SettingsService.SetAutoMaskSeconds(_host, seconds);
+            OnPropertyChanged(nameof(AutoMaskSeconds));
         }
 
         [RelayCommand]
@@ -139,20 +134,13 @@ namespace FluentPass.ViewModels
         }
 
         [RelayCommand]
-        public void CheckUpdate()
-        {
-            OpenGitHub();
-        }
-
-        [RelayCommand]
         public void ResetSettings()
         {
             AutoTakeoverUI = SettingsService.DefaultAutoTakeoverUI;
             CloseActionIndex = (int)SettingsService.DefaultCloseAction;
             SelectedTheme = SettingsService.DefaultAppTheme;
             SelectedLanguage = SettingsService.DefaultLanguage;
-            AutoMaskSeconds = SettingsService.DefaultAutoMaskSeconds;
-            AutoMaskSecondsIndex = MapSecondsToIndex(AutoMaskSeconds);
+            AutoMaskSecondsValue = SettingsService.DefaultAutoMaskSeconds;
         }
     }
 }
