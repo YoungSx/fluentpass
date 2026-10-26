@@ -20,24 +20,26 @@
 
     <Grid>
         <StackPanel Margin="10,12,10,12">
+            <!-- 字号沿用 WPF-UI 官方 ControlContentThemeFontSize，不在此处硬编码，避免与全局排版脱节 -->
             <ui:AutoSuggestBox x:Name="QueryBox"
                                Height="38"
-                               FontSize="16"
                                PlaceholderText="{common:Loc QuickAccess_SearchPlaceholder}"
                                Icon="{ui:SymbolIcon Search24}"
                                TextChanged="OnQueryTextChanged"
                                QuerySubmitted="OnQuerySubmitted" />
 
-            <ListBox x:Name="ResultsList"
-                     ItemsSource="{Binding Results}"
-                     SelectedItem="{Binding SelectedResult, Mode=TwoWay}"
-                     BorderThickness="0"
-                     Background="Transparent"
-                     MaxHeight="440"
-                     Margin="0,8,0,0"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                     MouseDoubleClick="OnResultListDoubleClick">
-                <ListBox.ItemTemplate>
+            <!-- 必须使用官方 ui:ListView：条目容器才会套用 ui:ListViewItem 的 Fluent 选中态/悬停态/圆角与左侧指示条 -->
+            <ui:ListView x:Name="ResultsList"
+                         ItemsSource="{Binding Results}"
+                         SelectedItem="{Binding SelectedResult, Mode=TwoWay}"
+                         BorderThickness="0"
+                         Background="Transparent"
+                         MaxHeight="440"
+                         Margin="0,8,0,0"
+                         HorizontalContentAlignment="Stretch"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         MouseDoubleClick="OnResultListDoubleClick">
+                <ui:ListView.ItemTemplate>
                     <DataTemplate>
                         <Grid Margin="2,4">
                             <Grid.ColumnDefinitions>
@@ -72,8 +74,8 @@
                             </StackPanel>
                         </Grid>
                     </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+                </ui:ListView.ItemTemplate>
+            </ui:ListView>
         </StackPanel>
     </Grid>
 </ui:FluentWindow>
