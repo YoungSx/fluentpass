@@ -63,7 +63,7 @@ namespace FluentPass.Tests
 
             var referenceLang = "zh-CN";
             var referenceDict = dictionaries[referenceLang];
-            Assert.That(referenceDict.Count, Is.GreaterThan(250), "Expected at least 250 localized keys in reference language");
+            Assert.That(referenceDict.Count, Is.GreaterThan(200), "Expected at least 200 localized keys in reference language");
 
             foreach (var lang in AllLanguages)
             {
@@ -202,47 +202,92 @@ namespace FluentPass.Tests
         }
 
         [Test]
+        public void TranslationStore_AllKeys_MustBeReferencedByXamlOrCs()
+        {
+            // 翻译 key 只增不减会累积死条目（旧命名残留），且每次新增都要 ×8 语言维护。
+            // 这里反向校验：字典里的每个 key 必须在 XAML 的 {common:Loc} 或 C# 的 Loc.Get/索引器中出现。
+            var repoRoot = FindRepositoryRoot();
+            var srcDir = Path.Combine(repoRoot, "src");
+            Assert.That(Directory.Exists(srcDir), Is.True, $"Source directory not found at {srcDir}");
+
+            var xamlRegex = new Regex(@"\{common:Loc\s+(?:Key=)?([^},\s]+)", RegexOptions.Compiled);
+            var getRegex = new Regex(@"Loc\.Get\(\s*""([^""]+)""", RegexOptions.Compiled);
+            var indexerRegex = new Regex(@"Loc\.Instance\[\s*""([^""]+)""\]", RegexOptions.Compiled);
+
+            var referencedKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var file in Directory.GetFiles(srcDir, "*.*", SearchOption.AllDirectories))
+            {
+                var extension = Path.GetExtension(file);
+                bool isXaml = extension.Equals(".xaml", StringComparison.OrdinalIgnoreCase);
+                bool isCs = extension.Equals(".cs", StringComparison.OrdinalIgnoreCase);
+                if (!isXaml && !isCs) continue;
+                if (Path.GetFileName(file).Equals("TranslationStore.cs", StringComparison.OrdinalIgnoreCase)) continue;
+
+                var content = File.ReadAllText(file);
+                if (isXaml)
+                {
+                    foreach (Match match in xamlRegex.Matches(content)) referencedKeys.Add(match.Groups[1].Value.Trim());
+                    continue;
+                }
+
+                foreach (Match match in getRegex.Matches(content)) referencedKeys.Add(match.Groups[1].Value.Trim());
+                foreach (Match match in indexerRegex.Matches(content)) referencedKeys.Add(match.Groups[1].Value.Trim());
+            }
+
+            foreach (var lang in AllLanguages)
+            {
+                var dict = TranslationStore.GetDictionary(lang);
+                var deadKeys = dict.Keys.Where(k => !referencedKeys.Contains(k)).OrderBy(k => k, StringComparer.Ordinal).ToList();
+
+                Assert.That(deadKeys, Is.Empty,
+                    $"Language '{lang}' has {deadKeys.Count} keys referenced nowhere in src (rename leftover or delete):\n" +
+                    string.Join("\n", deadKeys.Select(k => $"  - {k}")));
+            }
+        }
+
+        [Test]
         public void Loc_DirectGetAndIndexer_ReturnsCorrectString_AcrossLanguages()
         {
             // Simplified Chinese
             Loc.Instance.SetLanguagePreference("zh-CN");
-            Assert.That(Loc.Get("Common_Save"), Is.EqualTo("保存"));
-            Assert.That(Loc.Instance["Common_Save"], Is.EqualTo("保存"));
+            Assert.That(Loc.Get("Detail_Button_Save"), Is.EqualTo("保存"));
+            Assert.That(Loc.Instance["Detail_Button_Save"], Is.EqualTo("保存"));
 
             // Traditional Chinese
             Loc.Instance.SetLanguagePreference("zh-TW");
-            Assert.That(Loc.Get("Common_Save"), Is.EqualTo("儲存"));
-            Assert.That(Loc.Instance["Common_Save"], Is.EqualTo("儲存"));
+            Assert.That(Loc.Get("Detail_Button_Save"), Is.EqualTo("儲存"));
+            Assert.That(Loc.Instance["Detail_Button_Save"], Is.EqualTo("儲存"));
 
             // English
             Loc.Instance.SetLanguagePreference("en-US");
-            Assert.That(Loc.Get("Common_Save"), Is.EqualTo("Save"));
-            Assert.That(Loc.Instance["Common_Save"], Is.EqualTo("Save"));
+            Assert.That(Loc.Get("Detail_Button_Save"), Is.EqualTo("Save"));
+            Assert.That(Loc.Instance["Detail_Button_Save"], Is.EqualTo("Save"));
 
             // Japanese
             Loc.Instance.SetLanguagePreference("ja-JP");
-            Assert.That(Loc.Get("Common_Save"), Is.EqualTo("保存"));
-            Assert.That(Loc.Instance["Common_Cancel"], Is.EqualTo("キャンセル"));
+            Assert.That(Loc.Get("Detail_Button_Save"), Is.EqualTo("保存"));
+            Assert.That(Loc.Instance["Detail_Button_Cancel"], Is.EqualTo("キャンセル"));
 
             // Korean
             Loc.Instance.SetLanguagePreference("ko-KR");
-            Assert.That(Loc.Get("Common_Save"), Is.EqualTo("저장"));
-            Assert.That(Loc.Instance["Common_Cancel"], Is.EqualTo("취소"));
+            Assert.That(Loc.Get("Detail_Button_Save"), Is.EqualTo("저장"));
+            Assert.That(Loc.Instance["Detail_Button_Cancel"], Is.EqualTo("취소"));
 
             // Russian
             Loc.Instance.SetLanguagePreference("ru-RU");
-            Assert.That(Loc.Get("Common_Save"), Is.EqualTo("Сохранить"));
-            Assert.That(Loc.Instance["Common_Cancel"], Is.EqualTo("Отмена"));
+            Assert.That(Loc.Get("Detail_Button_Save"), Is.EqualTo("Сохранить"));
+            Assert.That(Loc.Instance["Detail_Button_Cancel"], Is.EqualTo("Отмена"));
 
             // Spanish
             Loc.Instance.SetLanguagePreference("es-ES");
-            Assert.That(Loc.Get("Common_Save"), Is.EqualTo("Guardar"));
-            Assert.That(Loc.Instance["Common_Cancel"], Is.EqualTo("Cancelar"));
+            Assert.That(Loc.Get("Detail_Button_Save"), Is.EqualTo("Guardar"));
+            Assert.That(Loc.Instance["Detail_Button_Cancel"], Is.EqualTo("Cancelar"));
 
             // German
             Loc.Instance.SetLanguagePreference("de-DE");
-            Assert.That(Loc.Get("Common_Save"), Is.EqualTo("Speichern"));
-            Assert.That(Loc.Instance["Common_Cancel"], Is.EqualTo("Abbrechen"));
+            Assert.That(Loc.Get("Detail_Button_Save"), Is.EqualTo("Speichern"));
+            Assert.That(Loc.Instance["Detail_Button_Cancel"], Is.EqualTo("Abbrechen"));
         }
 
         [Test]
