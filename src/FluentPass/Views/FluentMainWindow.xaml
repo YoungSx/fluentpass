@@ -471,9 +471,11 @@
                         </Grid>
 
                         <!-- 面包屑分组导航（根→…→当前；仅根分组时隐藏）。
-                             注：不使用 ui:BreadcrumbBar——WPF-UI 4.3.0 该控件在 ItemsSource 为空时
-                             Loaded 广播阶段于 UpdateLastContainer 内 NRE 并杀死宿主进程（上游缺陷，
-                             隐藏状态同样触发），故以标准 Button + ChevronRight 组合实现同等交互 -->
+                             注：不使用 ui:BreadcrumbBar——WPF-UI 4.3.0 该控件在 Collapsed 状态下不会生成条目容器，
+                             而 UpdateLastContainer 只判 ItemContainerGenerator.Items.Count 就直接解引用
+                             ContainerFromItem 的结果，于是在 Loaded 广播阶段抛 NRE（发生在渲染消息泵内，
+                             会杀死宿主进程）。已报上游 lepoco/wpfui#1776，故以标准 Button + ChevronRight
+                             组合实现同等交互 -->
                         <ItemsControl Grid.Row="1"
                                       x:Name="BreadcrumbTrail"
                                       Margin="4,0,4,6"
