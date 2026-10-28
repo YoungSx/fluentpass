@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Security.Cryptography;
@@ -148,6 +149,20 @@ namespace FluentPass.Services
 
         public const string ChecksumsUrl =
             "https://github.com/YoungSx/fluentpass/releases/latest/download/SHA256SUMS.txt";
+
+        /// <summary>
+        /// GitHub 反代镜像（前缀拼接官方完整 URL）。仅在官方源发生<b>网络层</b>失败时按序回退，
+        /// 用于绕过中国大陆常见的连接重置 / CDN 限速；官方可达时永不使用。
+        ///
+        /// 顺序即优先级：先选响应快的，再选存活久的。列表会随镜像站存亡变化，属可维护配置，
+        /// 不承诺长期有效——镜像全挂等价于回到「只有官方源」的原行为。
+        /// </summary>
+        public static readonly IReadOnlyList<string> MirrorPrefixes = new[]
+        {
+            "https://gh-proxy.com/",
+            "https://ghproxy.net/",
+            "https://hk.gh-proxy.com/"
+        };
 
         /// <summary>Release 包内插件文件名（与 SHA256SUMS.txt 中的条目一致）。</summary>
         public const string PluginFileName = "FluentPass.dll";

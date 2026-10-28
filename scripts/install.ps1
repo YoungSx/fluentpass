@@ -22,7 +22,8 @@
     安装完成后自动启动 KeePass。
 
 .PARAMETER UseMirror
-    使用 GitHub 国内加速镜像通道下载 Release 资产。
+    强制使用 GitHub 国内加速镜像通道下载 Release 资产（跳过官方直链）。
+    不指定时也会在官方直链失败后自动按序回退到镜像。
 
 .EXAMPLE
     # 一键在线安装最新版本（可在普通或管理员 PowerShell 中运行）：
@@ -33,8 +34,8 @@
     & { irm https://raw.githubusercontent.com/YoungSx/fluentpass/main/scripts/install.ps1 } | iex -ArgumentList "-Launch"
 
 .EXAMPLE
-    # 国内网络加速一键安装：
-    irm https://ghp.ci/https://raw.githubusercontent.com/YoungSx/fluentpass/main/scripts/install.ps1 | iex
+    # 国内网络加速一键安装（脚本本身也走镜像拉取）：
+    irm https://gh-proxy.com/https://raw.githubusercontent.com/YoungSx/fluentpass/main/scripts/install.ps1 | iex
 #>
 
 [CmdletBinding()]
@@ -45,6 +46,14 @@ param(
     [switch]$Force,
     [switch]$Launch,
     [switch]$UseMirror
+)
+
+# GitHub 反代镜像前缀（按优先级排列）。与插件内 UpdateService.MirrorPrefixes 保持同一份清单：
+# 镜像站存亡变化频繁，属可维护配置，不承诺长期有效；全部失效等价于「只有官方源」的原行为。
+$MirrorPrefixes = @(
+    "https://gh-proxy.com/",
+    "https://ghproxy.net/",
+    "https://hk.gh-proxy.com/"
 )
 
 $ErrorActionPreference = "Stop"
@@ -131,7 +140,7 @@ if ($Version -eq "latest") {
 }
 
 if ($UseMirror -and $downloadUrl) {
-    $downloadUrl = "https://ghp.ci/$downloadUrl"
+    $downloadUrl = "$($MirrorPrefixes[0])$downloadUrl"
 }
 
 # 3. 准备临时下载路径并下载 FluentPass.dll
@@ -147,41 +156,38 @@ if (Test-Path $tempDll) {
 Write-Host "[INFO] 正在下载 Fluent Pass ($targetTag)..." -ForegroundColor Cyan
 Write-Host "       下载地址: $downloadUrl" -ForegroundColor Gray
 
-$downloadSuccess = $false
 $curlCmd = Get-Command curl.exe -ErrorAction SilentlyContinue
-if ($curlCmd) {
+
+# 单次下载尝试：优先 curl.exe（进度与超时可控），回退 Invoke-WebRequest。
+function Invoke-DownloadAttempt {
+    param([string]$Url, [string]$OutFile)
+
+    if ($curlCmd) {
+        try {
+            & curl.exe -fSL "$Url" -o "$OutFile" --connect-timeout 15 --max-time 120
+            if ($LASTEXITCODE -eq 0 -and (Test-Path $OutFile)) { return $true }
+        } catch {}
+    }
+
     try {
-        & curl.exe -fSL "$downloadUrl" -o "$tempDll" --connect-timeout 15 --max-time 120
-        if ($LASTEXITCODE -eq 0 -and (Test-Path $tempDll)) {
-            $downloadSuccess = $true
-        }
-    } catch {}
+        Invoke-WebRequest -Uri $Url -OutFile $OutFile -UseBasicParsing -TimeoutSec 120
+        return (Test-Path $OutFile)
+    } catch {
+        return $false
+    }
 }
 
-if (-not $downloadSuccess) {
-    try {
-        Invoke-WebRequest -Uri $downloadUrl -OutFile $tempDll -UseBasicParsing -TimeoutSec 120
-        if (Test-Path $tempDll) {
+$downloadSuccess = Invoke-DownloadAttempt -Url $downloadUrl -OutFile $tempDll
+
+# 官方直链失败且未显式指定镜像时，按序尝试国内加速镜像。
+if (-not $downloadSuccess -and -not $UseMirror) {
+    foreach ($prefix in $MirrorPrefixes) {
+        $mirrorUrl = "$prefix$downloadUrl"
+        Write-Host "[INFO] 原始网络连接不畅，正在尝试加速镜像通道重试: $prefix" -ForegroundColor Yellow
+
+        if (Invoke-DownloadAttempt -Url $mirrorUrl -OutFile $tempDll) {
             $downloadSuccess = $true
-        }
-    } catch {
-        # 如果原始直链失败且未开加速，自动尝试国内镜像重试一次
-        if (-not $UseMirror) {
-            $mirrorUrl = "https://ghp.ci/$downloadUrl"
-            Write-Host "[INFO] 原始网络连接不畅，正在尝试加速镜像通道重试..." -ForegroundColor Yellow
-            try {
-                if ($curlCmd) {
-                    & curl.exe -fSL "$mirrorUrl" -o "$tempDll" --connect-timeout 15 --max-time 120
-                    if ($LASTEXITCODE -eq 0 -and (Test-Path $tempDll)) {
-                        $downloadSuccess = $true
-                    }
-                } else {
-                    Invoke-WebRequest -Uri $mirrorUrl -OutFile $tempDll -UseBasicParsing -TimeoutSec 120
-                    if (Test-Path $tempDll) {
-                        $downloadSuccess = $true
-                    }
-                }
-            } catch {}
+            break
         }
     }
 }
