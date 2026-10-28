@@ -134,33 +134,4 @@ namespace FluentPass.Common
             throw new NotSupportedException();
         }
     }
-
-    /// <summary>
-    /// <see cref="UpdateBarSeverity"/> → <see cref="InfoBarSeverity"/>。
-    /// 更新提示条三态（成功/需人工/失败）在视觉上必须可区分，不能一律 Warning。
-    /// </summary>
-    [ValueConversion(typeof(UpdateBarSeverity), typeof(InfoBarSeverity))]
-    public class UpdateBarSeverityConverter : IValueConverter
-    {
-        public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-        {
-            if (value is UpdateBarSeverity severity)
-            {
-                switch (severity)
-                {
-                    case UpdateBarSeverity.Success: return InfoBarSeverity.Success;
-                    case UpdateBarSeverity.Warning: return InfoBarSeverity.Warning;
-                    case UpdateBarSeverity.Error: return InfoBarSeverity.Error;
-                    default: return InfoBarSeverity.Informational;
-                }
-            }
-
-            return InfoBarSeverity.Informational;
-        }
-
-        public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
-        {
-            throw new NotSupportedException();
-        }
-    }
 }
