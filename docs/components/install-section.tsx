@@ -11,7 +11,7 @@ export default function InstallSection() {
   const psCmd =
     "irm https://raw.githubusercontent.com/YoungSx/fluentpass/main/scripts/install.ps1 | iex";
   const psMirrorCmd =
-    "irm https://ghp.ci/https://raw.githubusercontent.com/YoungSx/fluentpass/main/scripts/install.ps1 | iex";
+    "irm https://gh-proxy.com/https://raw.githubusercontent.com/YoungSx/fluentpass/main/scripts/install.ps1 | iex";
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);

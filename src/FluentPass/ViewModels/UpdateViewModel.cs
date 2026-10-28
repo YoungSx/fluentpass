@@ -81,7 +81,7 @@ namespace FluentPass.ViewModels
 
         public UpdateViewModel(IPluginHost host)
             : this(host, new UpdateService(
-                new WebClientUpdateTransport(),
+                new MirrorAwareTransport(new WebClientUpdateTransport(), UpdateService.MirrorPrefixes),
                 typeof(UpdateService).Assembly.Location))
         {
         }

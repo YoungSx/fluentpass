@@ -13,6 +13,7 @@
 - **原因**：跨进程 IPC 不仅带来昂贵的序列化损耗与延迟，更致命的是会导致**主密钥/明文凭据跨进程内存暴露**，破坏 KeePass 原生的 `ProtectedMemory` 和 DPAPI 保护机制。
 - **规范**：UI 层作为 `.dll` 插件直接由 `KeePass.exe` 反射加载，运行在官方同一个 STA 线程中，直接引用宿主内存中的 `PwDatabase`、`PwGroup` 和 `PwEntry` 指针。
 - **唯一的外联面**：在线更新检查（默认开启、可在设置关闭）。它只做三次匿名 HTTPS 只读 GET（`version.txt` → `SHA256SUMS.txt` → `FluentPass.dll`），仅携带插件版本号 User-Agent，**绝不上传**凭据、数据库内容或任何标识信息。除此之外插件不发起任何网络请求。
+  - **镜像回退**：官方源发生**网络层**失败（DNS / 连接 / 超时 / TLS）时，`MirrorAwareTransport` 按 `UpdateService.MirrorPrefixes` 顺序改走 GitHub 反代镜像重试，**仅限**上述三个只读 GET；HTTP 4xx/5xx 属官方确定性答复，**不回退**。官方源永远排在第一位，因此官方可达时完整性锚点 `SHA256SUMS.txt` 始终取自 GitHub。镜像清单若失效，行为等价于「只有官方源」，不影响更新检查或插件其余功能。
 
 ### 铁律 2：敏感内存物理级防御（ProtectedString Zero-Leak Invariant）
 - **禁止项**：严禁在加载分组、列表虚拟化渲染、后台缓存、模糊搜索或构建快照时，将密码解密为普通 `System.String` 驻留在托管堆中！
@@ -129,6 +130,7 @@ _host.MainWindow.UpdateUI(false, null, true, null, true, null, true);
 - **重启必须借道宿主**：反射调用宿主私有 `MainForm.OnFileExit`（等价「文件 → 退出」，会走脏库保存确认并越过「关闭按钮最小化」配置），再在 `FormClosed` 中调用公开 API `WinUtil.Restart()`。**禁止** `Process.Kill` 或自行 `Process.Start` —— 前者丢掉未保存数据，后者会拉起双实例争抢同一个插件文件。
 - **禁止污染宿主私有 `m_bRestart`**：该标志在用户取消保存后不会复位，会令之后任意一次正常退出都意外重启。
 - **未关成必须撤钩**：用户在保存确认里取消时，`FormClosed` 钩子要立刻解绑，否则下次正常退出会错误触发重启。
+- **镜像只负责传输，不参与信任**：`MirrorAwareTransport` 只对网络层失败改道，下载字节仍由 `UpdateService` 按 `SHA256SUMS.txt` 逐字节校验，不过即弃。官方可达时校验和必须取自官方；若校验和与 DLL 都落到同一镜像，该校验只防传输损坏、不防该镜像作恶——这一点在类注释中明示，不得随代码演进被淡化。
 
 ---
 

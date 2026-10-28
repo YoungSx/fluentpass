@@ -91,7 +91,7 @@ irm https://raw.githubusercontent.com/YoungSx/fluentpass/main/scripts/install.ps
 >   ```
 > - **国内网络加速**：若遇到直连 GitHub 访问受限或超时，可使用内置镜像代理加速通道：
 >   ```powershell
->   irm https://ghp.ci/https://raw.githubusercontent.com/YoungSx/fluentpass/main/scripts/install.ps1 | iex
+>   irm https://gh-proxy.com/https://raw.githubusercontent.com/YoungSx/fluentpass/main/scripts/install.ps1 | iex
 >   ```
 
 ### 📦 方式二：手动下载与安装
