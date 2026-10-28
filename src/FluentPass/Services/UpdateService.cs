@@ -39,6 +39,9 @@ namespace FluentPass.Services
         public string? DownloadedPath { get; }
         public string? Error { get; }
 
+        public bool IsCheckFailure => Outcome == UpdateOutcome.Failed && RemoteVersion == null;
+        public bool IsDownloadFailure => Outcome == UpdateOutcome.Failed && RemoteVersion != null;
+
         public UpdateCheckResult(UpdateOutcome outcome, Version? remoteVersion = null,
             string? downloadedPath = null, string? error = null)
         {
@@ -114,7 +117,7 @@ namespace FluentPass.Services
                     }
                     catch (Exception ex) when (linked.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
                     {
-                        // 仅本层超时触发取消（用户未取消）：统一翻译为超时，绝不泄漏
+                        // 仅本层超时触发取消（用户未取消）：统一翻译为超时，绝不泄露
                         // OperationCanceledException——那会被上层镜像回退误判为用户取消而直接放弃。
                         throw new TimeoutException("更新请求超时", ex);
                     }
@@ -146,6 +149,9 @@ namespace FluentPass.Services
 
         public const string ChecksumsUrl =
             "https://github.com/YoungSx/fluentpass/releases/latest/download/SHA256SUMS.txt";
+
+        public const string ReleasesPageUrl =
+            "https://github.com/YoungSx/fluentpass/releases/latest";
 
         /// <summary>
         /// GitHub 反代镜像（前缀拼接官方完整 URL）。仅在官方源发生<b>网络层</b>失败时按序回退，
@@ -190,7 +196,7 @@ namespace FluentPass.Services
         public string TargetPath => _targetPath;
 
         /// <summary>
-        /// 检查并按需完成「下载 → SHA256 校验 → 换装」。任何一步失败都不会触碰现有插件文件。
+        /// 检查并按需完成「下载 → SHA256 校验 → 换装」。任何一步失败都不会碰触现有插件文件。
         /// </summary>
         /// <param name="currentVersion">当前运行版本。</param>
         /// <param name="skippedVersion">用户明确忽略的版本（同版本不再重复下载）。</param>
@@ -377,9 +383,9 @@ namespace FluentPass.Services
         /// <summary>
         /// 进程内换装。实证（.NET Framework 4.8 / Windows 11）：
         /// 已被 CLR 映射的程序集文件 <b>可以重命名</b>，但 <b>不可删除</b>
-        /// （映像节持有删除拒绝，但目录项改名不受限制）。
+        /// （镜像节持有删除拒绝，但目录项改名不受限制）。
         /// 因此顺序固定为：旧文件改名备份 → 新文件就位；任何一步失败都回滚旧文件。
-        /// 备份文件在宿主下次启动时由 <see cref="CleanupLeftoverFiles"/> 清理。
+        /// 备份文件在宿主下次启动时由 <see cref=\"CleanupLeftoverFiles\"/> 清理。
         /// </summary>
         public static UpdateApplyResult ApplyStagedUpdate(string stagedPath, string targetPath, out string? error)
         {
@@ -400,7 +406,7 @@ namespace FluentPass.Services
             }
             catch (Exception ex)
             {
-                error = "旧备份无法清理（可能有另一个 KeePass 实例正在运行）: " + ex.Message;
+                error = "旧备份无法清理（可能另有一个 KeePass 实例正在运行）: " + ex.Message;
                 return UpdateApplyResult.Failed;
             }
 
@@ -443,7 +449,7 @@ namespace FluentPass.Services
         }
 
         /// <summary>
-        /// 清理换装遗留（<c>.old</c> / <c>.new</c>）。新进程启动时旧映像已卸载，删除必然成功；
+        /// 清理换装遗留（<c>.old</c> / <c>.new</c>）。新进程启动时旧镜像已卸载，删除必然成功；
         /// 任何异常都只做静默忽略，绝不影响插件加载。
         /// </summary>
         public static void CleanupLeftoverFiles(string? targetPath = null)

@@ -10,7 +10,7 @@ namespace FluentPass.Common
     /// </summary>
     public static class TranslationStore
     {
-        // Simplified Chinese (zh-CN) - 291 keys
+        // Simplified Chinese (zh-CN) - 295 keys
         private static readonly Dictionary<string, string> ZhStrings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["App_Title"] = "Fluent Pass",
@@ -294,6 +294,10 @@ namespace FluentPass.Common
             ["Update_Dismiss_Button"] = "忽略此版本",
             ["Update_Failed_Title"] = "更新失败",
             ["Update_FailedFormat"] = "更新失败: {0}",
+            ["Update_DownloadFailed_Format"] = "发现新版本 {0}，下载失败: {1}",
+            ["Update_DownloadFailed_Message"] = "已检测到新版本 {0}，但自动下载失败。你可以前往发布页面手动下载更新安装包。",
+            ["Update_DownloadFailed_Title"] = "发现新版本 {0}，下载失败",
+            ["Update_ManualDownload_Button"] = "手动下载",
             ["Update_Manual_Title"] = "发现新版本 {0}，需要管理员权限",
             ["Update_Manual_Message"] = "新版本 {0} 已下载并通过校验，但当前账户无权写入插件目录。请用管理员权限替换 Plugins 目录下的 FluentPass.dll。",
             ["Update_OpenDownload_Button"] = "打开下载位置",
@@ -309,7 +313,7 @@ namespace FluentPass.Common
             ["Update_UpToDateFormat"] = "已是最新版本 ({0})",
         };
 
-        // Traditional Chinese (zh-TW) - 291 keys
+        // Traditional Chinese (zh-TW) - 295 keys
         private static readonly Dictionary<string, string> ZhTwStrings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["App_Title"] = "Fluent Pass",
@@ -593,6 +597,10 @@ namespace FluentPass.Common
             ["Update_Dismiss_Button"] = "忽略此版本",
             ["Update_Failed_Title"] = "更新失敗",
             ["Update_FailedFormat"] = "更新失敗: {0}",
+            ["Update_DownloadFailed_Format"] = "發現新版本 {0}，下載失敗: {1}",
+            ["Update_DownloadFailed_Message"] = "已偵測到新版本 {0}，但自動下載失敗。你可以前往發布頁面手動下載更新安裝包。",
+            ["Update_DownloadFailed_Title"] = "發現新版本 {0}，下載失敗",
+            ["Update_ManualDownload_Button"] = "手動下載",
             ["Update_Manual_Title"] = "發現新版本 {0}，需要管理員權限",
             ["Update_Manual_Message"] = "新版本 {0} 已下載並通過校驗，但目前帳戶無權寫入外掛目錄。請以管理員權限取代 Plugins 目錄下的 FluentPass.dll。",
             ["Update_OpenDownload_Button"] = "開啟下載位置",
@@ -608,7 +616,7 @@ namespace FluentPass.Common
             ["Update_UpToDateFormat"] = "已是最新版本 ({0})",
         };
 
-        // English (en-US) - 291 keys
+        // English (en-US) - 295 keys
         private static readonly Dictionary<string, string> EnStrings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["App_Title"] = "Fluent Pass",
@@ -892,6 +900,10 @@ namespace FluentPass.Common
             ["Update_Dismiss_Button"] = "Skip this version",
             ["Update_Failed_Title"] = "Update failed",
             ["Update_FailedFormat"] = "Update failed: {0}",
+            ["Update_DownloadFailed_Format"] = "Version {0} download failed: {1}",
+            ["Update_DownloadFailed_Message"] = "Version {0} was detected, but automatic download failed. You can visit the release page to download the update manually.",
+            ["Update_DownloadFailed_Title"] = "Version {0} found — download failed",
+            ["Update_ManualDownload_Button"] = "Download manually",
             ["Update_Manual_Title"] = "Version {0} found — administrator rights required",
             ["Update_Manual_Message"] = "Version {0} was downloaded and verified, but this account cannot write to the plugin folder. Replace FluentPass.dll in the Plugins folder with administrator rights.",
             ["Update_OpenDownload_Button"] = "Open download folder",
@@ -907,7 +919,7 @@ namespace FluentPass.Common
             ["Update_UpToDateFormat"] = "You are on the latest version ({0})",
         };
 
-        // Japanese (ja-JP) - 291 keys
+        // Japanese (ja-JP) - 295 keys
         private static readonly Dictionary<string, string> JaStrings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["App_Title"] = "Fluent Pass",
@@ -1191,6 +1203,10 @@ namespace FluentPass.Common
             ["Update_Dismiss_Button"] = "このバージョンをスキップ",
             ["Update_Failed_Title"] = "更新に失敗しました",
             ["Update_FailedFormat"] = "更新に失敗しました: {0}",
+            ["Update_DownloadFailed_Format"] = "新バージョン {0} のダウンロードに失敗しました: {1}",
+            ["Update_DownloadFailed_Message"] = "新バージョン {0} が検出されましたが、自動ダウンロードに失敗しました。リリースページから手動でダウンロードできます。",
+            ["Update_DownloadFailed_Title"] = "新バージョン {0} のダウンロードに失敗しました",
+            ["Update_ManualDownload_Button"] = "手動ダウンロード",
             ["Update_Manual_Title"] = "バージョン {0} が見つかりました（管理者権限が必要）",
             ["Update_Manual_Message"] = "バージョン {0} はダウンロードと検証が完了しましたが、現在のアカウントにはプラグインフォルダへの書き込み権限がありません。管理者権限で Plugins フォルダーの FluentPass.dll を置き換えてください。",
             ["Update_OpenDownload_Button"] = "ダウンロード先を開く",
@@ -1206,7 +1222,7 @@ namespace FluentPass.Common
             ["Update_UpToDateFormat"] = "最新バージョンです ({0})",
         };
 
-        // Korean (ko-KR) - 291 keys
+        // Korean (ko-KR) - 295 keys
         private static readonly Dictionary<string, string> KoStrings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["App_Title"] = "Fluent Pass",
@@ -1490,6 +1506,10 @@ namespace FluentPass.Common
             ["Update_Dismiss_Button"] = "이 버전 건너뛰기",
             ["Update_Failed_Title"] = "업데이트 실패",
             ["Update_FailedFormat"] = "업데이트 실패: {0}",
+            ["Update_DownloadFailed_Format"] = "새 버전 {0} 다운로드 실패: {1}",
+            ["Update_DownloadFailed_Message"] = "새 버전 {0}이(가) 감지되었으나 자동 다운로드에 실패했습니다. 릴리스 페이지에서 수동으로 업데이트를 다운로드할 수 있습니다.",
+            ["Update_DownloadFailed_Title"] = "새 버전 {0} 발견 — 다운로드 실패",
+            ["Update_ManualDownload_Button"] = "수동 다운로드",
             ["Update_Manual_Title"] = "버전 {0} 발견 — 관리자 권한 필요",
             ["Update_Manual_Message"] = "버전 {0}을(를) 다운로드하고 검증했지만 현재 계정에는 플러그인 폴더에 쓸 권한이 없습니다. 관리자 권한으로 Plugins 폴더의 FluentPass.dll을 교체하세요.",
             ["Update_OpenDownload_Button"] = "다운로드 위치 열기",
@@ -1505,7 +1525,7 @@ namespace FluentPass.Common
             ["Update_UpToDateFormat"] = "최신 버전을 사용 중입니다 ({0})",
         };
 
-        // Russian (ru-RU) - 291 keys
+        // Russian (ru-RU) - 295 keys
         private static readonly Dictionary<string, string> RuStrings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["App_Title"] = "Fluent Pass",
@@ -1789,6 +1809,10 @@ namespace FluentPass.Common
             ["Update_Dismiss_Button"] = "Пропустить эту версию",
             ["Update_Failed_Title"] = "Ошибка обновления",
             ["Update_FailedFormat"] = "Ошибка обновления: {0}",
+            ["Update_DownloadFailed_Format"] = "Ошибка загрузки версии {0}: {1}",
+            ["Update_DownloadFailed_Message"] = "Обнаружена новая версия {0}, но автоматическая загрузка не удалась. Вы можете перейти на страницу релизов и скачать обновление вручную.",
+            ["Update_DownloadFailed_Title"] = "Найдена версия {0} — ошибка загрузки",
+            ["Update_ManualDownload_Button"] = "Скачать вручную",
             ["Update_Manual_Title"] = "Найдена версия {0} — требуются права администратора",
             ["Update_Manual_Message"] = "Версия {0} скачана и проверена, но у текущей учётной записи нет прав на запись в папку плагинов. Замените FluentPass.dll в папке Plugins с правами администратора.",
             ["Update_OpenDownload_Button"] = "Открыть папку загрузки",
@@ -1804,7 +1828,7 @@ namespace FluentPass.Common
             ["Update_UpToDateFormat"] = "Установлена последняя версия ({0})",
         };
 
-        // Spanish (es-ES) - 291 keys
+        // Spanish (es-ES) - 295 keys
         private static readonly Dictionary<string, string> EsStrings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["App_Title"] = "Fluent Pass",
@@ -2088,6 +2112,10 @@ namespace FluentPass.Common
             ["Update_Dismiss_Button"] = "Omitir esta versión",
             ["Update_Failed_Title"] = "Error de actualización",
             ["Update_FailedFormat"] = "Error de actualización: {0}",
+            ["Update_DownloadFailed_Format"] = "Error al descargar la versión {0}: {1}",
+            ["Update_DownloadFailed_Message"] = "Se detectó la versión {0}, pero falló la descarga automática. Puede visitar la página de lanzamientos para descargarla manualmente.",
+            ["Update_DownloadFailed_Title"] = "Versión {0} encontrada — error al descargar",
+            ["Update_ManualDownload_Button"] = "Descargar manualmente",
             ["Update_Manual_Title"] = "Se encontró la versión {0} — se requieren permisos de administrador",
             ["Update_Manual_Message"] = "La versión {0} se descargó y verificó, pero esta cuenta no puede escribir en la carpeta de complementos. Sustituye FluentPass.dll en la carpeta Plugins con permisos de administrador.",
             ["Update_OpenDownload_Button"] = "Abrir carpeta de descarga",
@@ -2103,7 +2131,7 @@ namespace FluentPass.Common
             ["Update_UpToDateFormat"] = "Ya tienes la última versión ({0})",
         };
 
-        // German (de-DE) - 291 keys
+        // German (de-DE) - 295 keys
         private static readonly Dictionary<string, string> DeStrings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["App_Title"] = "Fluent Pass",
@@ -2387,6 +2415,10 @@ namespace FluentPass.Common
             ["Update_Dismiss_Button"] = "Diese Version überspringen",
             ["Update_Failed_Title"] = "Update fehlgeschlagen",
             ["Update_FailedFormat"] = "Update fehlgeschlagen: {0}",
+            ["Update_DownloadFailed_Format"] = "Download von Version {0} fehlgeschlagen: {1}",
+            ["Update_DownloadFailed_Message"] = "Version {0} wurde erkannt, der automatische Download ist jedoch fehlgeschlagen. Sie können die Version manuell von der Release-Seite herunterladen.",
+            ["Update_DownloadFailed_Title"] = "Version {0} gefunden — Download fehlgeschlagen",
+            ["Update_ManualDownload_Button"] = "Manuell herunterladen",
             ["Update_Manual_Title"] = "Version {0} gefunden – Administratorrechte erforderlich",
             ["Update_Manual_Message"] = "Version {0} wurde heruntergeladen und verifiziert, aber dieses Konto darf nicht in den Plugin-Ordner schreiben. Ersetzen Sie FluentPass.dll im Ordner „Plugins“ mit Administratorrechten.",
             ["Update_OpenDownload_Button"] = "Downloadordner öffnen",

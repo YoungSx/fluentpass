@@ -83,17 +83,52 @@ namespace FluentPass.Views
 
             _viewModel.QuickAccessRequested += OnQuickAccessRequested;
             _viewModel.Update.RestartRequested += OnUpdateRestartRequested;
+            _viewModel.Update.CloseFlyoutRequested += OnUpdateCloseFlyoutRequested;
 
             Loaded += OnWindowLoaded;
         }
 
         private QuickAccessWindow? _quickAccessWindow;
 
-        /// <summary>titlebar 更新提醒按钮：弹出（或收起）更新 Flyout。</summary>
+        private void OnUpdateCloseFlyoutRequested(object? sender, EventArgs e)
+        {
+            if (UpdateFlyout != null)
+            {
+                UpdateFlyout.IsOpen = false;
+            }
+        }
+
+        /// <summary>titlebar 更新提醒按钮：弹出（或收起）更新 Flyout，并将其精准锚定在更新按钮正下方右对齐，消除漂移。</summary>
         private void OnUpdateButtonClick(object sender, RoutedEventArgs e)
         {
             if (UpdateFlyout == null) return;
+            ConfigureUpdateFlyoutPlacement(sender as FrameworkElement ?? UpdateButton);
             UpdateFlyout.IsOpen = !UpdateFlyout.IsOpen;
+        }
+
+        private void ConfigureUpdateFlyoutPlacement(FrameworkElement? target = null)
+        {
+            if (UpdateFlyout == null) return;
+            var anchor = target ?? UpdateButton;
+            if (anchor == null) return;
+
+            UpdateFlyout.ApplyTemplate();
+            if (UpdateFlyout.Template?.FindName("PART_Popup", UpdateFlyout) is Popup popup)
+            {
+                popup.PlacementTarget = anchor;
+                popup.Placement = PlacementMode.Custom;
+                popup.CustomPopupPlacementCallback = (popupSize, targetSize, offset) =>
+                {
+                    // 优选：Flyout 右边缘与 UpdateButton 右边缘对齐，纵向置于按钮正下方 4px
+                    var x = targetSize.Width - popupSize.Width;
+                    var y = targetSize.Height + 4;
+                    return new[]
+                    {
+                        new CustomPopupPlacement(new Point(x, y), PopupPrimaryAxis.Horizontal),
+                        new CustomPopupPlacement(new Point(0, y), PopupPrimaryAxis.Horizontal)
+                    };
+                };
+            }
         }
 
         private void OnQuickAccessRequested(object? sender, EventArgs e)
@@ -138,6 +173,8 @@ namespace FluentPass.Views
             {
                 NotificationService.SetPresenter(RootSnackbarPresenter);
             }
+
+            ConfigureUpdateFlyoutPlacement();
 
             HookSearchIconSubmit();
 

@@ -17,7 +17,8 @@ namespace FluentPass.ViewModels
         None,
         Installed,
         ManualInstallRequired,
-        Failed
+        DownloadFailed,
+        CheckFailed
     }
 
     /// <summary>
@@ -47,6 +48,9 @@ namespace FluentPass.ViewModels
         /// <summary>请求关闭 WPF 窗口并通过宿主原生管线重启 KeePass。</summary>
         public event EventHandler? RestartRequested;
 
+        /// <summary>请求关闭 Update Flyout 弹窗。</summary>
+        public event EventHandler? CloseFlyoutRequested;
+
         [ObservableProperty]
         private bool _isBarVisible;
 
@@ -66,6 +70,9 @@ namespace FluentPass.ViewModels
         private bool _canOpenFolder;
 
         [ObservableProperty]
+        private bool _canDownloadManually;
+
+        [ObservableProperty]
         private bool _isChecking;
 
         /// <summary>设置页里的一行结果摘要（检查中 / 已是最新 / 失败原因）。</summary>
@@ -81,8 +88,8 @@ namespace FluentPass.ViewModels
 
         public UpdateViewModel(IPluginHost host)
             : this(host, new UpdateService(
-                // 预算归 MirrorAwareTransport 裁定（元数据 20s / 载荷 120s），内层只留同额兜底，
-                // 避免内层 30s 默认值抢先把载荷下载杀死。
+                // 预算归 MirrorAwareTransport 裁定（元数据 20s / 负载 120s），内层只留同额兜底，
+                // 避免内层 30s 默认值抢先把负载下载杀死。
                 new MirrorAwareTransport(
                     new WebClientUpdateTransport(MirrorAwareTransport.DefaultPayloadTimeoutMs),
                     UpdateService.MirrorPrefixes),
@@ -156,6 +163,7 @@ namespace FluentPass.ViewModels
                     IsBarVisible = false;
                     CanRestart = false;
                     CanOpenFolder = false;
+                    CanDownloadManually = false;
                     CheckStatusText = Loc.Get("Update_UpToDateFormat", FormatVersion(UpdateService.CurrentVersion));
                     break;
 
@@ -163,6 +171,7 @@ namespace FluentPass.ViewModels
                     _phase = UpdatePhase.Installed;
                     CanRestart = true;
                     CanOpenFolder = false;
+                    CanDownloadManually = false;
                     IsBarVisible = true;
                     CheckStatusText = Loc.Get("Update_Ready_Title", FormatVersion(result.RemoteVersion));
                     break;
@@ -171,18 +180,35 @@ namespace FluentPass.ViewModels
                     _phase = UpdatePhase.ManualInstallRequired;
                     CanRestart = false;
                     CanOpenFolder = !string.IsNullOrEmpty(_downloadedPath);
+                    CanDownloadManually = false;
                     IsBarVisible = true;
                     CheckStatusText = Loc.Get("Update_Manual_Title", FormatVersion(result.RemoteVersion));
                     break;
 
                 default:
-                    _phase = UpdatePhase.Failed;
-                    CanRestart = false;
-                    CanOpenFolder = false;
-                    // 自动检查失败（离线、代理、限流）不打扰用户：titlebar 按钮不出现，
-                    // 失败详情只在设置页摘要可见；手动检查失败才在 titlebar 提示。
-                    IsBarVisible = !automatic;
-                    CheckStatusText = Loc.Get("Update_FailedFormat", result.Error ?? string.Empty);
+                    if (result.RemoteVersion != null)
+                    {
+                        // 检测到了新版本，但自动下载/校验失败：
+                        // TitleBar 显示更新提醒 ICON，Flyout 给出说明与手动下载链接
+                        _phase = UpdatePhase.DownloadFailed;
+                        CanRestart = false;
+                        CanOpenFolder = false;
+                        CanDownloadManually = true;
+                        IsBarVisible = true;
+                        CheckStatusText = Loc.Get("Update_DownloadFailed_Format",
+                            FormatVersion(result.RemoteVersion), result.Error ?? string.Empty);
+                    }
+                    else
+                    {
+                        // 检测更新失败（网络故障、超时、版本文件损坏等）：
+                        // 不打扰策略——无论自动还是手动检查，TitleBar 绝不出现 ICON，仅在设置页显示
+                        _phase = UpdatePhase.CheckFailed;
+                        CanRestart = false;
+                        CanOpenFolder = false;
+                        CanDownloadManually = false;
+                        IsBarVisible = false;
+                        CheckStatusText = Loc.Get("Update_FailedFormat", result.Error ?? string.Empty);
+                    }
                     break;
             }
 
@@ -209,7 +235,13 @@ namespace FluentPass.ViewModels
                     BarSeverity = UpdateBarSeverity.Warning;
                     break;
 
-                case UpdatePhase.Failed:
+                case UpdatePhase.DownloadFailed:
+                    BarTitle = Loc.Get("Update_DownloadFailed_Title", remote);
+                    BarMessage = Loc.Get("Update_DownloadFailed_Message", remote);
+                    BarSeverity = UpdateBarSeverity.Error;
+                    break;
+
+                case UpdatePhase.CheckFailed:
                     BarTitle = Loc.Get("Update_Failed_Title");
                     BarMessage = Loc.Get("Update_FailedFormat", _lastError ?? string.Empty);
                     BarSeverity = UpdateBarSeverity.Error;
@@ -232,7 +264,24 @@ namespace FluentPass.ViewModels
         [RelayCommand]
         private void Restart()
         {
+            CloseFlyoutRequested?.Invoke(this, EventArgs.Empty);
             RestartRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        [RelayCommand]
+        private void OpenManualDownload()
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = UpdateService.ReleasesPageUrl,
+                    UseShellExecute = true
+                });
+            }
+            catch { }
+
+            CloseFlyoutRequested?.Invoke(this, EventArgs.Empty);
         }
 
         [RelayCommand]
@@ -287,6 +336,8 @@ namespace FluentPass.ViewModels
             IsBarVisible = false;
             CanRestart = false;
             CanOpenFolder = false;
+            CanDownloadManually = false;
+            CloseFlyoutRequested?.Invoke(this, EventArgs.Empty);
         }
 
         public void Dispose()
