@@ -7,6 +7,7 @@
         xmlns:vm="clr-namespace:FluentPass.ViewModels"
         xmlns:common="clr-namespace:FluentPass.Common"
         xmlns:views="clr-namespace:FluentPass.Views"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
         mc:Ignorable="d"
         Title="{Binding WindowTitle}"
         Height="780" Width="1240"
@@ -21,6 +22,7 @@
             <common:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
             <common:InverseBooleanConverter x:Key="InverseBooleanConverter" />
             <common:ExpiredToInfoBarSeverityConverter x:Key="ExpiredToInfoBarSeverityConverter" />
+            <x:Array x:Key="EmptySuggestions" Type="{x:Type sys:String}" />
 
             <Style x:Key="ActionIconButtonStyle" TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
                 <Setter Property="Appearance" Value="Transparent" />
@@ -877,12 +879,19 @@
                                                           Visibility="{Binding UserName, Converter={StaticResource StringToVisibilityConverter}, ConverterParameter=Inverse}" />
                                         </Grid>
 
-                                        <!-- 编辑模式（可编辑）：标准的 Fluent 输入框，带有清晰边框、底色与清除按钮 -->
-                                        <ui:TextBox Grid.Row="1" Grid.Column="0"
-                                                    Text="{Binding EditUserName, UpdateSourceTrigger=PropertyChanged}"
-                                                    PlaceholderText="{common:Loc Detail_Placeholder_UserName}"
-                                                    ClearButtonEnabled="True"
-                                                    Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                        <!-- 编辑模式（可编辑）：支持自动建议的 Fluent AutoSuggestBox，对齐 KeePass 原生自动补全行为 -->
+                                        <ui:AutoSuggestBox Grid.Row="1" Grid.Column="0"
+                                                           x:Name="EditUserNameBox"
+                                                           Text="{Binding EditUserName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                           OriginalItemsSource="{Binding UserNameSuggestions, FallbackValue={StaticResource EmptySuggestions}, TargetNullValue={StaticResource EmptySuggestions}}"
+                                                           PlaceholderText="{common:Loc Detail_Placeholder_UserName}"
+                                                           ClearButtonEnabled="True"
+                                                           Icon="{x:Null}"
+                                                           TextChanged="OnEditUserNameTextChanged"
+                                                           SuggestionChosen="OnEditUserNameSuggestionChosen"
+                                                           QuerySubmitted="OnEditUserNameQuerySubmitted"
+                                                           PreviewKeyDown="OnEditUserNamePreviewKeyDown"
+                                                           Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                         <ui:Button Grid.Row="1" Grid.Column="1" Style="{StaticResource ActionIconButtonStyle}" Margin="8,0,0,0" ToolTip="{common:Loc Detail_CopyUserName_Tooltip}" Command="{Binding CopyUsernameCommand}">
                                             <ui:SymbolIcon Symbol="Copy20" />
                                         </ui:Button>

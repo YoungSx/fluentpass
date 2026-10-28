@@ -116,6 +116,12 @@ namespace FluentPass.ViewModels
         [ObservableProperty]
         private string _editUserName = string.Empty;
 
+        /// <summary>
+        /// 用户名自动建议候选列表（从数据库所有条目中去重并排序收集）。
+        /// 遵循 WPF-UI 规范与 KeePass 原生 PwEntryForm.InitUserNameSuggestions 行为规范。
+        /// </summary>
+        public ObservableCollection<string> UserNameSuggestions { get; } = new ObservableCollection<string>();
+
         [ObservableProperty]
         private string _editPassword = string.Empty;
 
@@ -324,6 +330,19 @@ namespace FluentPass.ViewModels
             }
         }
 
+        /// <summary>
+        /// 刷新用户名自动建议候选列表。
+        /// </summary>
+        public void RefreshUserNameSuggestions()
+        {
+            UserNameSuggestions.Clear();
+            var suggestions = UserNameSuggestionService.GetSuggestions(_host?.Database);
+            foreach (var s in suggestions)
+            {
+                UserNameSuggestions.Add(s);
+            }
+        }
+
         public void RefreshLocalizedProperties()
         {
             if (string.IsNullOrWhiteSpace(Model.Strings.ReadSafe(PwDefs.TitleField)))
@@ -413,6 +432,8 @@ namespace FluentPass.ViewModels
                 ? Model.ExpiryTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm:ss")
                 : Loc.Get("Detail_ExpiryNever");
             UpdateExpiryWarning();
+
+            RefreshUserNameSuggestions();
 
             // TOTP 监控
             RestartOtpMonitoring();
@@ -788,6 +809,8 @@ namespace FluentPass.ViewModels
             {
                 customField.BeginEditDraft();
             }
+
+            RefreshUserNameSuggestions();
 
             IsEditPasswordRevealed = false;
             IsEditing = true;
