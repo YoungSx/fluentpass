@@ -353,15 +353,16 @@ namespace FluentPass.Tests
         }
 
         [Test]
-        public async Task ViewModel_UpToDate_ShowsStatusWithoutBadge()
+        public async Task ViewModel_UpToDate_HidesTitleBarButton()
         {
             var (vm, _) = CreateViewModel(UpdateService.CurrentVersion, Payload, hashMatches: true);
 
             await vm.RunCheckAsync(automatic: true);
 
-            // UpToDate 是可展示状态（Flyout 打开时显示「已是最新」），但不构成待办：无操作按钮。
-            Assert.That(vm.IsBarVisible, Is.True);
-            Assert.That(vm.HasActions, Is.False);
+            // 已是最新：titlebar 提醒按钮不出现，结论只在设置页摘要可见。
+            Assert.That(vm.IsBarVisible, Is.False);
+            Assert.That(vm.CanRestart, Is.False);
+            Assert.That(vm.CanOpenFolder, Is.False);
             Assert.That(vm.CheckStatusText, Is.Not.Empty);
         }
 

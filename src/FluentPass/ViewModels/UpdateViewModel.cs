@@ -74,22 +74,9 @@ namespace FluentPass.ViewModels
 
         public bool IsNotChecking => !IsChecking;
 
-        /// <summary>Flyout 里是否展示操作按钮组（重启 / 打开位置 / 忽略）；无待处理状态时收起。</summary>
-        public bool HasActions => CanRestart || CanOpenFolder || _phase == UpdatePhase.Failed;
-
         partial void OnIsCheckingChanged(bool value)
         {
             OnPropertyChanged(nameof(IsNotChecking));
-        }
-
-        partial void OnCanRestartChanged(bool value)
-        {
-            OnPropertyChanged(nameof(HasActions));
-        }
-
-        partial void OnCanOpenFolderChanged(bool value)
-        {
-            OnPropertyChanged(nameof(HasActions));
         }
 
         public UpdateViewModel(IPluginHost host)
@@ -165,8 +152,8 @@ namespace FluentPass.ViewModels
             {
                 case UpdateOutcome.UpToDate:
                     _phase = UpdatePhase.None;
-                    // UpToDate 也是可展示状态（Flyout 打开时显示「已是最新」），保留标题文案。
-                    IsBarVisible = true;
+                    // 已是最新：无提示信号，titlebar 按钮不出现；结论只在设置页摘要可见。
+                    IsBarVisible = false;
                     CanRestart = false;
                     CanOpenFolder = false;
                     CheckStatusText = Loc.Get("Update_UpToDateFormat", FormatVersion(UpdateService.CurrentVersion));
@@ -192,15 +179,14 @@ namespace FluentPass.ViewModels
                     _phase = UpdatePhase.Failed;
                     CanRestart = false;
                     CanOpenFolder = false;
-                    // 自动检查失败（离线、代理、限流）不打扰用户：titlebar 不亮小红点，
-                    // 失败详情仅手动点开 Flyout 或查看设置页摘要时可见。
+                    // 自动检查失败（离线、代理、限流）不打扰用户：titlebar 按钮不出现，
+                    // 失败详情只在设置页摘要可见；手动检查失败才在 titlebar 提示。
                     IsBarVisible = !automatic;
                     CheckStatusText = Loc.Get("Update_FailedFormat", result.Error ?? string.Empty);
                     break;
             }
 
             RefreshLocalizedText();
-            OnPropertyChanged(nameof(HasActions));
         }
 
         /// <summary>语言切换后重建提示文案；不改变状态机。</summary>
@@ -230,10 +216,8 @@ namespace FluentPass.ViewModels
                     break;
 
                 default:
-                    // None（含 UpToDate）：Flyout 打开时给一行结论，不空面板。
-                    BarTitle = string.IsNullOrEmpty(CheckStatusText)
-                        ? Loc.Get("Update_UpToDateFormat", current)
-                        : CheckStatusText;
+                    // None（含 UpToDate）：titlebar 按钮本就不出现，此处只为语言切换兜底。
+                    BarTitle = Loc.Get("Update_UpToDateFormat", current);
                     BarMessage = string.Empty;
                     break;
             }
@@ -255,6 +239,28 @@ namespace FluentPass.ViewModels
         private void OpenDownloadFolder()
         {
             var path = _downloadedPath;
+            if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
+
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = "/select,\"" + path + "\"",
+                    UseShellExecute = true
+                });
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// 人工替换引导：打开当前插件 DLL 所在目录（Program Files 下的 Plugins 目录），
+        /// 与 <see cref="OpenDownloadFolder"/> 一同使用——两个资源管理器窗口并排，复制粘贴即完成更新。
+        /// </summary>
+        [RelayCommand]
+        private void OpenPluginFolder()
+        {
+            var path = _service.TargetPath;
             if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
 
             try
