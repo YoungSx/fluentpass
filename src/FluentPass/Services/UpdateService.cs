@@ -112,13 +112,10 @@ namespace FluentPass.Services
                     {
                         return await action(client).ConfigureAwait(false);
                     }
-                    catch (Exception ex) when (linked.IsCancellationRequested)
+                    catch (Exception ex) when (linked.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
                     {
-                        if (cancellationToken.IsCancellationRequested)
-                        {
-                            throw new OperationCanceledException(cancellationToken);
-                        }
-
+                        // 仅本层超时触发取消（用户未取消）：统一翻译为超时，绝不泄漏
+                        // OperationCanceledException——那会被上层镜像回退误判为用户取消而直接放弃。
                         throw new TimeoutException("更新请求超时", ex);
                     }
                 }
