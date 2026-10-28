@@ -21,7 +21,6 @@
             <common:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
             <common:InverseBooleanConverter x:Key="InverseBooleanConverter" />
             <common:ExpiredToInfoBarSeverityConverter x:Key="ExpiredToInfoBarSeverityConverter" />
-            <common:UpdateBarSeverityConverter x:Key="UpdateBarSeverityConverter" />
 
             <Style x:Key="ActionIconButtonStyle" TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
                 <Setter Property="Appearance" Value="Transparent" />
@@ -86,8 +85,6 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <!-- 在线更新提示条（无更新时整行高度为 0，不占位） -->
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
@@ -154,6 +151,22 @@
                         <ui:SymbolIcon Symbol="WindowDevTools20" />
                     </ui:Button>
 
+                    <!-- 在线更新入口：ArrowSync 图标 + 待处理小红点（InfoBadge Attention），
+                         点击弹出 Flyout 状态面板（状态文案 + 立即重启 / 打开下载位置 / 忽略此版本） -->
+                    <ui:Button x:Name="UpdateButton"
+                               Style="{StaticResource ActionIconButtonStyle}"
+                               WindowChrome.IsHitTestVisibleInChrome="True"
+                               Click="OnUpdateButtonClick"
+                               ToolTip="{common:Loc TitleBar_Update_Tooltip}">
+                        <Grid>
+                            <ui:SymbolIcon Symbol="ArrowSync20" />
+                            <ui:InfoBadge x:Name="UpdateBadge"
+                                          Margin="12,-6,-8,0"
+                                          Severity="Attention"
+                                          Visibility="Collapsed" />
+                        </Grid>
+                    </ui:Button>
+
                     <!-- 主题切换下拉按钮 -->
                     <ui:DropDownButton Style="{StaticResource ActionIconButtonStyle}"
                                        WindowChrome.IsHitTestVisibleInChrome="True"
@@ -190,36 +203,46 @@
             </ui:TitleBar.TrailingContent>
         </ui:TitleBar>
 
-        <!-- 在线更新提示条：自动更新换装成功 / 需要管理员权限 / 手动检查失败 -->
-        <ui:InfoBar Grid.Row="1"
-                    Margin="10,8,10,0"
-                    IsClosable="False"
-                    IsOpen="{Binding Update.IsBarVisible, Mode=OneWay}"
-                    Visibility="{Binding Update.IsBarVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
-                    Severity="{Binding Update.BarSeverity, Converter={StaticResource UpdateBarSeverityConverter}}"
-                    Title="{Binding Update.BarTitle}"
-                    Message="{Binding Update.BarMessage}">
-            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                <ui:Button Appearance="Primary"
-                           Margin="0,0,8,0"
-                           Content="{common:Loc Update_Restart_Button}"
-                           Icon="{ui:SymbolIcon ArrowClockwise20}"
-                           Visibility="{Binding Update.CanRestart, Converter={StaticResource BooleanToVisibilityConverter}}"
-                           Command="{Binding Update.RestartCommand}" />
-                <ui:Button Appearance="Secondary"
-                           Margin="0,0,8,0"
-                           Content="{common:Loc Update_OpenFolder_Button}"
-                           Icon="{ui:SymbolIcon FolderOpen20}"
-                           Visibility="{Binding Update.CanOpenFolder, Converter={StaticResource BooleanToVisibilityConverter}}"
-                           Command="{Binding Update.OpenDownloadFolderCommand}" />
-                <ui:Button Appearance="Transparent"
-                           Content="{common:Loc Update_Dismiss_Button}"
-                           Command="{Binding Update.DismissCommand}" />
+        <!-- 在线更新 Flyout：点 titlebar 更新按钮弹出。简化面板——状态标题 + 正文 + 按需操作按钮；
+             无待处理状态时收起按钮组，仅显示状态文案（检查入口在设置页，遵循「再简化」决策） -->
+        <ui:Flyout x:Name="UpdateFlyout"
+                   Grid.Row="0"
+                   Placement="Bottom"
+                   HorizontalAlignment="Right"
+                   VerticalAlignment="Bottom">
+            <StackPanel MinWidth="280" MaxWidth="360" Margin="4">
+                <ui:TextBlock Text="{Binding Update.BarTitle, Mode=OneWay}"
+                              FontTypography="BodyStrong"
+                              TextWrapping="Wrap" />
+                <ui:TextBlock Text="{Binding Update.BarMessage, Mode=OneWay}"
+                              FontTypography="Body"
+                              Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                              TextWrapping="Wrap"
+                              Margin="0,4,0,0" />
+                <StackPanel Orientation="Horizontal"
+                            Margin="0,12,0,0"
+                            Visibility="{Binding Update.HasActions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <ui:Button Appearance="Primary"
+                               Margin="0,0,8,0"
+                               Content="{common:Loc Update_Restart_Button}"
+                               Icon="{ui:SymbolIcon ArrowClockwise20}"
+                               Visibility="{Binding Update.CanRestart, Converter={StaticResource BooleanToVisibilityConverter}}"
+                               Command="{Binding Update.RestartCommand}" />
+                    <ui:Button Appearance="Secondary"
+                               Margin="0,0,8,0"
+                               Content="{common:Loc Update_OpenFolder_Button}"
+                               Icon="{ui:SymbolIcon FolderOpen20}"
+                               Visibility="{Binding Update.CanOpenFolder, Converter={StaticResource BooleanToVisibilityConverter}}"
+                               Command="{Binding Update.OpenDownloadFolderCommand}" />
+                    <ui:Button Appearance="Transparent"
+                               Content="{common:Loc Update_Dismiss_Button}"
+                               Command="{Binding Update.DismissCommand}" />
+                </StackPanel>
             </StackPanel>
-        </ui:InfoBar>
+        </ui:Flyout>
 
         <!-- 主内容区域 -->
-        <Grid Grid.Row="2">
+        <Grid Grid.Row="1">
             <!-- 密码库工作区视图 (设置中心关闭时展示) -->
             <Grid Visibility="{Binding IsSettingsOpen, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
             <!-- 视图 1: 数据库已锁定 -->
@@ -1359,7 +1382,7 @@
         </Grid>
 
         <!-- 现代化 Fluent 底部状态栏 -->
-        <Border Grid.Row="3"
+        <Border Grid.Row="2"
                 Background="{DynamicResource SolidBackgroundFillColorSecondaryBrush}"
                 BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                 BorderThickness="0,1,0,0"

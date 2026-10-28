@@ -74,9 +74,22 @@ namespace FluentPass.ViewModels
 
         public bool IsNotChecking => !IsChecking;
 
+        /// <summary>Flyout 里是否展示操作按钮组（重启 / 打开位置 / 忽略）；无待处理状态时收起。</summary>
+        public bool HasActions => CanRestart || CanOpenFolder || _phase == UpdatePhase.Failed;
+
         partial void OnIsCheckingChanged(bool value)
         {
             OnPropertyChanged(nameof(IsNotChecking));
+        }
+
+        partial void OnCanRestartChanged(bool value)
+        {
+            OnPropertyChanged(nameof(HasActions));
+        }
+
+        partial void OnCanOpenFolderChanged(bool value)
+        {
+            OnPropertyChanged(nameof(HasActions));
         }
 
         public UpdateViewModel(IPluginHost host)
@@ -109,6 +122,9 @@ namespace FluentPass.ViewModels
             _isRunning = true;
             IsChecking = true;
             CheckStatusText = Loc.Get("Update_Checking");
+            // 检查中即点开 Flyout 也不能看到上一次的旧标题。
+            BarTitle = Loc.Get("Update_Checking");
+            BarMessage = string.Empty;
 
             try
             {
@@ -149,7 +165,8 @@ namespace FluentPass.ViewModels
             {
                 case UpdateOutcome.UpToDate:
                     _phase = UpdatePhase.None;
-                    IsBarVisible = false;
+                    // UpToDate 也是可展示状态（Flyout 打开时显示「已是最新」），保留标题文案。
+                    IsBarVisible = true;
                     CanRestart = false;
                     CanOpenFolder = false;
                     CheckStatusText = Loc.Get("Update_UpToDateFormat", FormatVersion(UpdateService.CurrentVersion));
@@ -175,13 +192,15 @@ namespace FluentPass.ViewModels
                     _phase = UpdatePhase.Failed;
                     CanRestart = false;
                     CanOpenFolder = false;
-                    // 自动检查失败（离线、代理、限流）不应打扰用户，只更新设置页摘要。
+                    // 自动检查失败（离线、代理、限流）不打扰用户：titlebar 不亮小红点，
+                    // 失败详情仅手动点开 Flyout 或查看设置页摘要时可见。
                     IsBarVisible = !automatic;
                     CheckStatusText = Loc.Get("Update_FailedFormat", result.Error ?? string.Empty);
                     break;
             }
 
             RefreshLocalizedText();
+            OnPropertyChanged(nameof(HasActions));
         }
 
         /// <summary>语言切换后重建提示文案；不改变状态机。</summary>
@@ -211,7 +230,10 @@ namespace FluentPass.ViewModels
                     break;
 
                 default:
-                    BarTitle = string.Empty;
+                    // None（含 UpToDate）：Flyout 打开时给一行结论，不空面板。
+                    BarTitle = string.IsNullOrEmpty(CheckStatusText)
+                        ? Loc.Get("Update_UpToDateFormat", current)
+                        : CheckStatusText;
                     BarMessage = string.Empty;
                     break;
             }
