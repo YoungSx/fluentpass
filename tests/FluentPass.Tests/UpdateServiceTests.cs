@@ -290,6 +290,11 @@ namespace FluentPass.Tests
         [Test]
         public void ApplyStagedUpdate_RollsBack_WhenStagedMoveFails()
         {
+            if (Environment.OSVersion.Platform != PlatformID.Win32NT)
+            {
+                Assert.Ignore("当前环境为非 Windows NT，文件独占锁无法阻止 File.Move");
+            }
+
             var staged = Path.Combine(_root, "staged.dll");
             File.WriteAllText(staged, PayloadText);
 
@@ -379,16 +384,52 @@ namespace FluentPass.Tests
         }
 
         [Test]
-        public async Task ViewModel_ManualFailure_ShowsBar()
+        public async Task ViewModel_CheckFailure_HidesBar_EvenWhenManual()
         {
             var (vm, _) = CreateViewModel(NextVersion(), Payload, hashMatches: true,
                 failure: new TimeoutException("offline"));
 
             await vm.RunCheckAsync(automatic: false);
 
-            Assert.That(vm.IsBarVisible, Is.True);
-            Assert.That(vm.BarSeverity, Is.EqualTo(UpdateBarSeverity.Error));
+            Assert.That(vm.IsBarVisible, Is.False, "检测更新失败绝不显示 TitleBar 图标");
+            Assert.That(vm.CanDownloadManually, Is.False);
             Assert.That(vm.CanRestart, Is.False);
+            Assert.That(vm.CheckStatusText, Does.Contain("offline"));
+        }
+
+        [Test]
+        public async Task ViewModel_DownloadFailure_ShowsBar_AndEnablesManualDownload()
+        {
+            var remote = NextVersion();
+            var (vm, _) = CreateViewModel(remote, Payload, hashMatches: false);
+
+            await vm.RunCheckAsync(automatic: true);
+
+            Assert.That(vm.IsBarVisible, Is.True, "下载失败应显示 TitleBar 图标");
+            Assert.That(vm.CanDownloadManually, Is.True, "下载失败应提供手动下载入口");
+            Assert.That(vm.CanRestart, Is.False);
+            Assert.That(vm.CanOpenFolder, Is.False);
+            Assert.That(vm.BarSeverity, Is.EqualTo(UpdateBarSeverity.Error));
+            Assert.That(vm.BarTitle, Does.Contain(remote.ToString(3)));
+            Assert.That(vm.CheckStatusText, Does.Contain(remote.ToString(3)));
+        }
+
+        [Test]
+        public async Task ViewModel_DismissOnDownloadFailure_HidesBar_AndRemembersVersion()
+        {
+            var host = new TestPluginHost();
+            var remote = NextVersion();
+            var (vm, _) = CreateViewModel(remote, Payload, hashMatches: false, host: host);
+
+            await vm.RunCheckAsync(automatic: true);
+            Assert.That(vm.IsBarVisible, Is.True);
+            Assert.That(vm.CanDownloadManually, Is.True);
+
+            vm.DismissCommand.Execute(null);
+
+            Assert.That(vm.IsBarVisible, Is.False);
+            Assert.That(vm.CanDownloadManually, Is.False);
+            Assert.That(SettingsService.GetSkippedUpdateVersion(host), Is.EqualTo(remote.ToString()));
         }
 
         [Test]

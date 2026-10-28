@@ -153,12 +153,13 @@
 
                     <!-- 在线更新提醒：仅在后台检测到新版本时出现（Installed / NotWritable），
                          本身即提示信号，无需常驻也无需红点；点击弹出 Flyout 引导完成更新 -->
-                    <ui:Button Style="{StaticResource ActionIconButtonStyle}"
+                    <ui:Button x:Name="UpdateButton"
+                               Style="{StaticResource ActionIconButtonStyle}"
                                WindowChrome.IsHitTestVisibleInChrome="True"
                                Click="OnUpdateButtonClick"
                                ToolTip="{common:Loc TitleBar_Update_Tooltip}"
                                Visibility="{Binding Update.IsBarVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <ui:SymbolIcon Symbol="ArrowSync20" />
+                        <ui:SymbolIcon Symbol="ArrowCircleUp20" />
                     </ui:Button>
 
                     <!-- 主题切换下拉按钮 -->
@@ -200,10 +201,7 @@
         <!-- 在线更新 Flyout：点 titlebar 更新按钮弹出。简化面板——状态标题 + 正文 + 按需操作按钮；
              无待处理状态时收起按钮组，仅显示状态文案（检查入口在设置页，遵循「再简化」决策） -->
         <ui:Flyout x:Name="UpdateFlyout"
-                   Grid.Row="0"
-                   Placement="Bottom"
-                   HorizontalAlignment="Right"
-                   VerticalAlignment="Bottom">
+                   Grid.Row="0">
             <StackPanel MinWidth="280" MaxWidth="360" Margin="4">
                 <ui:TextBlock Text="{Binding Update.BarTitle, Mode=OneWay}"
                               FontTypography="BodyStrong"
@@ -221,6 +219,19 @@
                                Content="{common:Loc Update_Restart_Button}"
                                Icon="{ui:SymbolIcon ArrowClockwise20}"
                                Command="{Binding Update.RestartCommand}" />
+                    <ui:Button Appearance="Transparent"
+                               Content="{common:Loc Update_Dismiss_Button}"
+                               Command="{Binding Update.DismissCommand}" />
+                </StackPanel>
+                <!-- 下载失败：提供前往发布页面手动下载更新的链接及忽略按钮 -->
+                <StackPanel Orientation="Horizontal"
+                            Margin="0,12,0,0"
+                            Visibility="{Binding Update.CanDownloadManually, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <ui:Button Appearance="Primary"
+                               Margin="0,0,8,0"
+                               Content="{common:Loc Update_ManualDownload_Button}"
+                               Icon="{ui:SymbolIcon ArrowDownload20}"
+                               Command="{Binding Update.OpenManualDownloadCommand}" />
                     <ui:Button Appearance="Transparent"
                                Content="{common:Loc Update_Dismiss_Button}"
                                Command="{Binding Update.DismissCommand}" />
