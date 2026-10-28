@@ -14,9 +14,12 @@ namespace FluentPass.Services
     /// 只对网络层失败回退：HTTP 404/403 是官方给出的确定性答复，镜像代理的是同一份内容，
     /// 重试只会放大延迟并掩盖真实错误。
     ///
-    /// 每次尝试都有独立预算（<see cref="PerAttemptTimeoutMs"/>），由本层持有而非内层传输：
-    /// 重试策略属于本层，超时预算自然也该由本层裁定。官方 CDN 慢到超预算时即改走镜像，
-    /// 这正是「官方可达但下载龟速」场景的解法。
+    /// 每次尝试都有独立预算，由本层持有而非内层传输：重试策略属于本层，超时预算自然也该
+    /// 由本层裁定。官方 CDN 慢到超预算时即改走镜像，这正是「官方可达但下载龟速」场景的解法。
+    /// 元数据（version.txt / SHA256SUMS.txt，字节量极小）与载荷（FluentPass.dll，MB 级）
+    /// 使用不同预算：前者 <see cref="DefaultPerAttemptTimeoutMs"/>，后者
+    /// <see cref="DefaultPayloadTimeoutMs"/>——镜像上 3.4 MB 实测需近 30s，若与元数据共用
+    /// 20s 预算，可用镜像也会被预算杀死，全部候选耗尽后更新必然失败。
     ///
     /// 粘滞策略：某个镜像一旦取数成功，同一实例的后续请求先走该镜像，避免每个请求都重新
     /// 等一轮官方超时。常见情形（GitHub 可达、Release 资产 CDN 缓慢）下 version.txt 与
@@ -30,21 +33,27 @@ namespace FluentPass.Services
     /// </summary>
     public sealed class MirrorAwareTransport : IUpdateTransport
     {
-        /// <summary>单次尝试的默认预算（毫秒）。</summary>
+        /// <summary>元数据（version.txt / SHA256SUMS.txt）单次尝试的默认预算（毫秒）。</summary>
         public const int DefaultPerAttemptTimeoutMs = 20000;
+
+        /// <summary>载荷（FluentPass.dll，MB 级）单次尝试的默认预算（毫秒）。</summary>
+        public const int DefaultPayloadTimeoutMs = 120000;
 
         private readonly IUpdateTransport _inner;
         private readonly IReadOnlyList<string> _mirrorPrefixes;
         private readonly int _perAttemptTimeoutMs;
+        private readonly int _payloadTimeoutMs;
 
         public MirrorAwareTransport(
             IUpdateTransport inner,
             IReadOnlyList<string>? mirrorPrefixes = null,
-            int perAttemptTimeoutMs = DefaultPerAttemptTimeoutMs)
+            int perAttemptTimeoutMs = DefaultPerAttemptTimeoutMs,
+            int payloadTimeoutMs = DefaultPayloadTimeoutMs)
         {
             _inner = inner ?? throw new ArgumentNullException(nameof(inner));
             _mirrorPrefixes = mirrorPrefixes ?? Array.Empty<string>();
             _perAttemptTimeoutMs = perAttemptTimeoutMs > 0 ? perAttemptTimeoutMs : DefaultPerAttemptTimeoutMs;
+            _payloadTimeoutMs = payloadTimeoutMs > 0 ? payloadTimeoutMs : DefaultPayloadTimeoutMs;
         }
 
         /// <summary>最近一次取数成功的镜像前缀；同一实例的后续请求优先复用它。</summary>
@@ -53,25 +62,30 @@ namespace FluentPass.Services
         public Task<string> DownloadStringAsync(string url, CancellationToken cancellationToken)
         {
             return ExecuteAsync((candidate, token) => _inner.DownloadStringAsync(candidate, token),
-                url, cancellationToken);
+                url, cancellationToken, _perAttemptTimeoutMs);
         }
 
         public Task<byte[]> DownloadBytesAsync(string url, CancellationToken cancellationToken)
         {
             return ExecuteAsync((candidate, token) => _inner.DownloadBytesAsync(candidate, token),
-                url, cancellationToken);
+                url, cancellationToken, _payloadTimeoutMs);
         }
 
         private async Task<T> ExecuteAsync<T>(
-            Func<string, CancellationToken, Task<T>> fetch, string url, CancellationToken cancellationToken)
+            Func<string, CancellationToken, Task<T>> fetch, string url, CancellationToken cancellationToken,
+            int perAttemptTimeoutMs)
         {
             Exception? firstError = null;
 
             foreach (var candidate in BuildCandidates(url))
             {
+                // 用户取消后不再开启新候选：否则 WebException 形态的取消会绕过上面的
+                // OperationCanceledException 过滤器，把后续镜像也拖进一轮无谓重试。
+                cancellationToken.ThrowIfCancellationRequested();
+
                 using (var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
                 {
-                    attempt.CancelAfter(_perAttemptTimeoutMs);
+                    attempt.CancelAfter(perAttemptTimeoutMs);
 
                     try
                     {
@@ -84,13 +98,16 @@ namespace FluentPass.Services
 
                         return value;
                     }
-                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                    {
-                        // 用户取消（关闭窗口 / 释放视图模型）必须原样上抛，绝不改道重试。
-                        throw;
-                    }
                     catch (Exception ex)
                     {
+                        if (cancellationToken.IsCancellationRequested)
+                        {
+                            // 用户取消（关闭窗口 / 释放视图模型）必须原样上抛，绝不改道重试。
+                            // 注意 .NET Framework 的 WebClient 取消路径抛的是 WebException(RequestCanceled)
+                            // 而非 OperationCanceledException，不能只按异常类型识别取消。
+                            throw;
+                        }
+
                         if (candidate.MirrorPrefix == null && !IsRetryable(ex, attempt))
                         {
                             // 官方给出的确定性答复（如 404）不是网络问题，换镜像也拿不到别的东西。
@@ -147,8 +164,9 @@ namespace FluentPass.Services
 
         /// <summary>
         /// 是否值得换源重试。本层预算耗尽（<paramref name="attempt"/> 已取消但用户未取消）
-        /// 与「根本没拿到答复」都算；<c>ProtocolError</c>（HTTP 4xx/5xx）是服务器明确表态，
-        /// 镜像代理同一份内容，重试没有意义。
+        /// 与「根本没拿到答复」都算——前者以 <see cref="WebExceptionStatus.RequestCanceled"/>
+        /// 形态浮出（内层 <c>CancelAsync</c> 触发），后者如 DNS / 连接 / TLS 失败；
+        /// <c>ProtocolError</c>（HTTP 4xx/5xx）是服务器明确表态，镜像代理同一份内容，重试没有意义。
         /// </summary>
         private static bool IsRetryable(Exception ex, CancellationTokenSource attempt)
         {
@@ -172,6 +190,7 @@ namespace FluentPass.Services
                     case WebExceptionStatus.SendFailure:
                     case WebExceptionStatus.Timeout:
                     case WebExceptionStatus.SecureChannelFailure:
+                    case WebExceptionStatus.RequestCanceled:
                         return true;
                     default:
                         return false;

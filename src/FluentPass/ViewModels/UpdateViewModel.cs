@@ -81,7 +81,11 @@ namespace FluentPass.ViewModels
 
         public UpdateViewModel(IPluginHost host)
             : this(host, new UpdateService(
-                new MirrorAwareTransport(new WebClientUpdateTransport(), UpdateService.MirrorPrefixes),
+                // 预算归 MirrorAwareTransport 裁定（元数据 20s / 载荷 120s），内层只留同额兜底，
+                // 避免内层 30s 默认值抢先把载荷下载杀死。
+                new MirrorAwareTransport(
+                    new WebClientUpdateTransport(MirrorAwareTransport.DefaultPayloadTimeoutMs),
+                    UpdateService.MirrorPrefixes),
                 typeof(UpdateService).Assembly.Location))
         {
         }
