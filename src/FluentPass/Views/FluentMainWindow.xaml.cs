@@ -80,6 +80,10 @@ namespace FluentPass.Views
             // 监听顶层输入，节流通知 KeePass 原生闲置计时器
             PreviewMouseDown += OnUserActivityOccurred;
             PreviewKeyDown += OnUserActivityOccurred;
+            PreviewMouseWheel += OnUserActivityOccurred;
+
+            // 监听全局滚动事件：当主窗口中任意 ScrollViewer 发生滚动时，若用户名建议列表处于展开状态，立即收起
+            AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler(OnAnyScrollViewerScrollChanged));
 
             _viewModel.QuickAccessRequested += OnQuickAccessRequested;
             _viewModel.Update.RestartRequested += OnUpdateRestartRequested;
@@ -260,6 +264,20 @@ namespace FluentPass.Views
         private void OnUserActivityOccurred(object sender, RoutedEventArgs e)
         {
             _idleThrottle.RecordActivity();
+
+            if (e is MouseWheelEventArgs)
+            {
+                // 当在主窗口外部区域（如页面空白处）滚动滚轮时，若建议列表处于展开状态，立即收起建议列表，防止弹出层悬空脱离输入框
+                CloseUserNameSuggestions();
+            }
+            else if (e is MouseButtonEventArgs mb && mb.ButtonState == MouseButtonState.Pressed)
+            {
+                // 当在主窗口外部空白处点击时，若建议列表处于展开状态且点击不在输入框内，立即收起
+                if (EditUserNameBox != null && EditUserNameBox.IsSuggestionListOpen && !EditUserNameBox.IsMouseOver)
+                {
+                    CloseUserNameSuggestions();
+                }
+            }
         }
 
         private void OnTreeViewSelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
@@ -327,6 +345,35 @@ namespace FluentPass.Views
             {
                 box.SetCurrentValue(AutoSuggestBox.IsSuggestionListOpenProperty, true);
                 e.Handled = true;
+            }
+        }
+
+        private void OnAnyScrollViewerScrollChanged(object sender, ScrollChangedEventArgs e)
+        {
+            if (Math.Abs(e.VerticalChange) > 0.001 || Math.Abs(e.HorizontalChange) > 0.001)
+            {
+                CloseUserNameSuggestions();
+            }
+        }
+
+        private void OnDetailScrollViewerScrollChanged(object sender, ScrollChangedEventArgs e)
+        {
+            if (Math.Abs(e.VerticalChange) > 0.001 || Math.Abs(e.HorizontalChange) > 0.001)
+            {
+                CloseUserNameSuggestions();
+            }
+        }
+
+        private void OnDetailScrollViewerPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            CloseUserNameSuggestions();
+        }
+
+        private void CloseUserNameSuggestions()
+        {
+            if (EditUserNameBox != null && EditUserNameBox.IsSuggestionListOpen)
+            {
+                EditUserNameBox.SetCurrentValue(AutoSuggestBox.IsSuggestionListOpenProperty, false);
             }
         }
 
