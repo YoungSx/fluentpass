@@ -151,20 +151,14 @@
                         <ui:SymbolIcon Symbol="WindowDevTools20" />
                     </ui:Button>
 
-                    <!-- 在线更新入口：ArrowSync 图标 + 待处理小红点（InfoBadge Attention），
-                         点击弹出 Flyout 状态面板（状态文案 + 立即重启 / 打开下载位置 / 忽略此版本） -->
-                    <ui:Button x:Name="UpdateButton"
-                               Style="{StaticResource ActionIconButtonStyle}"
+                    <!-- 在线更新提醒：仅在后台检测到新版本时出现（Installed / NotWritable），
+                         本身即提示信号，无需常驻也无需红点；点击弹出 Flyout 引导完成更新 -->
+                    <ui:Button Style="{StaticResource ActionIconButtonStyle}"
                                WindowChrome.IsHitTestVisibleInChrome="True"
                                Click="OnUpdateButtonClick"
-                               ToolTip="{common:Loc TitleBar_Update_Tooltip}">
-                        <Grid>
-                            <ui:SymbolIcon Symbol="ArrowSync20" />
-                            <ui:InfoBadge x:Name="UpdateBadge"
-                                          Margin="12,-6,-8,0"
-                                          Severity="Attention"
-                                          Visibility="Collapsed" />
-                        </Grid>
+                               ToolTip="{common:Loc TitleBar_Update_Tooltip}"
+                               Visibility="{Binding Update.IsBarVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <ui:SymbolIcon Symbol="ArrowSync20" />
                     </ui:Button>
 
                     <!-- 主题切换下拉按钮 -->
@@ -221,20 +215,36 @@
                               Margin="0,4,0,0" />
                 <StackPanel Orientation="Horizontal"
                             Margin="0,12,0,0"
-                            Visibility="{Binding Update.HasActions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            Visibility="{Binding Update.CanRestart, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <ui:Button Appearance="Primary"
                                Margin="0,0,8,0"
                                Content="{common:Loc Update_Restart_Button}"
                                Icon="{ui:SymbolIcon ArrowClockwise20}"
-                               Visibility="{Binding Update.CanRestart, Converter={StaticResource BooleanToVisibilityConverter}}"
                                Command="{Binding Update.RestartCommand}" />
-                    <ui:Button Appearance="Secondary"
-                               Margin="0,0,8,0"
-                               Content="{common:Loc Update_OpenFolder_Button}"
-                               Icon="{ui:SymbolIcon FolderOpen20}"
-                               Visibility="{Binding Update.CanOpenFolder, Converter={StaticResource BooleanToVisibilityConverter}}"
-                               Command="{Binding Update.OpenDownloadFolderCommand}" />
                     <ui:Button Appearance="Transparent"
+                               Content="{common:Loc Update_Dismiss_Button}"
+                               Command="{Binding Update.DismissCommand}" />
+                </StackPanel>
+                <!-- 需人工替换：一键打开两个目录（下载位置 + 插件目录），引导复制粘贴完成更新 -->
+                <StackPanel Margin="0,12,0,0"
+                            Visibility="{Binding Update.CanOpenFolder, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <ui:TextBlock Text="{common:Loc Update_Manual_Steps}"
+                                  FontTypography="Caption"
+                                  Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                  TextWrapping="Wrap" />
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <ui:Button Appearance="Primary"
+                                   Margin="0,0,8,0"
+                                   Content="{common:Loc Update_OpenDownload_Button}"
+                                   Icon="{ui:SymbolIcon FolderOpen20}"
+                                   Command="{Binding Update.OpenDownloadFolderCommand}" />
+                        <ui:Button Appearance="Secondary"
+                                   Content="{common:Loc Update_OpenPluginDir_Button}"
+                                   Icon="{ui:SymbolIcon FolderOpen20}"
+                                   Command="{Binding Update.OpenPluginFolderCommand}" />
+                    </StackPanel>
+                    <ui:Button Appearance="Transparent"
+                               Margin="0,8,0,0"
                                Content="{common:Loc Update_Dismiss_Button}"
                                Command="{Binding Update.DismissCommand}" />
                 </StackPanel>

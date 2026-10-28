@@ -83,31 +83,17 @@ namespace FluentPass.Views
 
             _viewModel.QuickAccessRequested += OnQuickAccessRequested;
             _viewModel.Update.RestartRequested += OnUpdateRestartRequested;
-            _viewModel.Update.PropertyChanged += OnUpdateViewModelPropertyChanged;
 
             Loaded += OnWindowLoaded;
         }
 
         private QuickAccessWindow? _quickAccessWindow;
 
-        /// <summary>titlebar 更新按钮：弹出（或收起）更新状态 Flyout。</summary>
+        /// <summary>titlebar 更新提醒按钮：弹出（或收起）更新 Flyout。</summary>
         private void OnUpdateButtonClick(object sender, RoutedEventArgs e)
         {
             if (UpdateFlyout == null) return;
             UpdateFlyout.IsOpen = !UpdateFlyout.IsOpen;
-        }
-
-        /// <summary>
-        /// 小红点可见性：有待处理状态（新版本已就绪 / 需要人工安装 / 手动检查失败）时亮起。
-        /// 自动检查失败与已是最新不亮——前者不打扰用户，后者没有待办。
-        /// </summary>
-        private void OnUpdateViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName != nameof(UpdateViewModel.IsBarVisible) || UpdateBadge == null) return;
-
-            UpdateBadge.Visibility = _viewModel.Update.IsBarVisible
-                ? Visibility.Visible
-                : Visibility.Collapsed;
         }
 
         private void OnQuickAccessRequested(object? sender, EventArgs e)
@@ -705,7 +691,6 @@ namespace FluentPass.Views
         protected override void OnClosed(EventArgs e)
         {
             _viewModel.Update.RestartRequested -= OnUpdateRestartRequested;
-            _viewModel.Update.PropertyChanged -= OnUpdateViewModelPropertyChanged;
             CleanupThemeWatcher();
             base.OnClosed(e);
         }
