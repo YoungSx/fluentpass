@@ -72,6 +72,39 @@ namespace FluentPass.Tests
         }
 
         [Test]
+        public void SettingsService_ReadAndWrite_AutoCheckUpdates()
+        {
+            Assert.That(SettingsService.GetAutoCheckUpdates(_host), Is.True);
+            Assert.That(SettingsService.GetAutoCheckUpdates(null), Is.True);
+
+            SettingsService.SetAutoCheckUpdates(_host, false);
+            Assert.That(SettingsService.GetAutoCheckUpdates(_host), Is.False);
+
+            SettingsService.SetAutoCheckUpdates(_host, true);
+            Assert.That(SettingsService.GetAutoCheckUpdates(_host), Is.True);
+        }
+
+        [Test]
+        public void SettingsService_ReadAndWrite_SkippedUpdateVersion()
+        {
+            Assert.That(SettingsService.GetSkippedUpdateVersion(_host), Is.Empty);
+            Assert.That(SettingsService.GetSkippedUpdateVersion(null), Is.Empty);
+
+            SettingsService.SetSkippedUpdateVersion(_host, "1.6.0.0");
+            Assert.That(SettingsService.GetSkippedUpdateVersion(_host), Is.EqualTo("1.6.0.0"));
+
+            SettingsService.SetSkippedUpdateVersion(_host, null);
+            Assert.That(SettingsService.GetSkippedUpdateVersion(_host), Is.Empty);
+        }
+
+        [Test]
+        public void SettingsService_CorruptedAutoCheckUpdates_FallsBackToEnabled()
+        {
+            _host.CustomConfig.SetString(SettingsService.AutoCheckUpdatesKey, "not_a_bool");
+            Assert.That(SettingsService.GetAutoCheckUpdates(_host), Is.True);
+        }
+
+        [Test]
         public void SettingsService_ReadAndWrite_AutoMaskSeconds()
         {
             SettingsService.SetAutoMaskSeconds(_host, 15);
@@ -114,7 +147,11 @@ namespace FluentPass.Tests
             Assert.That(vm.AutoMaskSeconds, Is.EqualTo(45));
             Assert.That(SettingsService.GetAutoMaskSeconds(_host), Is.EqualTo(45));
 
-            // 5. Close Command
+            // 5. Toggle AutoCheckUpdates（在线更新分组）
+            vm.AutoCheckUpdates = false;
+            Assert.That(SettingsService.GetAutoCheckUpdates(_host), Is.False);
+
+            // 6. Close Command
             vm.CloseSettingsCommand.Execute(null);
             Assert.That(closed, Is.True);
         }
@@ -162,6 +199,7 @@ namespace FluentPass.Tests
             vm.CloseActionIndex = (int)WindowCloseAction.ExitKeePass;
             vm.SelectedTheme = "Dark";
             vm.AutoMaskSecondsValue = 5;
+            vm.AutoCheckUpdates = false;
 
             vm.ResetSettingsCommand.Execute(null);
 
@@ -169,6 +207,7 @@ namespace FluentPass.Tests
             Assert.That(vm.CloseActionIndex, Is.EqualTo((int)WindowCloseAction.RestoreOriginalWindow));
             Assert.That(vm.SelectedTheme, Is.EqualTo("System"));
             Assert.That(vm.AutoMaskSeconds, Is.EqualTo(10));
+            Assert.That(vm.AutoCheckUpdates, Is.True);
         }
     }
 }

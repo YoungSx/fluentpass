@@ -45,19 +45,29 @@ namespace FluentPass.ViewModels
         [ObservableProperty]
         private string _versionDisplay = "1.0.0";
 
+        /// <summary>启动时后台检查更新（默认开启，可在设置中心关闭）。</summary>
+        [ObservableProperty]
+        private bool _autoCheckUpdates;
+
+        /// <summary>在线更新状态机（共享实例，由 <see cref="MainViewModel"/> 持有）。</summary>
+        public UpdateViewModel? Update { get; }
+
         public string VersionInfoSummary => Loc.Get("Settings_VersionFormat", VersionDisplay);
 
-        public SettingsViewModel(IPluginHost? host, Action? onCloseSettings = null, Action<string>? onThemeChanged = null)
+        public SettingsViewModel(IPluginHost? host, Action? onCloseSettings = null,
+            Action<string>? onThemeChanged = null, UpdateViewModel? update = null)
         {
             _host = host;
             _onCloseSettings = onCloseSettings;
             _onThemeChanged = onThemeChanged;
+            Update = update;
 
             _autoTakeoverUI = SettingsService.GetAutoTakeoverUI(_host);
             _closeActionIndex = (int)SettingsService.GetCloseAction(_host);
             _selectedTheme = SettingsService.GetAppTheme(_host);
             _selectedLanguage = SettingsService.GetLanguage(_host);
             _autoMaskSecondsValue = SettingsService.GetAutoMaskSeconds(_host);
+            _autoCheckUpdates = SettingsService.GetAutoCheckUpdates(_host);
 
             try
             {
@@ -101,6 +111,12 @@ namespace FluentPass.ViewModels
             SettingsService.SetLanguage(_host, value);
             Loc.Instance.SetLanguagePreference(value);
             OnPropertyChanged(nameof(VersionInfoSummary));
+            Update?.RefreshLocalizedText();
+        }
+
+        partial void OnAutoCheckUpdatesChanged(bool value)
+        {
+            SettingsService.SetAutoCheckUpdates(_host, value);
         }
 
         partial void OnAutoMaskSecondsValueChanged(double value)
@@ -141,6 +157,7 @@ namespace FluentPass.ViewModels
             SelectedTheme = SettingsService.DefaultAppTheme;
             SelectedLanguage = SettingsService.DefaultLanguage;
             AutoMaskSecondsValue = SettingsService.DefaultAutoMaskSeconds;
+            AutoCheckUpdates = SettingsService.DefaultAutoCheckUpdates;
         }
     }
 }

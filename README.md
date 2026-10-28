@@ -64,6 +64,7 @@
 - **毫秒级模糊搜索**：支持在标题、用户名、网址、备注等字段中即时过滤目标条目。
 - **行内就地快速编辑**：直接在右侧卡片修改凭据信息并按 `Ctrl+S` 即时保存，亦可一键唤起 KeePass 原版完整编辑面板。
 - **内置官方强密码生成器**：随时在编辑时呼出官方 `PwGeneratorForm`，一键生成高强度复杂随机密码。
+- **在线更新与一键生效**：启动后台静默检查新版本，SHA256 校验通过后进程内换装，点一下即可重启 KeePass 生效；插件目录不可写时自动降级为人工替换引导。
 
 ---
 
@@ -128,7 +129,9 @@ irm https://raw.githubusercontent.com/YoungSx/fluentpass/main/scripts/install.ps
 <details>
 <summary><strong>Q: Fluent Pass 会访问互联网或上传我的密码吗？</strong></summary>
 
-**A: 绝对不会。** Fluent Pass 是一个 100% 离线运行的开源 KeePass 插件，项目中没有任何网络请求代码、遥测上报或埋点分析。所有加解密与读写均直接在你的本地计算机内由 KeePass 官方库完成。
+**A: 不会上传任何数据。** Fluent Pass 的全部加解密与读写均在你的本地计算机内由 KeePass 官方库完成，项目中没有任何遥测上报、埋点分析或账号体系。
+
+唯一的对外网络行为是**在线更新检查**（默认开启，可在「设置 → 在线更新」中关闭）：它只向 GitHub Releases 发起三次匿名 HTTPS **只读 GET**（`version.txt` → `SHA256SUMS.txt` → `FluentPass.dll`），请求头仅携带插件版本号，**绝不上传**你的凭据、数据库内容或任何可识别身份的信息。除此之外插件不发起任何网络请求。
 </details>
 
 <details>
@@ -149,6 +152,18 @@ irm https://raw.githubusercontent.com/YoungSx/fluentpass/main/scripts/install.ps
 <summary><strong>Q: 如何彻底卸载 Fluent Pass？</strong></summary>
 
 **A: 极简绿色。** 只需退出 KeePass，然后在 KeePass 的 `Plugins` 目录下删除 `FluentPass.dll` 即可，不会对你的系统注册表或数据库产生任何残留。
+</details>
+
+<details>
+<summary><strong>Q: 插件如何自动更新？会不会装到一半把插件弄坏？</strong></summary>
+
+**A: 全自动且可回滚。** 主视窗首次显示后会在后台静默检查新版本（同一版本只提醒一次，可「忽略此版本」）：
+
+1. **先校验，后落盘**：下载的 `FluentPass.dll` 会与官方 `SHA256SUMS.txt` 逐字节比对，**校验不通过绝不替换**任何文件；
+2. **固定换装顺序**：旧 DLL 改名为 `.old` → 新 DLL 就位 → 任一步失败立即回滚，`.old` 备份由下次启动自动清理；
+3. **一键重启生效**：点击提示条上的「重启并更新」，插件会走 KeePass 原生退出管线重启宿主（脏库仍会正常弹出保存确认，取消则整个退出被撤销），新版本随即生效。
+
+若插件目录不可写（例如 KeePass 装在 `C:\Program Files` 且未提权），插件**不会**强行改动现有 DLL，而是降级提示「打开下载目录」，由你手动替换。
 </details>
 
 ---

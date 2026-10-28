@@ -29,7 +29,8 @@ namespace FluentPass
         // 规范见 https://keepass.info/help/v2_dev/plg_index.html）。
         // version.txt 由 Release 流水线随每次发版生成并作为 Release 资产发布，
         // releases/latest/download 恒定 302 到最新稳定版的同名资产（草稿与预发布自动排除）。
-        public override string UpdateUrl => "https://github.com/YoungSx/fluentpass/releases/latest/download/version.txt";
+        // 地址单一来源在 UpdateService（const 编译期内联，不引入运行时类型依赖）。
+        public override string UpdateUrl => Services.UpdateService.VersionFileUrl;
 
         /// <summary>
         /// KeePass 规范的小图标（严格要求 16x16 像素，用于插件管理器与菜单项）

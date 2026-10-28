@@ -133,6 +133,9 @@ namespace FluentPass.ViewModels
 
         public SettingsViewModel Settings { get; }
 
+        /// <summary>在线更新状态机（后台检查、下载校验、换装提示、重启入口）。</summary>
+        public UpdateViewModel Update { get; }
+
         [ObservableProperty]
         private GroupItemViewModel? _selectedGroup;
 
@@ -160,7 +163,9 @@ namespace FluentPass.ViewModels
 
             AutoType = new AutoTypeService(_host);
 
-            Settings = new SettingsViewModel(_host, () => IsSettingsOpen = false, theme => SwitchTheme(theme));
+            Update = new UpdateViewModel(_host);
+
+            Settings = new SettingsViewModel(_host, () => IsSettingsOpen = false, theme => SwitchTheme(theme), Update);
             Settings.IsSettingsOpen = IsSettingsOpen;
 
             _searchDebounceTimer = new DispatcherTimer
@@ -183,6 +188,18 @@ namespace FluentPass.ViewModels
             RefreshDatabaseState();
             OnPropertyChanged(nameof(EntriesSummaryText));
             CurrentDetail?.RefreshLocalizedProperties();
+            Update.RefreshLocalizedText();
+        }
+
+        /// <summary>
+        /// 主窗口首次显示后触发一次后台更新检查（设置里可关闭）。
+        /// 全程异步，不阻塞启动；失败静默（离线场景不打扰用户）。
+        /// </summary>
+        public void StartBackgroundUpdateCheck()
+        {
+            if (_isDisposed || !SettingsService.GetAutoCheckUpdates(_host)) return;
+
+            _ = Update.RunCheckAsync(automatic: true);
         }
 
         public void AttachWindow(Window window)
@@ -636,6 +653,7 @@ namespace FluentPass.ViewModels
         {
             _isDisposed = true;
             Loc.Instance.LanguageChanged -= OnLocLanguageChanged;
+            Update.Dispose();
             ClearData();
         }
 
