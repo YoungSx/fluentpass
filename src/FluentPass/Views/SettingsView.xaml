@@ -118,7 +118,40 @@
                 </ui:CardControl>
             </StackPanel>
 
-            <!-- 分组 4: 关于与重置 -->
+            <!-- 分组 4: 在线更新 -->
+            <ui:TextBlock Text="{common:Loc Settings_Section_Update}" FontTypography="Subtitle" Margin="0,0,0,8" />
+            <StackPanel Margin="0,0,0,24">
+                <ui:CardControl Margin="0,0,0,6" Icon="{ui:SymbolIcon ArrowSync24}">
+                    <ui:CardControl.Header>
+                        <StackPanel>
+                            <ui:TextBlock Text="{common:Loc Update_Settings_Title}" FontTypography="BodyStrong" />
+                            <ui:TextBlock Text="{common:Loc Update_Settings_Description}"
+                                          FontTypography="Caption"
+                                          TextWrapping="Wrap"
+                                          Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                    </ui:CardControl.Header>
+                    <ui:ToggleSwitch IsChecked="{Binding AutoCheckUpdates, Mode=TwoWay}" />
+                </ui:CardControl>
+
+                <ui:CardControl Margin="0,0,0,6" Icon="{ui:SymbolIcon ArrowDownload24}">
+                    <ui:CardControl.Header>
+                        <StackPanel>
+                            <ui:TextBlock Text="{common:Loc Update_CheckNow_Title}" FontTypography="BodyStrong" />
+                            <ui:TextBlock Text="{Binding Update.CheckStatusText}"
+                                          FontTypography="Caption"
+                                          TextWrapping="Wrap"
+                                          Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                    </ui:CardControl.Header>
+                    <ui:Button Appearance="Secondary"
+                               Content="{common:Loc Update_CheckNow_Button}"
+                               IsEnabled="{Binding Update.IsNotChecking}"
+                               Command="{Binding Update.CheckNowCommand}" />
+                </ui:CardControl>
+            </StackPanel>
+
+            <!-- 分组 5: 关于与重置 -->
             <ui:TextBlock Text="{common:Loc Settings_Section_About}" FontTypography="Subtitle" Margin="0,0,0,8" />
             <StackPanel Margin="0,0,0,24">
                 <ui:CardAction Margin="0,0,0,6"

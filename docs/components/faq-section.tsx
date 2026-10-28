@@ -4,7 +4,7 @@ export default function FAQSection() {
   const faqs = [
     {
       q: "FluentPass 会联网上传或泄露我的密码吗？",
-      a: "绝对不会。FluentPass 是一款 100% 离线运行的开源 KeePass 插件，工程内没有任何网络库、遥测分析、日志上报或第三方统计。所有数据读写全部由本地 KeePassLib 官方安全组件完成。",
+      a: "不会上传任何数据。FluentPass 的全部加解密与读写均由本地 KeePassLib 官方安全组件完成，工程内没有遥测分析、日志上报或第三方统计。唯一的对外网络行为是在线更新检查（默认开启，可在设置中关闭）：它只向 GitHub Releases 发起三次匿名 HTTPS 只读 GET（version.txt → SHA256SUMS.txt → FluentPass.dll），请求头仅携带插件版本号，绝不上传凭据、数据库内容或任何可识别身份的信息。",
     },
     {
       q: "我的数据库文件会损坏或丢失数据吗？",
@@ -21,6 +21,10 @@ export default function FAQSection() {
     {
       q: "如何彻底卸载 FluentPass？",
       a: "纯绿色单文件。退出 KeePass 后，直接前往 Plugins 目录删除 FluentPass.dll 文件即可，不修改注册表，不遗留任何系统残留文件。",
+    },
+    {
+      q: "插件如何自动更新？会不会装到一半把插件弄坏？",
+      a: "全自动且可回滚。主视窗首次显示后会在后台静默检查新版本（同一版本只提醒一次，可「忽略此版本」）：下载的 FluentPass.dll 先与官方 SHA256SUMS.txt 逐字节比对，校验不通过绝不替换任何文件；换装顺序固定为「旧 DLL 改名 .old → 新 DLL 就位 → 任一步失败立即回滚」，.old 备份由下次启动自动清理；点击提示条上的「重启并更新」即走 KeePass 原生退出管线重启宿主生效（脏库仍会正常弹出保存确认）。若插件目录不可写，插件不会强行改动现有 DLL，而是降级提示「打开下载目录」由你手动替换。",
     },
   ];
 

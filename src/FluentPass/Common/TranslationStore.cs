@@ -10,7 +10,7 @@ namespace FluentPass.Common
     /// </summary>
     public static class TranslationStore
     {
-        // Simplified Chinese (zh-CN) - 303 keys
+        // Simplified Chinese (zh-CN) - 291 keys
         private static readonly Dictionary<string, string> ZhStrings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["App_Title"] = "Fluent Pass",
@@ -286,9 +286,27 @@ namespace FluentPass.Common
             ["Status_EntryDuplicatedFormat"] = "已复制条目“{0}”",
             ["Status_EntryRestoredFormat"] = "已还原到“{0}”",
             ["TitleBar_QuickAccess_Tooltip"] = "命令面板 (Ctrl+Shift+P)",
+            ["Settings_Section_Update"] = "在线更新",
+            ["Update_CheckNow_Button"] = "检查更新",
+            ["Update_CheckNow_Title"] = "手动检查更新",
+            ["Update_Checking"] = "正在检查更新…",
+            ["Update_Dismiss_Button"] = "忽略此版本",
+            ["Update_Failed_Title"] = "更新失败",
+            ["Update_FailedFormat"] = "更新失败: {0}",
+            ["Update_Manual_Title"] = "发现新版本 {0}，需要管理员权限",
+            ["Update_Manual_Message"] = "新版本 {0} 已下载并通过校验，但当前账户无权写入插件目录。请用管理员权限替换 Plugins 目录下的 FluentPass.dll。",
+            ["Update_OpenFolder_Button"] = "打开下载位置",
+            ["Update_Ready_Title"] = "新版本 {0} 已就绪",
+            ["Update_Ready_Message"] = "已自动从 {1} 更新到 {0}，重启 KeePass 后生效。",
+            ["Update_Restart_Button"] = "立即重启",
+            ["Update_Restart_Blocked"] = "宿主存在模态对话框，请先关闭后再重启以完成更新。",
+            ["Update_RestartFailedFormat"] = "新版本已安装，但自动重启失败: {0}。请手动重启 KeePass。",
+            ["Update_Settings_Title"] = "启动时自动检查更新",
+            ["Update_Settings_Description"] = "后台通过 GitHub Release 检查新版本，并自动下载、SHA256 校验与安装；仅发送版本请求，不上传任何凭据或数据库内容。",
+            ["Update_UpToDateFormat"] = "已是最新版本 ({0})",
         };
 
-        // Traditional Chinese (zh-TW) - 303 keys
+        // Traditional Chinese (zh-TW) - 291 keys
         private static readonly Dictionary<string, string> ZhTwStrings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["App_Title"] = "Fluent Pass",
@@ -564,9 +582,27 @@ namespace FluentPass.Common
             ["Status_EntryDuplicatedFormat"] = "已複製條目「{0}」",
             ["Status_EntryRestoredFormat"] = "已還原到「{0}」",
             ["TitleBar_QuickAccess_Tooltip"] = "命令面板 (Ctrl+Shift+P)",
+            ["Settings_Section_Update"] = "線上更新",
+            ["Update_CheckNow_Button"] = "檢查更新",
+            ["Update_CheckNow_Title"] = "手動檢查更新",
+            ["Update_Checking"] = "正在檢查更新…",
+            ["Update_Dismiss_Button"] = "忽略此版本",
+            ["Update_Failed_Title"] = "更新失敗",
+            ["Update_FailedFormat"] = "更新失敗: {0}",
+            ["Update_Manual_Title"] = "發現新版本 {0}，需要管理員權限",
+            ["Update_Manual_Message"] = "新版本 {0} 已下載並通過校驗，但目前帳戶無權寫入外掛目錄。請以管理員權限取代 Plugins 目錄下的 FluentPass.dll。",
+            ["Update_OpenFolder_Button"] = "開啟下載位置",
+            ["Update_Ready_Title"] = "新版本 {0} 已就緒",
+            ["Update_Ready_Message"] = "已自動從 {1} 更新到 {0}，重新啟動 KeePass 後生效。",
+            ["Update_Restart_Button"] = "立即重新啟動",
+            ["Update_Restart_Blocked"] = "宿主仍有強制回應對話框，請先關閉後再重新啟動以完成更新。",
+            ["Update_RestartFailedFormat"] = "新版本已安裝，但自動重新啟動失敗: {0}。請手動重新啟動 KeePass。",
+            ["Update_Settings_Title"] = "啟動時自動檢查更新",
+            ["Update_Settings_Description"] = "背景透過 GitHub Release 檢查新版本，並自動下載、SHA256 校驗與安裝；僅傳送版本請求，不上傳任何憑證或資料庫內容。",
+            ["Update_UpToDateFormat"] = "已是最新版本 ({0})",
         };
 
-        // English (en-US) - 303 keys
+        // English (en-US) - 291 keys
         private static readonly Dictionary<string, string> EnStrings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["App_Title"] = "Fluent Pass",
@@ -842,9 +878,27 @@ namespace FluentPass.Common
             ["Status_EntryDuplicatedFormat"] = "Entry \"{0}\" duplicated",
             ["Status_EntryRestoredFormat"] = "Restored to \"{0}\"",
             ["TitleBar_QuickAccess_Tooltip"] = "Command palette (Ctrl+Shift+P)",
+            ["Settings_Section_Update"] = "Online Update",
+            ["Update_CheckNow_Button"] = "Check now",
+            ["Update_CheckNow_Title"] = "Check for updates manually",
+            ["Update_Checking"] = "Checking for updates…",
+            ["Update_Dismiss_Button"] = "Skip this version",
+            ["Update_Failed_Title"] = "Update failed",
+            ["Update_FailedFormat"] = "Update failed: {0}",
+            ["Update_Manual_Title"] = "Version {0} found — administrator rights required",
+            ["Update_Manual_Message"] = "Version {0} was downloaded and verified, but this account cannot write to the plugin folder. Replace FluentPass.dll in the Plugins folder with administrator rights.",
+            ["Update_OpenFolder_Button"] = "Open download folder",
+            ["Update_Ready_Title"] = "Version {0} is ready",
+            ["Update_Ready_Message"] = "Updated automatically from {1} to {0}. Restart KeePass to activate it.",
+            ["Update_Restart_Button"] = "Restart now",
+            ["Update_Restart_Blocked"] = "KeePass still has a modal dialog open. Close it before restarting to finish the update.",
+            ["Update_RestartFailedFormat"] = "The new version is installed, but the automatic restart failed: {0}. Please restart KeePass manually.",
+            ["Update_Settings_Title"] = "Check for updates on startup",
+            ["Update_Settings_Description"] = "Checks GitHub Releases in the background, then downloads, verifies (SHA256) and installs new versions automatically. Only version requests are sent — no credentials or database content are ever uploaded.",
+            ["Update_UpToDateFormat"] = "You are on the latest version ({0})",
         };
 
-        // Japanese (ja-JP) - 303 keys
+        // Japanese (ja-JP) - 291 keys
         private static readonly Dictionary<string, string> JaStrings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["App_Title"] = "Fluent Pass",
@@ -1120,9 +1174,27 @@ namespace FluentPass.Common
             ["Status_EntryDuplicatedFormat"] = "エントリ「{0}」を複製しました",
             ["Status_EntryRestoredFormat"] = "「{0}」に復元しました",
             ["TitleBar_QuickAccess_Tooltip"] = "コマンドパレット (Ctrl+Shift+P)",
+            ["Settings_Section_Update"] = "オンライン更新",
+            ["Update_CheckNow_Button"] = "更新を確認",
+            ["Update_CheckNow_Title"] = "手動で更新を確認",
+            ["Update_Checking"] = "更新を確認しています…",
+            ["Update_Dismiss_Button"] = "このバージョンをスキップ",
+            ["Update_Failed_Title"] = "更新に失敗しました",
+            ["Update_FailedFormat"] = "更新に失敗しました: {0}",
+            ["Update_Manual_Title"] = "バージョン {0} が見つかりました（管理者権限が必要）",
+            ["Update_Manual_Message"] = "バージョン {0} はダウンロードと検証が完了しましたが、現在のアカウントにはプラグインフォルダへの書き込み権限がありません。管理者権限で Plugins フォルダーの FluentPass.dll を置き換えてください。",
+            ["Update_OpenFolder_Button"] = "ダウンロード先を開く",
+            ["Update_Ready_Title"] = "バージョン {0} の準備ができました",
+            ["Update_Ready_Message"] = "{1} から {0} へ自動更新しました。KeePass を再起動すると有効になります。",
+            ["Update_Restart_Button"] = "今すぐ再起動",
+            ["Update_Restart_Blocked"] = "KeePass にモーダルダイアログが開いています。更新を完了するには、閉じてから再起動してください。",
+            ["Update_RestartFailedFormat"] = "新しいバージョンはインストールされましたが、自動再起動に失敗しました: {0}。KeePass を手動で再起動してください。",
+            ["Update_Settings_Title"] = "起動時に更新を確認",
+            ["Update_Settings_Description"] = "バックグラウンドで GitHub Release を確認し、新しいバージョンを自動でダウンロード・SHA256 検証・インストールします。送信するのはバージョン確認のリクエストのみで、認証情報やデータベースの内容は送信しません。",
+            ["Update_UpToDateFormat"] = "最新バージョンです ({0})",
         };
 
-        // Korean (ko-KR) - 303 keys
+        // Korean (ko-KR) - 291 keys
         private static readonly Dictionary<string, string> KoStrings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["App_Title"] = "Fluent Pass",
@@ -1398,9 +1470,27 @@ namespace FluentPass.Common
             ["Status_EntryDuplicatedFormat"] = "항목 \"{0}\"이(가) 복제되었습니다",
             ["Status_EntryRestoredFormat"] = "\"{0}\"(으)로 복원되었습니다",
             ["TitleBar_QuickAccess_Tooltip"] = "명령 팔레트(Ctrl+Shift+P)",
+            ["Settings_Section_Update"] = "온라인 업데이트",
+            ["Update_CheckNow_Button"] = "지금 확인",
+            ["Update_CheckNow_Title"] = "수동으로 업데이트 확인",
+            ["Update_Checking"] = "업데이트 확인 중…",
+            ["Update_Dismiss_Button"] = "이 버전 건너뛰기",
+            ["Update_Failed_Title"] = "업데이트 실패",
+            ["Update_FailedFormat"] = "업데이트 실패: {0}",
+            ["Update_Manual_Title"] = "버전 {0} 발견 — 관리자 권한 필요",
+            ["Update_Manual_Message"] = "버전 {0}을(를) 다운로드하고 검증했지만 현재 계정에는 플러그인 폴더에 쓸 권한이 없습니다. 관리자 권한으로 Plugins 폴더의 FluentPass.dll을 교체하세요.",
+            ["Update_OpenFolder_Button"] = "다운로드 위치 열기",
+            ["Update_Ready_Title"] = "버전 {0} 준비 완료",
+            ["Update_Ready_Message"] = "{1}에서 {0}(으)로 자동 업데이트했습니다. KeePass를 다시 시작하면 적용됩니다.",
+            ["Update_Restart_Button"] = "지금 다시 시작",
+            ["Update_Restart_Blocked"] = "KeePass에 모달 대화 상자가 열려 있습니다. 업데이트를 완료하려면 닫은 후 다시 시작하세요.",
+            ["Update_RestartFailedFormat"] = "새 버전이 설치되었지만 자동 다시 시작에 실패했습니다: {0}. KeePass를 수동으로 다시 시작하세요.",
+            ["Update_Settings_Title"] = "시작 시 업데이트 확인",
+            ["Update_Settings_Description"] = "백그라운드에서 GitHub Release를 확인하고 새 버전을 자동으로 다운로드·SHA256 검증·설치합니다. 버전 확인 요청만 전송하며 자격 증명이나 데이터베이스 내용은 전송하지 않습니다.",
+            ["Update_UpToDateFormat"] = "최신 버전을 사용 중입니다 ({0})",
         };
 
-        // Russian (ru-RU) - 303 keys
+        // Russian (ru-RU) - 291 keys
         private static readonly Dictionary<string, string> RuStrings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["App_Title"] = "Fluent Pass",
@@ -1676,9 +1766,27 @@ namespace FluentPass.Common
             ["Status_EntryDuplicatedFormat"] = "Запись «{0}» дублирована",
             ["Status_EntryRestoredFormat"] = "Восстановлено в «{0}»",
             ["TitleBar_QuickAccess_Tooltip"] = "Палитра команд (Ctrl+Shift+P)",
+            ["Settings_Section_Update"] = "Онлайн-обновление",
+            ["Update_CheckNow_Button"] = "Проверить",
+            ["Update_CheckNow_Title"] = "Проверить обновления вручную",
+            ["Update_Checking"] = "Проверка обновлений…",
+            ["Update_Dismiss_Button"] = "Пропустить эту версию",
+            ["Update_Failed_Title"] = "Ошибка обновления",
+            ["Update_FailedFormat"] = "Ошибка обновления: {0}",
+            ["Update_Manual_Title"] = "Найдена версия {0} — требуются права администратора",
+            ["Update_Manual_Message"] = "Версия {0} скачана и проверена, но у текущей учётной записи нет прав на запись в папку плагинов. Замените FluentPass.dll в папке Plugins с правами администратора.",
+            ["Update_OpenFolder_Button"] = "Открыть папку загрузки",
+            ["Update_Ready_Title"] = "Версия {0} готова",
+            ["Update_Ready_Message"] = "Автоматически обновлено с {1} до {0}. Перезапустите KeePass, чтобы применить.",
+            ["Update_Restart_Button"] = "Перезапустить сейчас",
+            ["Update_Restart_Blocked"] = "В KeePass открыт модальный диалог. Закройте его перед перезапуском, чтобы завершить обновление.",
+            ["Update_RestartFailedFormat"] = "Новая версия установлена, но автоматический перезапуск не удался: {0}. Перезапустите KeePass вручную.",
+            ["Update_Settings_Title"] = "Проверять обновления при запуске",
+            ["Update_Settings_Description"] = "В фоне проверяет GitHub Releases, автоматически скачивает, проверяет по SHA256 и устанавливает новую версию. Отправляются только запросы версии — учётные данные и содержимое базы никогда не передаются.",
+            ["Update_UpToDateFormat"] = "Установлена последняя версия ({0})",
         };
 
-        // Spanish (es-ES) - 303 keys
+        // Spanish (es-ES) - 291 keys
         private static readonly Dictionary<string, string> EsStrings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["App_Title"] = "Fluent Pass",
@@ -1954,9 +2062,27 @@ namespace FluentPass.Common
             ["Status_EntryDuplicatedFormat"] = "Entrada \"{0}\" duplicada",
             ["Status_EntryRestoredFormat"] = "Restaurado en \"{0}\"",
             ["TitleBar_QuickAccess_Tooltip"] = "Paleta de comandos (Ctrl+Shift+P)",
+            ["Settings_Section_Update"] = "Actualización en línea",
+            ["Update_CheckNow_Button"] = "Buscar ahora",
+            ["Update_CheckNow_Title"] = "Buscar actualizaciones manualmente",
+            ["Update_Checking"] = "Buscando actualizaciones…",
+            ["Update_Dismiss_Button"] = "Omitir esta versión",
+            ["Update_Failed_Title"] = "Error de actualización",
+            ["Update_FailedFormat"] = "Error de actualización: {0}",
+            ["Update_Manual_Title"] = "Se encontró la versión {0} — se requieren permisos de administrador",
+            ["Update_Manual_Message"] = "La versión {0} se descargó y verificó, pero esta cuenta no puede escribir en la carpeta de complementos. Sustituye FluentPass.dll en la carpeta Plugins con permisos de administrador.",
+            ["Update_OpenFolder_Button"] = "Abrir carpeta de descarga",
+            ["Update_Ready_Title"] = "La versión {0} está lista",
+            ["Update_Ready_Message"] = "Actualizado automáticamente de {1} a {0}. Reinicia KeePass para activarla.",
+            ["Update_Restart_Button"] = "Reiniciar ahora",
+            ["Update_Restart_Blocked"] = "KeePass tiene un diálogo modal abierto. Ciérralo antes de reiniciar para completar la actualización.",
+            ["Update_RestartFailedFormat"] = "La nueva versión está instalada, pero el reinicio automático falló: {0}. Reinicia KeePass manualmente.",
+            ["Update_Settings_Title"] = "Buscar actualizaciones al iniciar",
+            ["Update_Settings_Description"] = "Comprueba GitHub Releases en segundo plano y descarga, verifica (SHA256) e instala automáticamente la nueva versión. Solo se envían solicitudes de versión; nunca se suben credenciales ni el contenido de la base de datos.",
+            ["Update_UpToDateFormat"] = "Ya tienes la última versión ({0})",
         };
 
-        // German (de-DE) - 307 keys
+        // German (de-DE) - 291 keys
         private static readonly Dictionary<string, string> DeStrings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["App_Title"] = "Fluent Pass",
@@ -2232,6 +2358,24 @@ namespace FluentPass.Common
             ["Status_EntryDuplicatedFormat"] = "Eintrag \"{0}\" dupliziert",
             ["Status_EntryRestoredFormat"] = "Nach \"{0}\" wiederhergestellt",
             ["TitleBar_QuickAccess_Tooltip"] = "Befehlspalette (Strg+Umschalt+P)",
+            ["Settings_Section_Update"] = "Online-Update",
+            ["Update_CheckNow_Button"] = "Jetzt prüfen",
+            ["Update_CheckNow_Title"] = "Manuell nach Updates suchen",
+            ["Update_Checking"] = "Suche nach Updates…",
+            ["Update_Dismiss_Button"] = "Diese Version überspringen",
+            ["Update_Failed_Title"] = "Update fehlgeschlagen",
+            ["Update_FailedFormat"] = "Update fehlgeschlagen: {0}",
+            ["Update_Manual_Title"] = "Version {0} gefunden – Administratorrechte erforderlich",
+            ["Update_Manual_Message"] = "Version {0} wurde heruntergeladen und verifiziert, aber dieses Konto darf nicht in den Plugin-Ordner schreiben. Ersetzen Sie FluentPass.dll im Ordner „Plugins“ mit Administratorrechten.",
+            ["Update_OpenFolder_Button"] = "Downloadordner öffnen",
+            ["Update_Ready_Title"] = "Version {0} ist bereit",
+            ["Update_Ready_Message"] = "Automatisch von {1} auf {0} aktualisiert. Starten Sie KeePass neu, um die Version zu aktivieren.",
+            ["Update_Restart_Button"] = "Jetzt neu starten",
+            ["Update_Restart_Blocked"] = "In KeePass ist noch ein modaler Dialog geöffnet. Schließen Sie ihn, bevor Sie neu starten, um das Update abzuschließen.",
+            ["Update_RestartFailedFormat"] = "Die neue Version ist installiert, aber der automatische Neustart ist fehlgeschlagen: {0}. Bitte starten Sie KeePass manuell neu.",
+            ["Update_Settings_Title"] = "Beim Start nach Updates suchen",
+            ["Update_Settings_Description"] = "Prüft GitHub Releases im Hintergrund und lädt neue Versionen automatisch herunter, verifiziert sie per SHA256 und installiert sie. Es werden nur Versionsanfragen gesendet – keine Zugangsdaten oder Datenbankinhalte.",
+            ["Update_UpToDateFormat"] = "Sie verwenden bereits die neueste Version ({0})",
         };
 
         public static Dictionary<string, string> GetDictionary(string languageCode)

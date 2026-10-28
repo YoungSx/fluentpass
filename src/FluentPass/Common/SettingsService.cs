@@ -17,12 +17,15 @@ namespace FluentPass.Common
         public const string AppThemeKey = "FluentPass_AppTheme";
         public const string LanguageKey = "FluentPass_Language";
         public const string AutoMaskSecondsKey = "FluentPass_AutoMaskSeconds";
+        public const string AutoCheckUpdatesKey = "FluentPass_AutoCheckUpdates";
+        public const string SkippedUpdateVersionKey = "FluentPass_SkippedUpdateVersion";
 
         public const bool DefaultAutoTakeoverUI = true;
         public const WindowCloseAction DefaultCloseAction = WindowCloseAction.RestoreOriginalWindow;
         public const string DefaultAppTheme = "System";
         public const string DefaultLanguage = "Auto";
         public const int DefaultAutoMaskSeconds = 10;
+        public const bool DefaultAutoCheckUpdates = true;
 
         public static bool GetAutoTakeoverUI(IPluginHost? host)
         {
@@ -192,6 +195,48 @@ namespace FluentPass.Common
                     seconds = DefaultAutoMaskSeconds;
                 }
                 host?.CustomConfig?.SetString(AutoMaskSecondsKey, seconds.ToString());
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// 启动时后台检查更新（默认开启；唯一对外网络行为，仅请求版本文件/校验和/插件包）。
+        /// </summary>
+        public static bool GetAutoCheckUpdates(IPluginHost? host)
+        {
+            var val = host?.CustomConfig?.GetString(AutoCheckUpdatesKey);
+            if (string.IsNullOrWhiteSpace(val))
+            {
+                return DefaultAutoCheckUpdates;
+            }
+
+            return bool.TryParse(val, out bool result) ? result : DefaultAutoCheckUpdates;
+        }
+
+        public static void SetAutoCheckUpdates(IPluginHost? host, bool value)
+        {
+            try
+            {
+                host?.CustomConfig?.SetString(AutoCheckUpdatesKey, value.ToString());
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// 用户点过「忽略此版本」的版本号（4 段形式）。同一版本不再重复下载或提醒；
+        /// 发布更高版本后自然失效。
+        /// </summary>
+        public static string GetSkippedUpdateVersion(IPluginHost? host)
+        {
+            var val = host?.CustomConfig?.GetString(SkippedUpdateVersionKey);
+            return string.IsNullOrWhiteSpace(val) ? string.Empty : val!.Trim();
+        }
+
+        public static void SetSkippedUpdateVersion(IPluginHost? host, string? version)
+        {
+            try
+            {
+                host?.CustomConfig?.SetString(SkippedUpdateVersionKey, version ?? string.Empty);
             }
             catch { }
         }

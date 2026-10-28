@@ -32,6 +32,10 @@ namespace FluentPass
             _host = host;
 
             Loc.Instance.Initialize(_host);
+
+            // 上次在线更新换装留下的 .old/.new：本进程已不再映射这些文件，此时清理必然成功。
+            UpdateService.CleanupLeftoverFiles();
+
             EnsureWpfApplication();
             _viewModel = new MainViewModel(_host);
             _refreshTimer = new DispatcherTimer(DispatcherPriority.Background)

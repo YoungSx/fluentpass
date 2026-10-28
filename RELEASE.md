@@ -156,6 +156,12 @@ sequenceDiagram
    curl -L https://github.com/YoungSx/fluentpass/releases/latest/download/version.txt
    ```
    应 302 至最新稳定版资产并输出三行版本信息文件，中间行为 `FluentPass:<FileVersion>` 四段形式（如 v1.3.2 → `FluentPass:1.3.2.0`），与 DLL 内嵌的 AssemblyFileVersion 严格一致。随后可在装有旧版插件的 KeePass 中执行 **帮助 -> 检查更新** 确认能提示新版本。
+5. **验证插件内自动更新**（FluentPass 自带通道，与上一条的宿主检查相互独立）：
+   在装有旧版插件的 KeePass 中打开 Fluent Pass 主视窗，等待启动后台检查完成，应出现「新版本已就绪」提示条；点击「重启并更新」后 KeePass 自动重启，插件版本随之更新。若插件目录不可写（如 `Program Files` 且未提权），提示条应降级为「打开下载目录」引导人工替换，且**不得**改动现有 DLL。
+   验证要点：
+   - 换装后插件目录只应存在 `FluentPass.dll`；`.old` 备份由下次启动的 `CleanupLeftoverFiles` 清除。
+   - 在保存确认框里点「取消」时，KeePass 不应退出，且之后手动退出**不得**意外重启（`FormClosed` 钩子必须已撤销）。
+   - 设置页「在线更新」分组可关闭自动检查；「忽略此版本」后同一版本不再提示。
 
 ---
 

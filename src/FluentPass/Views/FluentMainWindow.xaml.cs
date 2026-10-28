@@ -82,6 +82,7 @@ namespace FluentPass.Views
             PreviewKeyDown += OnUserActivityOccurred;
 
             _viewModel.QuickAccessRequested += OnQuickAccessRequested;
+            _viewModel.Update.RestartRequested += OnUpdateRestartRequested;
 
             Loaded += OnWindowLoaded;
         }
@@ -135,6 +136,9 @@ namespace FluentPass.Views
 
             EnsureThemeWatcher();
 
+            // 后台更新检查：窗口显示后才发起，绝不阻塞启动。
+            _viewModel.StartBackgroundUpdateCheck();
+
             try
             {
                 var theme = ApplicationThemeManager.GetAppTheme();
@@ -143,6 +147,29 @@ namespace FluentPass.Views
             catch
             {
                 // 安全降级
+            }
+        }
+
+        /// <summary>
+        /// 更新换装完成后重启 KeePass：先关闭本 WPF 窗口，再走宿主原生「文件 → 退出」管线
+        /// （脏库保存确认与「关闭按钮最小化」配置都由宿主处理），最后宿主重启新实例加载新程序集。
+        /// </summary>
+        private void OnUpdateRestartRequested(object? sender, EventArgs e)
+        {
+            if (HostWindowGuard.HasModalDialog(_host))
+            {
+                MessageService.Show(Loc.Get("Update_Restart_Blocked"), Loc.Get("Update_Failed_Title"),
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            ForceClose();
+
+            if (!HostRestartService.TryRestart(_host, out var error))
+            {
+                // 换装已经完成，重启失败不影响下次启动生效，如实告知即可。
+                MessageService.Show(Loc.Get("Update_RestartFailedFormat", error ?? string.Empty),
+                    Loc.Get("Update_Failed_Title"), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
@@ -656,6 +683,7 @@ namespace FluentPass.Views
 
         protected override void OnClosed(EventArgs e)
         {
+            _viewModel.Update.RestartRequested -= OnUpdateRestartRequested;
             CleanupThemeWatcher();
             base.OnClosed(e);
         }

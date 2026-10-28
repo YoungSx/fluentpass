@@ -21,6 +21,7 @@
             <common:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
             <common:InverseBooleanConverter x:Key="InverseBooleanConverter" />
             <common:ExpiredToInfoBarSeverityConverter x:Key="ExpiredToInfoBarSeverityConverter" />
+            <common:UpdateBarSeverityConverter x:Key="UpdateBarSeverityConverter" />
 
             <Style x:Key="ActionIconButtonStyle" TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
                 <Setter Property="Appearance" Value="Transparent" />
@@ -85,6 +86,8 @@
 
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <!-- 在线更新提示条（无更新时整行高度为 0，不占位） -->
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
@@ -187,8 +190,36 @@
             </ui:TitleBar.TrailingContent>
         </ui:TitleBar>
 
+        <!-- 在线更新提示条：自动更新换装成功 / 需要管理员权限 / 手动检查失败 -->
+        <ui:InfoBar Grid.Row="1"
+                    Margin="10,8,10,0"
+                    IsClosable="False"
+                    IsOpen="{Binding Update.IsBarVisible, Mode=OneWay}"
+                    Visibility="{Binding Update.IsBarVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
+                    Severity="{Binding Update.BarSeverity, Converter={StaticResource UpdateBarSeverityConverter}}"
+                    Title="{Binding Update.BarTitle}"
+                    Message="{Binding Update.BarMessage}">
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                <ui:Button Appearance="Primary"
+                           Margin="0,0,8,0"
+                           Content="{common:Loc Update_Restart_Button}"
+                           Icon="{ui:SymbolIcon ArrowClockwise20}"
+                           Visibility="{Binding Update.CanRestart, Converter={StaticResource BooleanToVisibilityConverter}}"
+                           Command="{Binding Update.RestartCommand}" />
+                <ui:Button Appearance="Secondary"
+                           Margin="0,0,8,0"
+                           Content="{common:Loc Update_OpenFolder_Button}"
+                           Icon="{ui:SymbolIcon FolderOpen20}"
+                           Visibility="{Binding Update.CanOpenFolder, Converter={StaticResource BooleanToVisibilityConverter}}"
+                           Command="{Binding Update.OpenDownloadFolderCommand}" />
+                <ui:Button Appearance="Transparent"
+                           Content="{common:Loc Update_Dismiss_Button}"
+                           Command="{Binding Update.DismissCommand}" />
+            </StackPanel>
+        </ui:InfoBar>
+
         <!-- 主内容区域 -->
-        <Grid Grid.Row="1">
+        <Grid Grid.Row="2">
             <!-- 密码库工作区视图 (设置中心关闭时展示) -->
             <Grid Visibility="{Binding IsSettingsOpen, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
             <!-- 视图 1: 数据库已锁定 -->
@@ -1328,7 +1359,7 @@
         </Grid>
 
         <!-- 现代化 Fluent 底部状态栏 -->
-        <Border Grid.Row="2"
+        <Border Grid.Row="3"
                 Background="{DynamicResource SolidBackgroundFillColorSecondaryBrush}"
                 BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                 BorderThickness="0,1,0,0"
