@@ -287,6 +287,49 @@ namespace FluentPass.Views
             sender.Dispatcher.BeginInvoke(() => sender.SetCurrentValue(AutoSuggestBox.IsSuggestionListOpenProperty, false));
         }
 
+        private void OnEditUserNameTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+        {
+            if (sender.OriginalItemsSource == null)
+            {
+                sender.OriginalItemsSource = Array.Empty<string>();
+            }
+
+            if (args.Reason == AutoSuggestionBoxTextChangeReason.UserInput ||
+                args.Reason == AutoSuggestionBoxTextChangeReason.SuggestionChosen)
+            {
+                if (sender.DataContext is EntryDetailViewModel vm)
+                {
+                    vm.EditUserName = args.Text;
+                }
+            }
+        }
+
+        private void OnEditUserNameSuggestionChosen(AutoSuggestBox sender, AutoSuggestBoxSuggestionChosenEventArgs args)
+        {
+            if (args.SelectedItem is string chosen && sender.DataContext is EntryDetailViewModel vm)
+            {
+                vm.EditUserName = chosen;
+            }
+        }
+
+        private void OnEditUserNameQuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
+        {
+            if (sender.DataContext is EntryDetailViewModel vm && !string.IsNullOrEmpty(args.QueryText))
+            {
+                vm.EditUserName = args.QueryText;
+            }
+            sender.SetCurrentValue(AutoSuggestBox.IsSuggestionListOpenProperty, false);
+        }
+
+        private void OnEditUserNamePreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Down && sender is AutoSuggestBox box && !box.IsSuggestionListOpen)
+            {
+                box.SetCurrentValue(AutoSuggestBox.IsSuggestionListOpenProperty, true);
+                e.Handled = true;
+            }
+        }
+
         private void OnTreeViewPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             // 对齐 KeePass 原生 OnGroupsNodeMouseClick：重复点击“已选中”的分组节点时也强制重建条目列表，
