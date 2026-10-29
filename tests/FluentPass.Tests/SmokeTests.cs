@@ -78,7 +78,7 @@ namespace FluentPass.Tests
 
                 // 模拟用户键入：直接修改内部 TextBox 文本（WPF-UI 4.3.0 的 Text 依赖属性
                 // 不随输入回写，输入只能经 TextChanged 路由事件进入 ViewModel —— 此测试固定该接线）
-                inner.Text = "git";
+                inner!.Text = "git";
 
                 Assert.That(vm.SearchText, Is.EqualTo("git"),
                     "用户在搜索框输入的内容必须经 TextChanged 事件同步进 ViewModel");
@@ -131,9 +131,9 @@ namespace FluentPass.Tests
                 box.ApplyTemplate();
                 var inner = box.Template.FindName("PART_TextBox", box) as System.Windows.Controls.TextBox;
                 Assert.That(inner, Is.Not.Null);
-                inner.ApplyTemplate();
+                inner!.ApplyTemplate();
 
-                inner.Text = "git";
+                inner!.Text = "git";
                 Assert.That(vm.SearchText, Is.EqualTo("git"));
 
                 // 模拟点击分组退出搜索结果视图（文本保留）
