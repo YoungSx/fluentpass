@@ -1110,11 +1110,16 @@
                                 </ui:Card>
 
                                 <!-- ================= 字段 3.5: 标签（原生 PwEntry.Tags） ================= -->
-                                <ui:CardExpander Header="{common:Loc Detail_Field_Tags}"
-                                                 Icon="{ui:SymbolIcon Bookmark24}"
+                                <ui:CardExpander Icon="{ui:SymbolIcon Bookmark24}"
                                                  IsExpanded="True"
                                                  Margin="0,0,0,10"
                                                  Visibility="{Binding IsTagsSectionVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <!-- Header 用显式居中的 TextBlock：纯字符串 Header 会被 WPF 隐式包成
+                                         VerticalAlignment=Stretch 的 TextBlock，在多行行高内靠顶排版，
+                                         导致文字相对图标中心下移约 4px（高 DPI 下可见） -->
+                                    <ui:CardExpander.Header>
+                                        <ui:TextBlock Text="{common:Loc Detail_Field_Tags}" VerticalAlignment="Center" />
+                                    </ui:CardExpander.Header>
                                     <Grid Margin="0,4,0,0">
                                         <!-- 查看模式：原生标签徽标流 -->
                                         <StackPanel Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
@@ -1152,10 +1157,12 @@
                                 </ui:CardExpander>
 
                                 <!-- ================= 字段 4: 备注 (Notes) 原生 CardExpander ================= -->
-                                <ui:CardExpander Header="{common:Loc Detail_Field_Notes}"
-                                                 Icon="{ui:SymbolIcon Document24}"
+                                <ui:CardExpander Icon="{ui:SymbolIcon Document24}"
                                                  IsExpanded="True"
                                                  Margin="0,0,0,10">
+                                    <ui:CardExpander.Header>
+                                        <ui:TextBlock Text="{common:Loc Detail_Field_Notes}" VerticalAlignment="Center" />
+                                    </ui:CardExpander.Header>
                                     <Grid Margin="0,4,0,0">
                                         <!-- 查看模式（不可编辑）：平整自然排版，带滚动查看 -->
                                         <Grid Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
@@ -1181,11 +1188,13 @@
                                 </ui:CardExpander>
 
                                 <!-- ================= 字段 5: 自定义附加字段 原生 CardExpander（支持内联编辑） ================= -->
-                                <ui:CardExpander Header="{common:Loc Detail_Field_CustomFields}"
-                                                 Icon="{ui:SymbolIcon Tag24}"
+                                <ui:CardExpander Icon="{ui:SymbolIcon Tag24}"
                                                  IsExpanded="True"
                                                  Margin="0,0,0,10"
                                                  Visibility="{Binding IsCustomFieldsSectionVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <ui:CardExpander.Header>
+                                        <ui:TextBlock Text="{common:Loc Detail_Field_CustomFields}" VerticalAlignment="Center" />
+                                    </ui:CardExpander.Header>
                                     <StackPanel>
                                         <ItemsControl ItemsSource="{Binding CustomFields}">
                                             <ItemsControl.ItemTemplate>
@@ -1271,11 +1280,13 @@
                                 </ui:CardExpander>
 
                                 <!-- ================= 字段 6: 二进制附件 原生 CardExpander（另存/打开/新增/删除） ================= -->
-                                <ui:CardExpander Header="{common:Loc Detail_Field_Attachments}"
-                                                 Icon="{ui:SymbolIcon Attach24}"
+                                <ui:CardExpander Icon="{ui:SymbolIcon Attach24}"
                                                  IsExpanded="True"
                                                  Margin="0,0,0,10"
                                                  Visibility="{Binding IsAttachmentsSectionVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <ui:CardExpander.Header>
+                                        <ui:TextBlock Text="{common:Loc Detail_Field_Attachments}" VerticalAlignment="Center" />
+                                    </ui:CardExpander.Header>
                                     <StackPanel>
                                         <ItemsControl ItemsSource="{Binding Attachments}">
                                             <ItemsControl.ItemTemplate>
@@ -1330,11 +1341,13 @@
                                 </ui:CardExpander>
 
                                 <!-- ================= 字段 7: 历史修改版本 原生 CardExpander ================= -->
-                                <ui:CardExpander Header="{Binding HistoryHeader}"
-                                                 Icon="{ui:SymbolIcon History24}"
+                                <ui:CardExpander Icon="{ui:SymbolIcon History24}"
                                                  IsExpanded="False"
                                                  Margin="0,0,0,10"
                                                  Visibility="{Binding HistoryRevisions.Count, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <ui:CardExpander.Header>
+                                        <ui:TextBlock Text="{Binding HistoryHeader}" VerticalAlignment="Center" />
+                                    </ui:CardExpander.Header>
                                     <ItemsControl ItemsSource="{Binding HistoryRevisions}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
@@ -1361,10 +1374,12 @@
                                 </ui:CardExpander>
 
                                 <!-- 底部元数据：创建 / 修改 / 最近访问 / 使用次数 / 过期 -->
-                                <ui:CardExpander Header="{Binding MetadataHeader}"
-                                                 Icon="{ui:SymbolIcon Clock24}"
+                                <ui:CardExpander Icon="{ui:SymbolIcon Clock24}"
                                                  IsExpanded="False"
                                                  Margin="0,8,0,0">
+                                    <ui:CardExpander.Header>
+                                        <ui:TextBlock Text="{Binding MetadataHeader}" VerticalAlignment="Center" />
+                                    </ui:CardExpander.Header>
                                     <Grid Margin="0,4,0,0">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
