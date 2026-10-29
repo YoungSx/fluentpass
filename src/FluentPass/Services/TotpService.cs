@@ -46,7 +46,7 @@ namespace FluentPass.Services
             if (entry == null) return false;
             try
             {
-                string raw = entry.Strings.ReadSafe(AlgorithmField)?.Trim();
+                string? raw = entry.Strings.ReadSafe(AlgorithmField)?.Trim();
                 if (string.IsNullOrEmpty(raw)) return false;
 
                 foreach (var alg in SupportedAlgorithms)

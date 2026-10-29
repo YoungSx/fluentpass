@@ -162,7 +162,7 @@ namespace FluentPass.ViewModels
 
         /// <summary>算法不被宿主支持时的解释文案（填入具体算法名，便于用户自行排查）。</summary>
         public string TotpUnsupportedText =>
-            Loc.Get("Detail_Totp_UnsupportedFormat", Model.Strings.ReadSafe("TimeOtp-Algorithm")?.Trim());
+            Loc.Get("Detail_Totp_UnsupportedFormat", Model.Strings.ReadSafe("TimeOtp-Algorithm")?.Trim() ?? string.Empty);
 
         // ===== 过期警示（对齐原生“即将过期”天数口径） =====
         [ObservableProperty]
