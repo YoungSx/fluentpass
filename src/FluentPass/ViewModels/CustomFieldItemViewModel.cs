@@ -46,7 +46,16 @@ namespace FluentPass.ViewModels
             IsNew = isNew;
 
             _displayValue = _isProtected ? "••••••••••••" : value.ReadString();
+            _hasMultilineValue = HasLineBreak(_displayValue);
         }
+
+        /// <summary>查看态是否需要多行展示（值内含换行）。</summary>
+        [ObservableProperty]
+        private bool _hasMultilineValue;
+
+        /// <summary>兼容 CRLF/LF/CR 三种行尾：KeePass 库原样保存换行，不做归一化。</summary>
+        private static bool HasLineBreak(string text)
+            => text.IndexOf('\n') >= 0 || text.IndexOf('\r') >= 0;
 
         /// <summary>编辑态密码掩码框可见性：受保护且未显明明文时显示掩码输入框。</summary>
         public bool IsEditValueMaskedBoxVisible => IsProtected && !IsEditValueRevealed;
@@ -73,6 +82,7 @@ namespace FluentPass.ViewModels
 
             IsRevealed = !IsRevealed;
             DisplayValue = IsRevealed ? _protectedValue.ReadString() : "••••••••••••";
+            HasMultilineValue = IsRevealed && HasLineBreak(DisplayValue);
         }
 
         public void HideValue()
@@ -81,6 +91,7 @@ namespace FluentPass.ViewModels
             {
                 IsRevealed = false;
                 DisplayValue = "••••••••••••";
+                HasMultilineValue = false;
             }
         }
 

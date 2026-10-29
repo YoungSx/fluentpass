@@ -123,6 +123,34 @@ namespace FluentPass.Tests
         }
 
         [Test, Category("Unit")]
+        public void Constructor_WithMultilineValue_FlagsMultilineDisplay()
+        {
+            var plain = new CustomFieldItemViewModel("Cert", new ProtectedString(false, "line1\r\nline2"));
+            var lfOnly = new CustomFieldItemViewModel("Json", new ProtectedString(false, "{\n  \"a\": 1\n}"));
+            var crOnly = new CustomFieldItemViewModel("Legacy", new ProtectedString(false, "a\rb"));
+            var single = new CustomFieldItemViewModel("Key", new ProtectedString(false, "plain-key"));
+
+            Assert.That(plain.HasMultilineValue, Is.True);
+            Assert.That(lfOnly.HasMultilineValue, Is.True);
+            Assert.That(crOnly.HasMultilineValue, Is.True, "旧式 CR 行尾也必须识别");
+            Assert.That(single.HasMultilineValue, Is.False);
+            Assert.That(single.DisplayValue, Is.EqualTo("plain-key"));
+        }
+
+        [Test, Category("Unit")]
+        public void MultilineDisplay_FollowsRevealState_ForProtectedField()
+        {
+            var vm = new CustomFieldItemViewModel("Cert", new ProtectedString(true, "a\r\nb"));
+            Assert.That(vm.HasMultilineValue, Is.False, "掩码期间单行占位");
+
+            vm.ToggleReveal();
+            Assert.That(vm.HasMultilineValue, Is.True);
+
+            vm.HideValue();
+            Assert.That(vm.HasMultilineValue, Is.False);
+        }
+
+        [Test, Category("Unit")]
         public void IsNew_IsExclusiveProperty()
         {
             var existing = new CustomFieldItemViewModel("K", new ProtectedString(false, "v"));
