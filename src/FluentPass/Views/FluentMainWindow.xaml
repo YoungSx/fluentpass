@@ -1115,8 +1115,8 @@
                                                  Margin="0,0,0,10"
                                                  Visibility="{Binding IsTagsSectionVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <!-- Header 用显式居中的 TextBlock：纯字符串 Header 会被 WPF 隐式包成
-                                         VerticalAlignment=Stretch 的 TextBlock，在多行行高内靠顶排版，
-                                         导致文字相对图标中心下移约 4px（高 DPI 下可见） -->
+                                         VerticalAlignment=Stretch 的 TextBlock，在被 24px 图标撑高的行内
+                                         靠顶排版，使文字比图标高约 4px（图标看起来偏低，高 DPI 下可见） -->
                                     <ui:CardExpander.Header>
                                         <ui:TextBlock Text="{common:Loc Detail_Field_Tags}" VerticalAlignment="Center" />
                                     </ui:CardExpander.Header>
