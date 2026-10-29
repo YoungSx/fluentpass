@@ -120,6 +120,26 @@ namespace FluentPass.Tests
         }
 
         [Test]
+        public void Save_MultilineValue_RoundTripsUntruncated()
+        {
+            const string pem = "-----BEGIN CERTIFICATE-----\r\nMIIBszCCAVmgAwIBAgIU\r\n-----END CERTIFICATE-----";
+
+            _entry.Strings.Set("Pem", new ProtectedString(false, "old-single-line"));
+            _detail.RefreshData();
+            _detail.BeginEdit();
+
+            var pemField = _detail.CustomFields.First(f => f.Key == "Pem");
+            Assert.That(pemField.EditValue, Is.EqualTo("old-single-line"));
+            pemField.EditValue = pem;
+
+            _detail.SaveEditInternal();
+
+            Assert.That(_entry.Strings.ReadSafe("Pem"), Is.EqualTo(pem), "换行必须原样保留，不得截断为单行");
+            Assert.That(_detail.CustomFields.First(f => f.Key == "Pem").DisplayValue, Is.EqualTo(pem));
+            Assert.That(_detail.CustomFields.First(f => f.Key == "Pem").HasMultilineValue, Is.True);
+        }
+
+        [Test]
         public void AddField_Cancel_DropsNewRowFromEntry()
         {
             _detail.BeginEdit();
