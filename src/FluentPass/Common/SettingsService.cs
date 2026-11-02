@@ -19,6 +19,7 @@ namespace FluentPass.Common
         public const string AutoMaskSecondsKey = "FluentPass_AutoMaskSeconds";
         public const string AutoCheckUpdatesKey = "FluentPass_AutoCheckUpdates";
         public const string SkippedUpdateVersionKey = "FluentPass_SkippedUpdateVersion";
+        public const string AnimationsEnabledKey = "FluentPass_AnimationsEnabled";
 
         public const bool DefaultAutoTakeoverUI = true;
         public const WindowCloseAction DefaultCloseAction = WindowCloseAction.RestoreOriginalWindow;
@@ -26,6 +27,7 @@ namespace FluentPass.Common
         public const string DefaultLanguage = "Auto";
         public const int DefaultAutoMaskSeconds = 10;
         public const bool DefaultAutoCheckUpdates = true;
+        public const bool DefaultAnimationsEnabled = true;
 
         public static bool GetAutoTakeoverUI(IPluginHost? host)
         {
@@ -218,6 +220,29 @@ namespace FluentPass.Common
             try
             {
                 host?.CustomConfig?.SetString(AutoCheckUpdatesKey, value.ToString());
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// 页面与详情切换过渡动画（默认开启）。开启后仍受 Windows「显示动画」系统设置约束。
+        /// </summary>
+        public static bool GetAnimationsEnabled(IPluginHost? host)
+        {
+            var val = host?.CustomConfig?.GetString(AnimationsEnabledKey);
+            if (string.IsNullOrWhiteSpace(val))
+            {
+                return DefaultAnimationsEnabled;
+            }
+
+            return bool.TryParse(val, out bool result) ? result : DefaultAnimationsEnabled;
+        }
+
+        public static void SetAnimationsEnabled(IPluginHost? host, bool value)
+        {
+            try
+            {
+                host?.CustomConfig?.SetString(AnimationsEnabledKey, value.ToString());
             }
             catch { }
         }

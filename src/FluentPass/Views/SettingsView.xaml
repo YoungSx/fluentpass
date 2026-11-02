@@ -75,6 +75,19 @@
                     </ComboBox>
                 </ui:CardControl>
 
+                <ui:CardControl Margin="0,0,0,6" Icon="{ui:SymbolIcon Sparkle24}">
+                    <ui:CardControl.Header>
+                        <StackPanel>
+                            <ui:TextBlock Text="{common:Loc Settings_Animations_Title}" FontTypography="BodyStrong" />
+                            <ui:TextBlock Text="{common:Loc Settings_Animations_Description}"
+                                          FontTypography="Caption"
+                                          TextWrapping="Wrap"
+                                          Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                    </ui:CardControl.Header>
+                    <ui:ToggleSwitch IsChecked="{Binding AnimationsEnabled, Mode=TwoWay}" />
+                </ui:CardControl>
+
                 <ui:CardControl Margin="0,0,0,6" Icon="{ui:SymbolIcon LocalLanguage24}">
                     <ui:CardControl.Header>
                         <StackPanel>

@@ -10,7 +10,7 @@ namespace FluentPass.Common
     /// </summary>
     public static class TranslationStore
     {
-        // Simplified Chinese (zh-CN) - 295 keys
+        // Simplified Chinese (zh-CN) - 300 keys
         private static readonly Dictionary<string, string> ZhStrings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["App_Title"] = "Fluent Pass",
@@ -143,6 +143,8 @@ namespace FluentPass.Common
             ["PwQuality_StrongFormat"] = "强 ({0} 位)",
             ["PwQuality_VeryWeakFormat"] = "非常弱 ({0} 位)",
             ["PwQuality_WeakFormat"] = "弱 ({0} 位)",
+            ["Settings_Animations_Description"] = "设置页与条目详情切换时的淡入效果；关闭后即时切换。Windows 关闭动画时自动停用。",
+            ["Settings_Animations_Title"] = "过渡动画",
             ["Settings_AutoMask_Description"] = "点击查看明文后自动重新遮蔽的时间间隔",
             ["Settings_AutoMask_Title"] = "密码明文自动遮蔽时长",
             ["Settings_AutoTakeover_Description"] = "启动或解锁数据库后自动呈现 FluentPass 现代化主窗口",
@@ -313,7 +315,7 @@ namespace FluentPass.Common
             ["Update_UpToDateFormat"] = "已是最新版本 ({0})",
         };
 
-        // Traditional Chinese (zh-TW) - 295 keys
+        // Traditional Chinese (zh-TW) - 300 keys
         private static readonly Dictionary<string, string> ZhTwStrings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["App_Title"] = "Fluent Pass",
@@ -446,6 +448,8 @@ namespace FluentPass.Common
             ["PwQuality_StrongFormat"] = "強 ({0} 位元)",
             ["PwQuality_VeryWeakFormat"] = "極弱 ({0} 位元)",
             ["PwQuality_WeakFormat"] = "弱 ({0} 位元)",
+            ["Settings_Animations_Description"] = "設定頁與項目詳情切換時的淡入效果；關閉後即時切換。Windows 關閉動畫時自動停用。",
+            ["Settings_Animations_Title"] = "過渡動畫",
             ["Settings_AutoMask_Description"] = "點擊檢視純文字後自動重新遮蔽的時間間隔",
             ["Settings_AutoMask_Title"] = "密碼純文字自動遮蔽時長",
             ["Settings_AutoTakeover_Description"] = "啟動或解鎖資料庫後自動呈現 FluentPass 現代化主視窗",
@@ -616,7 +620,7 @@ namespace FluentPass.Common
             ["Update_UpToDateFormat"] = "已是最新版本 ({0})",
         };
 
-        // English (en-US) - 295 keys
+        // English (en-US) - 300 keys
         private static readonly Dictionary<string, string> EnStrings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["App_Title"] = "Fluent Pass",
@@ -749,6 +753,8 @@ namespace FluentPass.Common
             ["PwQuality_StrongFormat"] = "Strong ({0} bits)",
             ["PwQuality_VeryWeakFormat"] = "Very weak ({0} bits)",
             ["PwQuality_WeakFormat"] = "Weak ({0} bits)",
+            ["Settings_Animations_Description"] = "Fade effect when switching between settings and entry details. When off, changes apply instantly. Automatically disabled when Windows animations are turned off.",
+            ["Settings_Animations_Title"] = "Transition animations",
             ["Settings_AutoMask_Description"] = "Timeout interval before revealed password is automatically masked",
             ["Settings_AutoMask_Title"] = "Auto-Mask Password Timeout",
             ["Settings_AutoTakeover_Description"] = "Automatically present modern FluentPass window when database opens",
@@ -919,7 +925,7 @@ namespace FluentPass.Common
             ["Update_UpToDateFormat"] = "You are on the latest version ({0})",
         };
 
-        // Japanese (ja-JP) - 295 keys
+        // Japanese (ja-JP) - 300 keys
         private static readonly Dictionary<string, string> JaStrings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["App_Title"] = "Fluent Pass",
@@ -1052,6 +1058,8 @@ namespace FluentPass.Common
             ["PwQuality_StrongFormat"] = "強い ({0} ビット)",
             ["PwQuality_VeryWeakFormat"] = "非常に弱い ({0} ビット)",
             ["PwQuality_WeakFormat"] = "弱い ({0} ビット)",
+            ["Settings_Animations_Description"] = "設定ページや項目の詳細を切り替えるときのフェード効果です。オフにすると即座に切り替わります。Windows のアニメーションが無効な場合は自動的に適用されません。",
+            ["Settings_Animations_Title"] = "トランジション アニメーション",
             ["Settings_AutoMask_Description"] = "パスワード表示後に自動で再マスクされるまでの時間",
             ["Settings_AutoMask_Title"] = "パスワード自動マスク時間",
             ["Settings_AutoTakeover_Description"] = "データベース起動またはロック解除時に自動でモダン画面を表示します",
@@ -1222,7 +1230,7 @@ namespace FluentPass.Common
             ["Update_UpToDateFormat"] = "最新バージョンです ({0})",
         };
 
-        // Korean (ko-KR) - 295 keys
+        // Korean (ko-KR) - 300 keys
         private static readonly Dictionary<string, string> KoStrings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["App_Title"] = "Fluent Pass",
@@ -1355,6 +1363,8 @@ namespace FluentPass.Common
             ["PwQuality_StrongFormat"] = "안전 ({0}비트)",
             ["PwQuality_VeryWeakFormat"] = "매우 취약 ({0}비트)",
             ["PwQuality_WeakFormat"] = "취약 ({0}비트)",
+            ["Settings_Animations_Description"] = "설정 페이지와 항목 세부 정보를 전환할 때 페이드 효과를 표시합니다. 끄면 즉시 전환됩니다. Windows 애니메이션이 꺼져 있으면 자동으로 비활성화됩니다.",
+            ["Settings_Animations_Title"] = "전환 애니메이션",
             ["Settings_AutoMask_Description"] = "비밀번호 표시 후 다시 자동으로 숨겨질 때까지의 시간",
             ["Settings_AutoMask_Title"] = "비밀번호 자동 숨김 시간",
             ["Settings_AutoTakeover_Description"] = "데이터베이스를 열거나 잠금 해제할 때 FluentPass 창을 자동으로 엽니다",
@@ -1525,7 +1535,7 @@ namespace FluentPass.Common
             ["Update_UpToDateFormat"] = "최신 버전을 사용 중입니다 ({0})",
         };
 
-        // Russian (ru-RU) - 295 keys
+        // Russian (ru-RU) - 300 keys
         private static readonly Dictionary<string, string> RuStrings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["App_Title"] = "Fluent Pass",
@@ -1658,6 +1668,8 @@ namespace FluentPass.Common
             ["PwQuality_StrongFormat"] = "Надежный ({0} бит)",
             ["PwQuality_VeryWeakFormat"] = "Очень слабый ({0} бит)",
             ["PwQuality_WeakFormat"] = "Слабый ({0} бит)",
+            ["Settings_Animations_Description"] = "Плавное появление при переключении страниц настроек и сведений о записи. Если выключено, переключение происходит мгновенно. Автоматически отключается, когда анимации Windows выключены.",
+            ["Settings_Animations_Title"] = "Анимация переходов",
             ["Settings_AutoMask_Description"] = "Время, через которое отображаемый пароль снова скроется",
             ["Settings_AutoMask_Title"] = "Автоматическое скрытие пароля",
             ["Settings_AutoTakeover_Description"] = "Автоматически отображать окно FluentPass при открытии базы",
@@ -1828,7 +1840,7 @@ namespace FluentPass.Common
             ["Update_UpToDateFormat"] = "Установлена последняя версия ({0})",
         };
 
-        // Spanish (es-ES) - 295 keys
+        // Spanish (es-ES) - 300 keys
         private static readonly Dictionary<string, string> EsStrings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["App_Title"] = "Fluent Pass",
@@ -1961,6 +1973,8 @@ namespace FluentPass.Common
             ["PwQuality_StrongFormat"] = "Fuerte ({0} bits)",
             ["PwQuality_VeryWeakFormat"] = "Muy débil ({0} bits)",
             ["PwQuality_WeakFormat"] = "Débil ({0} bits)",
+            ["Settings_Animations_Description"] = "Efecto de fundido al cambiar entre la configuración y los detalles de la entrada. Si se desactiva, los cambios se aplican al instante. Se desactiva automáticamente cuando las animaciones de Windows están desactivadas.",
+            ["Settings_Animations_Title"] = "Animaciones de transición",
             ["Settings_AutoMask_Description"] = "Intervalo de tiempo antes de volver a ocultar la contraseña",
             ["Settings_AutoMask_Title"] = "Tiempo de auto-ocultación de contraseña",
             ["Settings_AutoTakeover_Description"] = "Mostrar automáticamente la ventana de FluentPass al abrir la base",
@@ -2131,7 +2145,7 @@ namespace FluentPass.Common
             ["Update_UpToDateFormat"] = "Ya tienes la última versión ({0})",
         };
 
-        // German (de-DE) - 295 keys
+        // German (de-DE) - 300 keys
         private static readonly Dictionary<string, string> DeStrings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["App_Title"] = "Fluent Pass",
@@ -2264,6 +2278,8 @@ namespace FluentPass.Common
             ["PwQuality_StrongFormat"] = "Stark ({0} Bits)",
             ["PwQuality_VeryWeakFormat"] = "Sehr schwach ({0} Bits)",
             ["PwQuality_WeakFormat"] = "Schwach ({0} Bits)",
+            ["Settings_Animations_Description"] = "Überblendung beim Wechsel zwischen Einstellungen und Eintragsdetails. Wenn deaktiviert, erfolgt der Wechsel sofort. Wird automatisch deaktiviert, wenn Windows-Animationen ausgeschaltet sind.",
+            ["Settings_Animations_Title"] = "Übergangsanimationen",
             ["Settings_AutoMask_Description"] = "Zeitspanne, nach der ein aufgedecktes Passwort automatisch wieder maskiert wird",
             ["Settings_AutoMask_Title"] = "Zeitlimit für Passwort-Maskierung",
             ["Settings_AutoTakeover_Description"] = "Modernes FluentPass-Fenster automatisch beim Öffnen der Datenbank anzeigen",

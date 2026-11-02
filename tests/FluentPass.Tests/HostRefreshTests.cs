@@ -12,6 +12,42 @@ namespace FluentPass.Tests
     public class HostRefreshTests
     {
         [Test]
+        public void HostFileClosed_PublishesClosedStateBeforeClearingDetailsDuringAutoType()
+        {
+            MessageService.EnableDialogs = false;
+            var host = new TestPluginHost();
+            SettingsService.SetAutoTakeoverUI(host, false);
+            host.Database.RootGroup.AddEntry(TestPluginHost.CreateTestEntry("Entry", "user", "secret"), true);
+            FluentWindowManager.Initialize(host);
+            var flags = BindingFlags.Static | BindingFlags.NonPublic;
+            var vm = (ViewModels.MainViewModel)typeof(FluentWindowManager).GetField("_viewModel", flags)!.GetValue(null)!;
+            var closed = typeof(FluentWindowManager).GetMethod("OnHostFileClosed", flags)!;
+            try
+            {
+                vm.SelectedEntry = vm.FilteredEntries[0];
+                bool detailCleared = false;
+                vm.PropertyChanged += (_, e) =>
+                {
+                    if (e.PropertyName != nameof(ViewModels.MainViewModel.CurrentDetail)) return;
+                    detailCleared = true;
+                    Assert.That(vm.IsDatabaseOpen, Is.False);
+                };
+
+                vm.AutoType.RunNative(() =>
+                {
+                    host.Database.Close();
+                    closed.Invoke(null, new object?[] { host, null });
+                    Assert.That(detailCleared, Is.True);
+                    Assert.That(vm.CurrentDetail, Is.Null);
+                });
+            }
+            finally
+            {
+                FluentWindowManager.Shutdown();
+            }
+        }
+
+        [Test]
         public void HostEvents_CoalesceAndRemainPendingUntilAutoTypeFinishes()
         {
             MessageService.EnableDialogs = false;

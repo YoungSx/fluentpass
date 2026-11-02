@@ -88,11 +88,66 @@ namespace FluentPass.Views
             _viewModel.QuickAccessRequested += OnQuickAccessRequested;
             _viewModel.Update.RestartRequested += OnUpdateRestartRequested;
             _viewModel.Update.CloseFlyoutRequested += OnUpdateCloseFlyoutRequested;
+            _viewModel.PropertyChanged += OnMotionPropertyChanged;
+            _viewModel.Settings.PropertyChanged += OnMotionPropertyChanged;
+            SystemParameters.StaticPropertyChanged += OnMotionPropertyChanged;
 
             Loaded += OnWindowLoaded;
         }
 
         private QuickAccessWindow? _quickAccessWindow;
+
+        /// <summary>
+        /// 主视图与详情内容的入场过渡。仅用于视觉呈现；锁定、遮蔽等安全状态仍即时生效。
+        /// </summary>
+        private void OnMotionPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (ReferenceEquals(sender, _viewModel.Settings) &&
+                e.PropertyName != nameof(SettingsViewModel.AnimationsEnabled)) return;
+
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(() => OnMotionPropertyChanged(sender, e)));
+                return;
+            }
+
+            if (!IsLoaded) return;
+
+            switch (e.PropertyName)
+            {
+                case nameof(MainViewModel.IsLocked):
+                case nameof(MainViewModel.IsDatabaseOpen):
+                case nameof(SettingsViewModel.AnimationsEnabled):
+                case nameof(SystemParameters.ClientAreaAnimation):
+                    if (!CanAnimateContent || !UiMotion.IsAllowed(_viewModel.Settings.AnimationsEnabled))
+                        StopTransitions();
+                    break;
+                case nameof(MainViewModel.IsSettingsOpen):
+                    StopTransitions();
+                    if (CanAnimateContent)
+                        UiMotion.TryApply(_viewModel.IsSettingsOpen ? SettingsHost : WorkspaceHost,
+                            _viewModel.Settings.AnimationsEnabled);
+                    break;
+                case nameof(MainViewModel.CurrentDetail):
+                    UiMotion.Stop(DetailScrollViewer);
+                    UiMotion.Stop(DetailEmptyState);
+                    if (CanAnimateContent && !_viewModel.IsSettingsOpen)
+                        UiMotion.TryApply(_viewModel.CurrentDetail != null
+                            ? (FrameworkElement)DetailScrollViewer
+                            : DetailEmptyState, _viewModel.Settings.AnimationsEnabled);
+                    break;
+            }
+        }
+
+        private bool CanAnimateContent => _viewModel.IsDatabaseOpen && !_viewModel.IsLocked;
+
+        private void StopTransitions()
+        {
+            UiMotion.Stop(WorkspaceHost);
+            UiMotion.Stop(SettingsHost);
+            UiMotion.Stop(DetailScrollViewer);
+            UiMotion.Stop(DetailEmptyState);
+        }
 
         private void OnUpdateCloseFlyoutRequested(object? sender, EventArgs e)
         {
@@ -818,6 +873,10 @@ namespace FluentPass.Views
         protected override void OnClosed(EventArgs e)
         {
             _viewModel.Update.RestartRequested -= OnUpdateRestartRequested;
+            _viewModel.PropertyChanged -= OnMotionPropertyChanged;
+            _viewModel.Settings.PropertyChanged -= OnMotionPropertyChanged;
+            SystemParameters.StaticPropertyChanged -= OnMotionPropertyChanged;
+            StopTransitions();
             CleanupThemeWatcher();
             base.OnClosed(e);
         }
