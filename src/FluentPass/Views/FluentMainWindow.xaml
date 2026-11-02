@@ -267,7 +267,8 @@
         <!-- 主内容区域 -->
         <Grid Grid.Row="1">
             <!-- 密码库工作区视图 (设置中心关闭时展示) -->
-            <Grid Visibility="{Binding IsSettingsOpen, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
+            <Grid x:Name="WorkspaceHost"
+                  Visibility="{Binding IsSettingsOpen, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverse}">
             <!-- 视图 1: 数据库已锁定 -->
             <Grid Visibility="{Binding IsLocked, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -759,7 +760,7 @@
                          VerticalContentAlignment="Stretch">
                     <Grid VerticalAlignment="Stretch">
                         <!-- 未选择条目时的空状态 -->
-                        <Grid VerticalAlignment="Stretch">
+                        <Grid x:Name="DetailEmptyState" VerticalAlignment="Stretch">
                             <Grid.Style>
                                 <Style TargetType="Grid">
                                     <Setter Property="Visibility" Value="Collapsed" />
@@ -777,7 +778,7 @@
                             </StackPanel>
                         </Grid>
 
-                        <!-- 已选择条目的详情面板 (采用 DynamicScrollViewer 实现平滑流动滚动) -->
+                        <!-- 已选择条目的详情面板（DynamicScrollViewer 仅负责滚动条的动态显隐，不提供内容平滑滚动） -->
                         <ui:DynamicScrollViewer x:Name="DetailScrollViewer" DataContext="{Binding CurrentDetail}" VerticalScrollBarVisibility="Auto" VerticalAlignment="Stretch" Focusable="False" ScrollChanged="OnDetailScrollViewerScrollChanged" PreviewMouseWheel="OnDetailScrollViewerPreviewMouseWheel">
                             <ui:DynamicScrollViewer.Style>
                                 <Style TargetType="ui:DynamicScrollViewer" BasedOn="{StaticResource {x:Type ui:DynamicScrollViewer}}">
@@ -1431,7 +1432,8 @@
             </Grid>
 
             <!-- 现代化设置中心视图 (设置中心开启时展示) -->
-            <Grid Visibility="{Binding IsSettingsOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Grid x:Name="SettingsHost"
+                  Visibility="{Binding IsSettingsOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <views:SettingsView DataContext="{Binding Settings}" />
             </Grid>
 

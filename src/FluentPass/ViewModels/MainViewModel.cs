@@ -339,9 +339,9 @@ namespace FluentPass.ViewModels
 
             if (db == null || !db.IsOpen)
             {
-                ClearData();
                 IsDatabaseOpen = false;
                 IsLocked = mw != null && mw.IsFileLocked(null);
+                ClearData();
                 DatabaseName = IsLocked ? Loc.Get("Status_Locked") : Loc.Get("Status_NotOpen");
                 DatabasePath = string.Empty;
                 IsModified = false;

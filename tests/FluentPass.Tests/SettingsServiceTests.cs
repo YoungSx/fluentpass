@@ -24,6 +24,7 @@ namespace FluentPass.Tests
             Assert.That(SettingsService.GetCloseAction(_host), Is.EqualTo(WindowCloseAction.RestoreOriginalWindow));
             Assert.That(SettingsService.GetAppTheme(_host), Is.EqualTo("System"));
             Assert.That(SettingsService.GetAutoMaskSeconds(_host), Is.EqualTo(10));
+            Assert.That(SettingsService.GetAnimationsEnabled(_host), Is.True);
         }
 
         [Test]
@@ -33,6 +34,27 @@ namespace FluentPass.Tests
             Assert.That(SettingsService.GetCloseAction(null), Is.EqualTo(WindowCloseAction.RestoreOriginalWindow));
             Assert.That(SettingsService.GetAppTheme(null), Is.EqualTo("System"));
             Assert.That(SettingsService.GetAutoMaskSeconds(null), Is.EqualTo(10));
+            Assert.That(SettingsService.GetAnimationsEnabled(null), Is.True);
+        }
+
+        [Test]
+        public void SettingsService_ReadAndWrite_AnimationsEnabled()
+        {
+            SettingsService.SetAnimationsEnabled(_host, false);
+            Assert.That(SettingsService.GetAnimationsEnabled(_host), Is.False);
+
+            SettingsService.SetAnimationsEnabled(_host, true);
+            Assert.That(SettingsService.GetAnimationsEnabled(_host), Is.True);
+
+            _host.CustomConfig.SetString(SettingsService.AnimationsEnabledKey, "not_a_bool");
+            Assert.That(SettingsService.GetAnimationsEnabled(_host), Is.True);
+        }
+
+        [Test]
+        public void SettingsViewModel_LoadsSavedAnimationPreference()
+        {
+            SettingsService.SetAnimationsEnabled(_host, false);
+            Assert.That(new SettingsViewModel(_host).AnimationsEnabled, Is.False);
         }
 
         [Test]
@@ -151,7 +173,11 @@ namespace FluentPass.Tests
             vm.AutoCheckUpdates = false;
             Assert.That(SettingsService.GetAutoCheckUpdates(_host), Is.False);
 
-            // 6. Close Command
+            // 6. Toggle AnimationsEnabled（外观与个性化分组）
+            vm.AnimationsEnabled = false;
+            Assert.That(SettingsService.GetAnimationsEnabled(_host), Is.False);
+
+            // 7. Close Command
             vm.CloseSettingsCommand.Execute(null);
             Assert.That(closed, Is.True);
         }
@@ -200,6 +226,7 @@ namespace FluentPass.Tests
             vm.SelectedTheme = "Dark";
             vm.AutoMaskSecondsValue = 5;
             vm.AutoCheckUpdates = false;
+            vm.AnimationsEnabled = false;
 
             vm.ResetSettingsCommand.Execute(null);
 
@@ -208,6 +235,8 @@ namespace FluentPass.Tests
             Assert.That(vm.SelectedTheme, Is.EqualTo("System"));
             Assert.That(vm.AutoMaskSeconds, Is.EqualTo(10));
             Assert.That(vm.AutoCheckUpdates, Is.True);
+            Assert.That(vm.AnimationsEnabled, Is.True);
+            Assert.That(SettingsService.GetAnimationsEnabled(_host), Is.True);
         }
     }
 }

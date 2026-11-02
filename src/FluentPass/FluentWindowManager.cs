@@ -210,7 +210,11 @@ namespace FluentPass
         private static void OnHostFileClosed(object sender, FileClosedEventArgs e)
         {
             // Never defer plaintext cleanup behind an Auto-Type message pump.
-            _viewModel?.ClearData();
+            if (_viewModel != null)
+            {
+                _viewModel.IsDatabaseOpen = false;
+                _viewModel.ClearData();
+            }
             QueueHostRefresh();
         }
 

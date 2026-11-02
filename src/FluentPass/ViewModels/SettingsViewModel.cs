@@ -49,6 +49,10 @@ namespace FluentPass.ViewModels
         [ObservableProperty]
         private bool _autoCheckUpdates;
 
+        /// <summary>页面与详情切换过渡动画（默认开启；Windows 关闭动画时由视图层自动跳过）。</summary>
+        [ObservableProperty]
+        private bool _animationsEnabled;
+
         /// <summary>在线更新状态机（共享实例，由 <see cref="MainViewModel"/> 持有）。</summary>
         public UpdateViewModel? Update { get; }
 
@@ -68,6 +72,7 @@ namespace FluentPass.ViewModels
             _selectedLanguage = SettingsService.GetLanguage(_host);
             _autoMaskSecondsValue = SettingsService.GetAutoMaskSeconds(_host);
             _autoCheckUpdates = SettingsService.GetAutoCheckUpdates(_host);
+            _animationsEnabled = SettingsService.GetAnimationsEnabled(_host);
 
             try
             {
@@ -119,6 +124,11 @@ namespace FluentPass.ViewModels
             SettingsService.SetAutoCheckUpdates(_host, value);
         }
 
+        partial void OnAnimationsEnabledChanged(bool value)
+        {
+            SettingsService.SetAnimationsEnabled(_host, value);
+        }
+
         partial void OnAutoMaskSecondsValueChanged(double value)
         {
             int seconds = (int)Math.Round(value);
@@ -158,6 +168,7 @@ namespace FluentPass.ViewModels
             SelectedLanguage = SettingsService.DefaultLanguage;
             AutoMaskSecondsValue = SettingsService.DefaultAutoMaskSeconds;
             AutoCheckUpdates = SettingsService.DefaultAutoCheckUpdates;
+            AnimationsEnabled = SettingsService.DefaultAnimationsEnabled;
         }
     }
 }
