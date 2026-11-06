@@ -11,8 +11,8 @@ namespace FluentPass.Common
     /// </summary>
     internal static class UiMotion
     {
-        /// <summary>轻量入场过渡时长（毫秒），与 Fluent 动效节奏一致。</summary>
-        public const int DurationMs = 180;
+        /// <summary>轻量入场过渡时长（毫秒），对齐 WPF-UI 官方 NavigationView 默认过渡节奏 (200ms)。</summary>
+        public const int DurationMs = 200;
 
         /// <summary>当前是否允许播放应用内过渡动画（应用开关 + 系统动效设置）。</summary>
         public static bool IsAllowed(bool appEnabled)
