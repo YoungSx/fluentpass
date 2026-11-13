@@ -1,50 +1,28 @@
+"use client";
+
 import Accordion from "@/components/accordion";
+import { useLanguage } from "@/i18n/context";
 
 export default function FAQSection() {
-  const faqs = [
-    {
-      q: "FluentPass 会联网上传或泄露我的密码吗？",
-      a: "不会上传任何数据。FluentPass 的全部加解密与读写均由本地 KeePassLib 官方安全组件完成，工程内没有遥测分析、日志上报或第三方统计。唯一的对外网络行为是在线更新检查（默认开启，可在设置中关闭）：它只向 GitHub Releases 发起三次匿名 HTTPS 只读 GET（version.txt → SHA256SUMS.txt → FluentPass.dll），请求头仅携带插件版本号，绝不上传凭据、数据库内容或任何可识别身份的信息。",
-    },
-    {
-      q: "我的数据库文件会损坏或丢失数据吗？",
-      a: "不会。FluentPass 仅仅负责界面的展现与用户交互，真正的落盘写入直接调用 KeePassLib 的事务型原子写机制。同时在就地编辑保存前，系统会自动创建历史版本（CreateBackup），误操作随时可以追溯恢复。",
-    },
-    {
-      q: "能否与 KeePass 原版窗口或其他插件共存？",
-      a: "完全可以。FluentPass 运行在同一个托管进程空间内，随时可以通过工具栏切换原版 KeePass 窗口。浏览器自动填充插件（如 KeePassXC-Browser / KeePassRPC）与坚果云/WebDAV 同步均不受任何影响。",
-    },
-    {
-      q: "是否支持 Windows 10？",
-      a: "完全支持。FluentPass 在 Windows 11 上会自动开启原生的 DWM Mica（云母）磨砂材质；在 Windows 10 系统上会自动降级为 Acrylic 亚克力半透明与现代化深浅色主题，视觉体验同样精致。",
-    },
-    {
-      q: "如何彻底卸载 FluentPass？",
-      a: "纯绿色单文件。退出 KeePass 后，直接前往 Plugins 目录删除 FluentPass.dll 文件即可，不修改注册表，不遗留任何系统残留文件。",
-    },
-    {
-      q: "插件如何自动更新？会不会装到一半把插件弄坏？",
-      a: "全自动且可回滚。主视窗首次显示后会在后台静默检查新版本（同一版本只提醒一次，可「忽略此版本」）：下载的 FluentPass.dll 先与官方 SHA256SUMS.txt 逐字节比对，校验不通过绝不替换任何文件；换装顺序固定为「旧 DLL 改名 .old → 新 DLL 就位 → 任一步失败立即回滚」，.old 备份由下次启动自动清理；点击提示条上的「重启并更新」即走 KeePass 原生退出管线重启宿主生效（脏库仍会正常弹出保存确认）。若插件目录不可写，插件不会强行改动现有 DLL，而是降级提示「打开下载目录」由你手动替换。",
-    },
-  ];
+  const { t } = useLanguage();
 
   return (
     <section id="faq" className="relative py-16 md:py-24 border-t border-gray-200/80 bg-gray-50/50">
       <div className="mx-auto max-w-4xl px-4 sm:px-6">
         <div className="text-center pb-12">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold mb-4">
-            答疑解惑 · 深入细节
+            {t.faq.pill}
           </div>
           <h2 className="text-3xl font-bold tracking-tight text-gray-900 md:text-4xl mb-4">
-            常见问题解答 (FAQ)
+            {t.faq.title}
           </h2>
           <p className="text-base sm:text-lg text-gray-600">
-            关于离线安全性、数据完整性、架构兼容性与系统支持的详细说明。
+            {t.faq.subtitle}
           </p>
         </div>
 
         <div className="space-y-3">
-          {faqs.map((faq, idx) => (
+          {t.faq.items.map((faq, idx) => (
             <Accordion key={idx} title={faq.q} id={`faq-${idx}`} active={idx === 0}>
               {faq.a}
             </Accordion>
