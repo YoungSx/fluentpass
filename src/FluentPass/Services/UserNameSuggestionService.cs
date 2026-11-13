@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using KeePass;
 using KeePass.App.Configuration;
 using KeePassLib;
@@ -66,6 +67,68 @@ namespace FluentPass.Services
             var result = new List<string>(uniqueUsers.Keys);
             result.Sort(StrUtil.CaseIgnoreComparer);
             return result;
+        }
+
+        /// <summary>
+        /// 为新建条目推导默认用户名，不再使用本机用户名：
+        /// 1. 库级 DefaultUserName（数据库设置中显式配置的默认值，原生 KeePass 新建条目即预填它，
+        ///    且不受星号遮蔽影响——它是用户显式声明的元数据而非条目内容）。
+        /// 2. 否则若主界面用户名列开启星号遮蔽，返回空串（此时从条目内容推导会泄露库内容）。
+        /// 3. 否则取库内出现次数最多的用户名（大小写不敏感计数，空值忽略，
+        ///    平局及大小写变体取最近修改条目上的拼写）。
+        /// 4. 无任何候选时返回空串。
+        /// </summary>
+        public static string GetDefaultUserName(PwDatabase? db, bool checkAsterisksMask = true)
+        {
+            if (db == null || !db.IsOpen || db.RootGroup == null)
+            {
+                return string.Empty;
+            }
+
+            string defaultUser = db.DefaultUserName?.Trim() ?? string.Empty;
+            if (!string.IsNullOrEmpty(defaultUser))
+            {
+                return defaultUser;
+            }
+
+            if (checkAsterisksMask && IsUserNameMaskedWithAsterisks())
+            {
+                return string.Empty;
+            }
+
+            var counts = new Dictionary<string, int>(StrUtil.CaseIgnoreComparer);
+            // 值：(该用户名的拼写, 该拼写所在条目的最近修改时间)——平局与大小写变体均取最近修改者
+            var latest = new Dictionary<string, (string Spelling, DateTime LastMod)>(StrUtil.CaseIgnoreComparer);
+
+            try
+            {
+                db.RootGroup.TraverseTree(TraversalMethod.PreOrder, null, pe =>
+                {
+                    if (pe == null) return true;
+                    string u = pe.Strings.ReadSafe(PwDefs.UserNameField)?.Trim() ?? string.Empty;
+                    if (string.IsNullOrEmpty(u)) return true;
+
+                    counts.TryGetValue(u, out int count);
+                    counts[u] = count + 1;
+
+                    if (!latest.TryGetValue(u, out var cur) || pe.LastModificationTime > cur.LastMod)
+                    {
+                        latest[u] = (u, pe.LastModificationTime);
+                    }
+                    return true;
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"UserNameSuggestionService traversal error: {ex.Message}");
+                return string.Empty;
+            }
+
+            return counts
+                .OrderByDescending(kv => kv.Value)
+                .ThenByDescending(kv => latest[kv.Key].LastMod)
+                .Select(kv => latest[kv.Key].Spelling)
+                .FirstOrDefault() ?? string.Empty;
         }
 
         /// <summary>
