@@ -270,6 +270,140 @@ namespace FluentPass.Tests
             }
         }
 
+        [Test]
+        public async Task CheckAndInstall_TargetPathAlreadyMatchesExpectedHash_ReturnsInstalledWithoutDownloading()
+        {
+            // 目标文件已就位（如刚换装成功未重启，或用户已手动覆盖）
+            File.WriteAllBytes(_targetPath, Payload);
+            var transport = FakeTransport.WithRelease(new Version(2, 0, 0, 0), Payload);
+
+            var result = await new UpdateService(transport, _targetPath, _stagingRoot)
+                .CheckAndInstallAsync(new Version(1, 0, 0, 0), null, CancellationToken.None);
+
+            Assert.That(result.Outcome, Is.EqualTo(UpdateOutcome.Installed));
+            Assert.That(transport.ByteRequests, Is.Empty, "目标文件已是最新版本，坚决不触发网络下载");
+            Assert.That(File.ReadAllBytes(_targetPath), Is.EqualTo(Payload));
+            Assert.That(File.Exists(_targetPath + ".old"), Is.False, "不得误将新文件再次备份破坏原有旧备份");
+        }
+
+        [Test]
+        public async Task CheckAndInstall_ExistingValidStagedFile_ReusesWithoutDownloading()
+        {
+            // 本地暂存目录已存在完整且校验匹配的新版本文件（如上次下载后未自动换装成功）
+            var versionDir = Path.Combine(_stagingRoot, "2.0.0.0");
+            Directory.CreateDirectory(versionDir);
+            var staged = Path.Combine(versionDir, UpdateService.PluginFileName);
+            File.WriteAllBytes(staged, Payload);
+
+            var transport = FakeTransport.WithRelease(new Version(2, 0, 0, 0), Payload);
+
+            var result = await new UpdateService(transport, _targetPath, _stagingRoot)
+                .CheckAndInstallAsync(new Version(1, 0, 0, 0), null, CancellationToken.None);
+
+            Assert.That(result.Outcome, Is.EqualTo(UpdateOutcome.Installed));
+            Assert.That(transport.ByteRequests, Is.Empty, "暂存文件有效时必须直接复用，0 流量跳过网络下载");
+            Assert.That(File.ReadAllText(_targetPath), Is.EqualTo(PayloadText));
+            Assert.That(File.ReadAllText(_targetPath + ".old"), Is.EqualTo("old-plugin-payload"));
+        }
+
+        [Test]
+        public async Task CheckAndInstall_ExistingCorruptedStagedFile_OverwritesWithDownloaded()
+        {
+            // 本地暂存目录文件损坏
+            var versionDir = Path.Combine(_stagingRoot, "2.0.0.0");
+            Directory.CreateDirectory(versionDir);
+            var staged = Path.Combine(versionDir, UpdateService.PluginFileName);
+            File.WriteAllText(staged, "corrupted-payload");
+
+            var transport = FakeTransport.WithRelease(new Version(2, 0, 0, 0), Payload);
+
+            var result = await new UpdateService(transport, _targetPath, _stagingRoot)
+                .CheckAndInstallAsync(new Version(1, 0, 0, 0), null, CancellationToken.None);
+
+            Assert.That(result.Outcome, Is.EqualTo(UpdateOutcome.Installed));
+            Assert.That(transport.ByteRequests, Has.Count.EqualTo(1), "暂存文件哈希不匹配时必须重新下载覆盖");
+            Assert.That(File.ReadAllText(_targetPath), Is.EqualTo(PayloadText));
+        }
+
+        [Test]
+        public async Task CheckAndInstall_ZeroByteStagedFile_OverwritesWithDownloaded()
+        {
+            // 本地暂存目录为空的截断残缺文件（如断电/崩溃残留）
+            var versionDir = Path.Combine(_stagingRoot, "2.0.0.0");
+            Directory.CreateDirectory(versionDir);
+            var staged = Path.Combine(versionDir, UpdateService.PluginFileName);
+            File.WriteAllBytes(staged, Array.Empty<byte>());
+
+            var transport = FakeTransport.WithRelease(new Version(2, 0, 0, 0), Payload);
+
+            var result = await new UpdateService(transport, _targetPath, _stagingRoot)
+                .CheckAndInstallAsync(new Version(1, 0, 0, 0), null, CancellationToken.None);
+
+            Assert.That(result.Outcome, Is.EqualTo(UpdateOutcome.Installed));
+            Assert.That(transport.ByteRequests, Has.Count.EqualTo(1));
+            Assert.That(File.ReadAllText(_targetPath), Is.EqualTo(PayloadText));
+        }
+
+        [Test]
+        public async Task CheckAndInstall_ExistingValidStagedFile_UnwritableTarget_ReportsNotWritableWithoutDownloading()
+        {
+            var versionDir = Path.Combine(_stagingRoot, "2.0.0.0");
+            Directory.CreateDirectory(versionDir);
+            var staged = Path.Combine(versionDir, UpdateService.PluginFileName);
+            File.WriteAllBytes(staged, Payload);
+
+            var transport = FakeTransport.WithRelease(new Version(2, 0, 0, 0), Payload);
+            var pluginDir = Path.GetDirectoryName(_targetPath)!;
+
+            using (var deny = new DenyWriteScope(pluginDir))
+            {
+                if (!deny.Applied)
+                {
+                    Assert.Ignore("当前环境无法设置目录 ACL 拒绝规则，跳过只读目录用例");
+                }
+
+                var result = await new UpdateService(transport, _targetPath, _stagingRoot)
+                    .CheckAndInstallAsync(new Version(1, 0, 0, 0), null, CancellationToken.None);
+
+                Assert.That(result.Outcome, Is.EqualTo(UpdateOutcome.NotWritable));
+                Assert.That(transport.ByteRequests, Is.Empty, "只读目录且暂存文件有效时，不应产生重复网络下载");
+                Assert.That(result.DownloadedPath, Is.EqualTo(staged));
+                Assert.That(File.Exists(staged), Is.True);
+            }
+        }
+
+        [Test]
+        public async Task CheckAndInstall_OlderStagedVersionPresent_DoesNotReuseForNewVersion()
+        {
+            // 暂存区存在 1.5.0.0 版本的旧残留，远端最新为 2.0.0.0
+            var oldVersionDir = Path.Combine(_stagingRoot, "1.5.0.0");
+            Directory.CreateDirectory(oldVersionDir);
+            File.WriteAllBytes(Path.Combine(oldVersionDir, UpdateService.PluginFileName), Payload);
+
+            var transport = FakeTransport.WithRelease(new Version(2, 0, 0, 0), Payload);
+
+            var result = await new UpdateService(transport, _targetPath, _stagingRoot)
+                .CheckAndInstallAsync(new Version(1, 0, 0, 0), null, CancellationToken.None);
+
+            Assert.That(result.Outcome, Is.EqualTo(UpdateOutcome.Installed));
+            Assert.That(transport.ByteRequests, Has.Count.EqualTo(1), "不得跨版本误复用旧版暂存文件");
+            Assert.That(File.ReadAllText(_targetPath), Is.EqualTo(PayloadText));
+        }
+
+        [Test]
+        public void CleanupLeftoverFiles_RemovesObsoleteStagingDirectories()
+        {
+            var oldDir = Path.Combine(_stagingRoot, "1.0.0.0");
+            var futureDir = Path.Combine(_stagingRoot, "99.0.0.0");
+            Directory.CreateDirectory(oldDir);
+            Directory.CreateDirectory(futureDir);
+
+            UpdateService.CleanupLeftoverFiles(_targetPath, _stagingRoot);
+
+            Assert.That(Directory.Exists(oldDir), Is.False, "历史过期版本的暂存目录应被清理");
+            Assert.That(Directory.Exists(futureDir), Is.True, "尚未运行的未来新版本暂存目录应予以保留");
+        }
+
         // ---------- 换装 ----------
 
         [Test]
