@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using FluentPass.Services;
 using FluentPass.Tests.Mocks;
@@ -9,7 +10,7 @@ using NUnit.Framework;
 
 namespace FluentPass.Tests
 {
-    [TestFixture]
+    [TestFixture, Category("Unit")]
     public class UserNameSuggestionServiceTests
     {
         [Test]
@@ -98,44 +99,128 @@ namespace FluentPass.Tests
         }
 
         [Test]
-        public void GetSuggestions_WhenHideWithAsterisksConfigured_ReturnsEmpty()
+        public void GetDefaultUserName_NullOrClosedDatabase_ReturnsEmpty()
+        {
+            Assert.That(UserNameSuggestionService.GetDefaultUserName(null, checkAsterisksMask: false), Is.Empty);
+
+            var dbClosed = new PwDatabase();
+            Assert.That(UserNameSuggestionService.GetDefaultUserName(dbClosed, checkAsterisksMask: false), Is.Empty);
+        }
+
+        [Test]
+        public void GetDefaultUserName_DefaultUserNameSet_WinsOverEntriesAndIgnoresMask()
+        {
+            var host = new TestPluginHost();
+            host.Database.DefaultUserName = "default@example.com";
+            host.Database.RootGroup.AddEntry(
+                TestPluginHost.CreateTestEntry("Entry 1", "alice", "pass1"), true);
+
+            // DefaultUserName 是显式库级元数据，不受星号遮蔽约束（遮蔽开启时仍应预填）
+            RunWithUserNameMask(() =>
+                Assert.That(
+                    UserNameSuggestionService.GetDefaultUserName(host.Database, checkAsterisksMask: true),
+                    Is.EqualTo("default@example.com")));
+        }
+
+        [Test]
+        public void GetDefaultUserName_NoDefaultUser_ReturnsMostFrequentUserName()
         {
             var host = new TestPluginHost();
             var root = host.Database.RootGroup;
-            root.AddEntry(TestPluginHost.CreateTestEntry("Entry 1", "alice", "pass1"), true);
 
-            if (Program.Config?.MainWindow != null)
+            root.AddEntry(TestPluginHost.CreateTestEntry("E1", "alice", "p"), true);
+            root.AddEntry(TestPluginHost.CreateTestEntry("E2", "bob", "p"), true);
+            // 大小写不敏感：bob 共 2 次；显式置新时间使胜出拼写确定为后来者的大小写变体
+            var bobUpper = TestPluginHost.CreateTestEntry("E3", "BOB", "p");
+            bobUpper.LastModificationTime = bobUpper.LastModificationTime.AddSeconds(10);
+            root.AddEntry(bobUpper, true);
+            root.AddEntry(TestPluginHost.CreateTestEntry("E5", "", "p"), true);
+            root.AddEntry(TestPluginHost.CreateTestEntry("E6", "   ", "p"), true);
+
+            var result = UserNameSuggestionService.GetDefaultUserName(host.Database, checkAsterisksMask: false);
+            Assert.That(result, Is.EqualTo("BOB"));
+        }
+
+        [Test]
+        public void GetDefaultUserName_FrequencyTie_UsesMostRecentlyModified()
+        {
+            var host = new TestPluginHost();
+            var root = host.Database.RootGroup;
+
+            var older = TestPluginHost.CreateTestEntry("E1", "alice", "p");
+            root.AddEntry(older, true);
+            var newer = TestPluginHost.CreateTestEntry("E2", "bob", "p");
+            newer.LastModificationTime = older.LastModificationTime.AddSeconds(10);
+            root.AddEntry(newer, true);
+
+            var result = UserNameSuggestionService.GetDefaultUserName(host.Database, checkAsterisksMask: false);
+            Assert.That(result, Is.EqualTo("bob"));
+        }
+
+        [Test]
+        public void GetDefaultUserName_EmptyDatabase_ReturnsEmpty()
+        {
+            var host = new TestPluginHost();
+            Assert.That(
+                UserNameSuggestionService.GetDefaultUserName(host.Database, checkAsterisksMask: false),
+                Is.Empty);
+        }
+
+        [Test]
+        public void GetSuggestions_WhenHideWithAsterisksConfigured_ReturnsEmpty()
+        {
+            var host = new TestPluginHost();
+            host.Database.RootGroup.AddEntry(
+                TestPluginHost.CreateTestEntry("Entry 1", "alice", "pass1"), true);
+
+            RunWithUserNameMask(() =>
+                Assert.That(UserNameSuggestionService.GetSuggestions(host.Database, checkAsterisksMask: true), Is.Empty));
+        }
+
+        [Test]
+        public void GetDefaultUserName_WhenHideWithAsterisksConfigured_ReturnsEmptyForDerivedValue()
+        {
+            var host = new TestPluginHost();
+            host.Database.RootGroup.AddEntry(
+                TestPluginHost.CreateTestEntry("Entry 1", "alice", "pass1"), true);
+
+            RunWithUserNameMask(() =>
+                Assert.That(UserNameSuggestionService.GetDefaultUserName(host.Database, checkAsterisksMask: true), Is.Empty));
+        }
+
+        /// <summary>临时开启主窗口用户名列星号遮蔽执行断言，结束后恢复原状。</summary>
+        private static void RunWithUserNameMask(Action assertMasked)
+        {
+            if (Program.Config?.MainWindow == null) return;
+
+            var col = Program.Config.MainWindow.FindColumn(AceColumnType.UserName);
+            bool added = false;
+            bool origHide = false;
+            if (col == null)
             {
-                var col = Program.Config.MainWindow.FindColumn(AceColumnType.UserName);
-                bool added = false;
-                bool origHide = false;
-                if (col == null)
+                col = new AceColumn(AceColumnType.UserName);
+                Program.Config.MainWindow.EntryListColumns.Add(col);
+                added = true;
+            }
+            else
+            {
+                origHide = col.HideWithAsterisks;
+            }
+
+            try
+            {
+                col.HideWithAsterisks = true;
+                assertMasked();
+            }
+            finally
+            {
+                if (added)
                 {
-                    col = new AceColumn(AceColumnType.UserName);
-                    Program.Config.MainWindow.EntryListColumns.Add(col);
-                    added = true;
+                    Program.Config.MainWindow.EntryListColumns.Remove(col);
                 }
                 else
                 {
-                    origHide = col.HideWithAsterisks;
-                }
-
-                try
-                {
-                    col.HideWithAsterisks = true;
-                    var suggestions = UserNameSuggestionService.GetSuggestions(host.Database, checkAsterisksMask: true);
-                    Assert.That(suggestions, Is.Empty);
-                }
-                finally
-                {
-                    if (added)
-                    {
-                        Program.Config.MainWindow.EntryListColumns.Remove(col);
-                    }
-                    else
-                    {
-                        col.HideWithAsterisks = origHide;
-                    }
+                    col.HideWithAsterisks = origHide;
                 }
             }
         }

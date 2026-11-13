@@ -1039,7 +1039,7 @@ namespace FluentPass.ViewModels
             {
                 var entry = new PwEntry(true, true);
                 entry.Strings.Set(PwDefs.TitleField, new ProtectedString(false, Loc.Get("New_Entry_DefaultTitle")));
-                entry.Strings.Set(PwDefs.UserNameField, new ProtectedString(false, Environment.UserName));
+                entry.Strings.Set(PwDefs.UserNameField, new ProtectedString(false, UserNameSuggestionService.GetDefaultUserName(_host.Database)));
                 entry.Strings.Set(PwDefs.PasswordField, new ProtectedString(true, string.Empty));
                 entry.Strings.Set(PwDefs.UrlField, new ProtectedString(false, string.Empty));
                 entry.Strings.Set(PwDefs.NotesField, new ProtectedString(false, string.Empty));
