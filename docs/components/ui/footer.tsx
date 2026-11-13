@@ -1,16 +1,18 @@
-import Link from "next/link";
+"use client";
+
 import Image from "next/image";
+import { useLanguage } from "@/i18n/context";
 
 export default function Footer({ border = false }: { border?: boolean }) {
+  const { t } = useLanguage();
+
   return (
     <footer className="relative overflow-hidden">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         {/* Top area: Blocks */}
         <div
           className={`grid gap-10 py-8 sm:grid-cols-12 md:py-12 ${
-            border
-              ? "border-t border-gray-200"
-              : ""
+            border ? "border-t border-gray-200" : ""
           }`}
         >
           {/* 1st block */}
@@ -26,35 +28,35 @@ export default function Footer({ border = false }: { border?: boolean }) {
               <span className="font-bold text-gray-900 text-lg">FluentPass</span>
             </div>
             <p className="text-sm text-gray-600 max-w-sm">
-              专为 KeePass 打造的 Windows 11 Fluent 现代交互体验。100% 官方内核加密驱动，零跨进程损耗。
+              {t.footer.description}
             </p>
             <div className="text-xs text-gray-500">
-              &copy; {new Date().getFullYear()} FluentPass. Released under the MIT License.
+              &copy; {new Date().getFullYear()} {t.footer.copyrightSuffix}
             </div>
           </div>
 
           {/* 2nd block */}
           <div className="space-y-2 sm:col-span-6 md:col-span-3 lg:col-span-2">
-            <h3 className="text-sm font-semibold text-gray-900">核心架构</h3>
+            <h3 className="text-sm font-semibold text-gray-900">{t.footer.colArchitecture}</h3>
             <ul className="space-y-2 text-sm text-gray-600">
               <li>
                 <a className="transition hover:text-blue-600" href="#features">
-                  Fluent 2 体系
+                  {t.footer.archLinks.fluent2}
                 </a>
               </li>
               <li>
                 <a className="transition hover:text-blue-600" href="#architecture">
-                  Zero IPC 原生模式
+                  {t.footer.archLinks.zeroIpc}
                 </a>
               </li>
               <li>
                 <a className="transition hover:text-blue-600" href="#features">
-                  ProtectedString 防护
+                  {t.footer.archLinks.protectedString}
                 </a>
               </li>
               <li>
                 <a className="transition hover:text-blue-600" href="#features">
-                  三栏式工作流
+                  {t.footer.archLinks.threePane}
                 </a>
               </li>
             </ul>
@@ -62,7 +64,7 @@ export default function Footer({ border = false }: { border?: boolean }) {
 
           {/* 3rd block */}
           <div className="space-y-2 sm:col-span-6 md:col-span-3 lg:col-span-2">
-            <h3 className="text-sm font-semibold text-gray-900">生态链接</h3>
+            <h3 className="text-sm font-semibold text-gray-900">{t.footer.colEcosystem}</h3>
             <ul className="space-y-2 text-sm text-gray-600">
               <li>
                 <a
@@ -71,7 +73,7 @@ export default function Footer({ border = false }: { border?: boolean }) {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  GitHub 仓库
+                  {t.footer.ecoLinks.repo}
                 </a>
               </li>
               <li>
@@ -81,7 +83,7 @@ export default function Footer({ border = false }: { border?: boolean }) {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Releases 构件
+                  {t.footer.ecoLinks.releases}
                 </a>
               </li>
               <li>
@@ -91,7 +93,7 @@ export default function Footer({ border = false }: { border?: boolean }) {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  KeePass 官方主页
+                  {t.footer.ecoLinks.keepass}
                 </a>
               </li>
               <li>
@@ -101,7 +103,7 @@ export default function Footer({ border = false }: { border?: boolean }) {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  提交 Issue
+                  {t.footer.ecoLinks.issues}
                 </a>
               </li>
             </ul>
@@ -109,15 +111,15 @@ export default function Footer({ border = false }: { border?: boolean }) {
 
           {/* 4th block */}
           <div className="space-y-2 sm:col-span-6 md:col-span-3 lg:col-span-3">
-            <h3 className="text-sm font-semibold text-gray-900">快速部署</h3>
+            <h3 className="text-sm font-semibold text-gray-900">{t.footer.colDeploy}</h3>
             <p className="text-xs text-gray-500 leading-relaxed mb-2">
-              使用 PowerShell 一键静默安装，或手动将 FluentPass.dll 放入 Plugins 目录。
+              {t.footer.deployDesc}
             </p>
             <a
               href="#install"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-semibold hover:bg-blue-100 transition"
             >
-              查看安装指引 &rarr;
+              {t.footer.deployGuide}
             </a>
           </div>
         </div>

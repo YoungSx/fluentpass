@@ -1,7 +1,12 @@
+"use client";
+
 import Image from "next/image";
 import Stripes from "@/public/images/stripes-dark.svg";
+import { useLanguage } from "@/i18n/context";
 
 export default function Cta() {
+  const { t } = useLanguage();
+
   return (
     <section className="py-16 md:py-24">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
@@ -31,10 +36,10 @@ export default function Cta() {
           </div>
           <div className="px-4 py-12 md:px-12 md:py-20">
             <h2 className="mb-4 text-3xl font-bold text-white md:text-4xl">
-              准备好体验现代化的 KeePass 了吗？
+              {t.cta.title}
             </h2>
             <p className="mx-auto max-w-2xl text-base sm:text-lg text-gray-300 mb-8">
-              FluentPass 现已完全开源，基于 MIT 许可发布。欢迎在 GitHub 上 Star 关注更新、提交 Pull Request 或报告 Issue！
+              {t.cta.description}
             </p>
             <div className="mx-auto max-w-xs sm:flex sm:max-w-none sm:justify-center gap-4">
               <a
@@ -42,7 +47,7 @@ export default function Cta() {
                 href="#install"
               >
                 <span className="relative inline-flex items-center">
-                  立即安装 FluentPass
+                  {t.cta.installBtn}
                   <span className="ml-1.5 tracking-normal text-blue-200 transition-transform group-hover:translate-x-0.5">
                     -&gt;
                   </span>
@@ -54,7 +59,7 @@ export default function Cta() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                前往 GitHub 点赞 ⭐
+                {t.cta.githubBtn}
               </a>
             </div>
           </div>
