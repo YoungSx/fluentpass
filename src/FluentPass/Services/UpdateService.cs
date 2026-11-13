@@ -176,6 +176,10 @@ namespace FluentPass.Services
         private readonly string _targetPath;
         private readonly string _stagingRoot;
 
+        public static string DefaultStagingRoot => Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "FluentPass", "updates");
+
         public static string UserAgent =>
             "FluentPass/" + (typeof(UpdateService).Assembly.GetName().Version?.ToString(3) ?? "0.0.0");
 
@@ -188,9 +192,7 @@ namespace FluentPass.Services
             if (string.IsNullOrWhiteSpace(targetPath)) throw new ArgumentException("targetPath", nameof(targetPath));
 
             _targetPath = targetPath;
-            _stagingRoot = stagingRoot ?? Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "FluentPass", "updates");
+            _stagingRoot = stagingRoot ?? DefaultStagingRoot;
         }
 
         public string TargetPath => _targetPath;
@@ -253,39 +255,63 @@ namespace FluentPass.Services
                     error: "SHA256SUMS.txt 中缺少 " + PluginFileName + " 条目");
             }
 
-            byte[] payload;
-            try
+            // 门禁 1：若目标文件本身已具备 expectedHash（已换装待重启 / 用户已手动覆盖），直接返回 Installed
+            if (File.Exists(_targetPath) && VerifyFileHash(_targetPath, expectedHash))
             {
-                payload = await _transport.DownloadBytesAsync(DownloadUrl, cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                return new UpdateCheckResult(UpdateOutcome.Failed, remote, error: ex.Message);
+                return new UpdateCheckResult(UpdateOutcome.Installed, remote, _targetPath);
             }
 
-            if (!string.Equals(ComputeSha256(payload), expectedHash, StringComparison.OrdinalIgnoreCase))
-            {
-                return new UpdateCheckResult(UpdateOutcome.Failed, remote, error: "SHA256 校验不匹配");
-            }
+            var versionDir = Path.Combine(_stagingRoot, remote.ToString());
+            var stagedPath = Path.Combine(versionDir, PluginFileName);
 
-            string stagedPath;
-            try
+            // 门禁 2：检查本地是否存在完整且校验通过的暂存文件
+            bool reuseExisting = File.Exists(stagedPath) && VerifyFileHash(stagedPath, expectedHash);
+
+            if (!reuseExisting)
             {
-                var versionDir = Path.Combine(_stagingRoot, remote.ToString());
-                Directory.CreateDirectory(versionDir);
-                stagedPath = Path.Combine(versionDir, PluginFileName);
-                File.WriteAllBytes(stagedPath, payload);
-            }
-            catch (Exception ex)
-            {
-                return new UpdateCheckResult(UpdateOutcome.Failed, remote, error: ex.Message);
+                byte[] payload;
+                try
+                {
+                    payload = await _transport.DownloadBytesAsync(DownloadUrl, cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    return new UpdateCheckResult(UpdateOutcome.Failed, remote, error: ex.Message);
+                }
+
+                if (!string.Equals(ComputeSha256(payload), expectedHash, StringComparison.OrdinalIgnoreCase))
+                {
+                    return new UpdateCheckResult(UpdateOutcome.Failed, remote, error: "SHA256 校验不匹配");
+                }
+
+                try
+                {
+                    Directory.CreateDirectory(versionDir);
+                    File.WriteAllBytes(stagedPath, payload);
+                }
+                catch (Exception ex)
+                {
+                    return new UpdateCheckResult(UpdateOutcome.Failed, remote, error: ex.Message);
+                }
             }
 
             var apply = ApplyStagedUpdate(stagedPath, _targetPath, out var applyError);
+            if (apply == UpdateApplyResult.Applied)
+            {
+                try
+                {
+                    if (Directory.Exists(versionDir) && Directory.GetFileSystemEntries(versionDir).Length == 0)
+                    {
+                        Directory.Delete(versionDir);
+                    }
+                }
+                catch { }
+            }
+
             switch (apply)
             {
                 case UpdateApplyResult.Applied:
@@ -366,17 +392,25 @@ namespace FluentPass.Services
         }
 
         /// <summary>
-        /// 校验磁盘文件哈希。仅用于手工核对/测试，下载路径直接对内存字节校验，避免二次读盘。
+        /// 校验磁盘文件哈希。仅用于手工核对/测试与暂存复用预检。
+        /// 读取失败（独占锁、只读受限等）统一静默返回 false，绝不抛出未处理异常。
         /// </summary>
-        public static bool VerifyFileHash(string path, string expectedSha256Hex)
+        public static bool VerifyFileHash(string? path, string? expectedSha256Hex)
         {
-            if (string.IsNullOrEmpty(expectedSha256Hex) || !File.Exists(path)) return false;
+            if (string.IsNullOrEmpty(expectedSha256Hex) || string.IsNullOrEmpty(path) || !File.Exists(path)) return false;
 
-            using (var sha = SHA256.Create())
-            using (var stream = File.OpenRead(path))
+            try
             {
-                return string.Equals(ToHex(sha.ComputeHash(stream)), expectedSha256Hex,
-                    StringComparison.OrdinalIgnoreCase);
+                using (var sha = SHA256.Create())
+                using (var stream = File.Open(path!, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                {
+                    return string.Equals(ToHex(sha.ComputeHash(stream)), expectedSha256Hex,
+                        StringComparison.OrdinalIgnoreCase);
+                }
+            }
+            catch
+            {
+                return false;
             }
         }
 
@@ -385,7 +419,7 @@ namespace FluentPass.Services
         /// 已被 CLR 映射的程序集文件 <b>可以重命名</b>，但 <b>不可删除</b>
         /// （镜像节持有删除拒绝，但目录项改名不受限制）。
         /// 因此顺序固定为：旧文件改名备份 → 新文件就位；任何一步失败都回滚旧文件。
-        /// 备份文件在宿主下次启动时由 <see cref=\"CleanupLeftoverFiles\"/> 清理。
+        /// 备份文件在宿主下次启动时由 <see cref="CleanupLeftoverFiles"/> 清理。
         /// </summary>
         public static UpdateApplyResult ApplyStagedUpdate(string stagedPath, string targetPath, out string? error)
         {
@@ -406,7 +440,7 @@ namespace FluentPass.Services
             }
             catch (Exception ex)
             {
-                error = "旧备份无法清理（可能另有一个 KeePass 实例正在运行）: " + ex.Message;
+                error = "旧备份无法清理（可能另一个 KeePass 实例正在运行）: " + ex.Message;
                 return UpdateApplyResult.Failed;
             }
 
@@ -449,24 +483,44 @@ namespace FluentPass.Services
         }
 
         /// <summary>
-        /// 清理换装遗留（<c>.old</c> / <c>.new</c>）。新进程启动时旧镜像已卸载，删除必然成功；
-        /// 任何异常都只做静默忽略，绝不影响插件加载。
+        /// 清理换装遗留（<c>.old</c> / <c>.new</c>）以及过期的历史暂存版本目录。
+        /// 新进程启动时旧镜像已卸载，删除必然成功；任何异常都只做静默忽略，绝不影响插件加载。
         /// </summary>
-        public static void CleanupLeftoverFiles(string? targetPath = null)
+        public static void CleanupLeftoverFiles(string? targetPath = null, string? stagingRoot = null)
         {
             try
             {
                 var path = targetPath ?? typeof(UpdateService).Assembly.Location;
-                if (string.IsNullOrWhiteSpace(path)) return;
-
-                foreach (var suffix in new[] { ".old", ".new" })
+                if (!string.IsNullOrWhiteSpace(path))
                 {
-                    var leftover = path + suffix;
-                    try
+                    foreach (var suffix in new[] { ".old", ".new" })
                     {
-                        if (File.Exists(leftover)) File.Delete(leftover);
+                        var leftover = path + suffix;
+                        try
+                        {
+                            if (File.Exists(leftover)) File.Delete(leftover);
+                        }
+                        catch { }
                     }
-                    catch { }
+                }
+            }
+            catch { }
+
+            try
+            {
+                var root = stagingRoot ?? DefaultStagingRoot;
+                if (Directory.Exists(root))
+                {
+                    var current = CurrentVersion;
+                    foreach (var dir in Directory.GetDirectories(root))
+                    {
+                        var dirName = Path.GetFileName(dir);
+                        if (Version.TryParse(dirName, out var v) && Normalize(v) <= Normalize(current))
+                        {
+                            try { Directory.Delete(dir, true); }
+                            catch { }
+                        }
+                    }
                 }
             }
             catch { }
